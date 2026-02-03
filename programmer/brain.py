@@ -19,6 +19,7 @@ from display.terminal import Terminal
 from llm.generator import LLMGenerator
 from programmer.personality import Personality
 from archive.repository import Repository
+from archive.learning import LearningSystem
 import config
 
 
@@ -27,10 +28,12 @@ class State(Enum):
     BOOT = auto()
     THINK = auto()
     WRITE = auto()
+    REVIEW = auto()
     RUN = auto()
     WATCH = auto()
     FIX = auto()
     ARCHIVE = auto()
+    REFLECT = auto()
     ERROR = auto()
 
 
@@ -69,6 +72,7 @@ class Brain:
         self.llm = llm
         self.personality = personality
         self.archive = archive
+        self.learning = LearningSystem()
         
         self.state = State.BOOT
         self.current_program: Optional[Program] = None
@@ -89,6 +93,8 @@ class Brain:
                     self._do_think()
                 elif self.state == State.WRITE:
                     self._do_write()
+                elif self.state == State.REVIEW:
+                    self._do_review()
                 elif self.state == State.RUN:
                     self._do_run()
                 elif self.state == State.WATCH:
@@ -97,6 +103,8 @@ class Brain:
                     self._do_fix()
                 elif self.state == State.ARCHIVE:
                     self._do_archive()
+                elif self.state == State.REFLECT:
+                    self._do_reflect()
                 elif self.state == State.ERROR:
                     self._do_error()
                 
@@ -144,7 +152,8 @@ class Brain:
         
         # Prepare for writing
         mood = self.personality.get_mood_status()
-        self._current_prompt = self.llm.build_prompt(program_type, mood)
+        lessons = self.learning.get_recent_lessons()
+        self._current_prompt = self.llm.build_prompt(program_type, mood, lessons)
         
         # Initialize current program container
         self.current_program = Program(
@@ -209,8 +218,60 @@ class Brain:
             return
 
         self.current_program.code = full_code
-        self.terminal.type_string("\n\n// running...\n")
+        self.terminal.type_string("\n\n// finished.\n")
+        time.sleep(0.5)
+        self._transition(State.REVIEW)
+    
+    def _do_review(self):
+        """
+        Review state: check code for obvious errors.
+        """
+        self.terminal.set_status("REVIEWING", "careful")
+        self.terminal.type_string("\n// checking my work...\n")
         time.sleep(1)
+        
+        # Clean the code (same as in _do_run)
+        raw_code = self.current_program.code
+        lines = raw_code.split('\n')
+        clean_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('```') or stripped == 'python':
+                continue
+            clean_lines.append(line)
+        code = '\n'.join(clean_lines).strip()
+        
+        # 1. Check for banned imports
+        banned = ["pygame", "turtle", "tkinter", "matplotlib"]
+        for lib in banned:
+            if f"import {lib}" in code or f"from {lib}" in code:
+                msg = f"Forbidden library usage: {lib}"
+                self.terminal.type_string(f"// oops, I used {lib}!\n")
+                if self.fix_attempts < 2:
+                    self.current_program.error_message = msg
+                    self._transition(State.FIX)
+                    return
+                else:
+                    self.terminal.type_string("// ignoring it...\n")
+
+        # 2. Check syntax
+        try:
+            compile(code, "<string>", "exec")
+        except SyntaxError as e:
+            msg = f"SyntaxError: {e.msg} at line {e.lineno}"
+            self.terminal.type_string(f"// syntax error found!\n")
+            if self.fix_attempts < 2:
+                self.current_program.error_message = msg
+                self._transition(State.FIX)
+                return
+            else:
+                self.terminal.type_string("// still broken, giving up.\n")
+                self.current_program.success = False
+                self._transition(State.ARCHIVE)
+                return
+            
+        self.terminal.type_string("// looks good!\n")
+        time.sleep(0.5)
         self._transition(State.RUN)
     
     def _do_run(self):
@@ -375,10 +436,44 @@ class Brain:
             return
 
         self.current_program.code = full_code
-        self.terminal.type_string("\n\n// retrying...\n")
+        self.terminal.type_string("\n\n// fixed?\n")
         time.sleep(1)
-        self._transition(State.RUN)
+        self._transition(State.REVIEW)
     
+    def _do_reflect(self):
+        """Reflect on what happened and learn a lesson."""
+        self.terminal.set_status("REFLECTING", "wise")
+        self.terminal.type_string("\n// what did I learn?\n")
+        time.sleep(1)
+        
+        # Determine result string
+        if self.current_program.success:
+            result = "Success."
+        else:
+            result = f"Failed. Error: {self.current_program.error_message}"
+            
+        prompt = self.llm.build_reflection_prompt(self.current_program.code, result)
+        
+        # Stream reflection
+        lesson = ""
+        try:
+            for token in self.llm.stream(prompt, stop=["<|im_end|>"]):
+                # Filter newlines to keep it clean
+                token = token.replace("\n", " ")
+                self.terminal.type_char(token)
+                lesson += token
+                time.sleep(random.uniform(0.01, 0.05))
+                self.terminal.tick()
+        except Exception:
+            pass
+            
+        if lesson:
+            self.learning.add_lesson(lesson)
+            self.terminal.type_string("\n// saved to memory.\n")
+        
+        time.sleep(2)
+        self._transition(State.THINK)
+
     def _do_archive(self):
         """
         Archive state.
@@ -404,7 +499,7 @@ class Brain:
         self.programs_written += 1
         
         time.sleep(1)
-        self._transition(State.THINK)
+        self._transition(State.REFLECT)
     
     def _do_error(self):
         """

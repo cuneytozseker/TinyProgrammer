@@ -198,16 +198,25 @@ class LLMGenerator:
         """Get the standard imports header."""
         return "import time\nimport random\nimport math\nfrom tiny_canvas import Canvas\n\nc = Canvas()\n"
 
-    def build_prompt(self, program_type: str, mood: str) -> str:
+    def build_prompt(self, program_type: str, mood: str, lessons: str = "") -> str:
         """
         Build a prompt for generating a specific type of program.
         """
         description = PROGRAM_DESCRIPTIONS.get(program_type, "does something interesting")
         
+        # Add learned lessons if available
+        lessons_text = ""
+        if lessons:
+            lessons_text = (
+                "\n### REMEMBER THESE LESSONS ###\n"
+                f"{lessons}\n"
+            )
+        
         prompt = (
             f"Write a Python script that {description}.\n"
             "You are a tiny programmer. Write ONLY the code.\n"
             "NO explanations. NO markdown code blocks.\n"
+            f"{lessons_text}"
             "### VISUALS ###\n"
             "You MUST use the custom 'Canvas' library I provided.\n"
             "The variable 'c' is already initialized as 'c = Canvas()'.\n"
@@ -218,11 +227,13 @@ class LLMGenerator:
             "- c.sleep(seconds)\n"
             "\n"
             "### CONSTRAINTS ###\n"
-            "- NEVER use `pygame`, `turtle`, `tkinter`, or `matplotlib`.\n"
+            "- USE THE CANVAS 'c' (480x320).\n"
+            "- NEVER use `def`. Write ONLY top-level code.\n"
             "- The program MUST run in an infinite `while True:` loop.\n"
+            "- Initialize variables BEFORE the loop.\n"
             "- Do NOT import anything else.\n"
             "\n"
-            "### YOUR CODE STARTS HERE ###\n"
+            "### START CODE NOW ###\n"
             "import time\n"
             "import random\n"
             "import math\n"
@@ -233,16 +244,34 @@ class LLMGenerator:
         
         return prompt
 
+    def build_reflection_prompt(self, code: str, result: str) -> str:
+        """Build a prompt to learn from code execution."""
+        prompt = (
+            "Review this Python code execution:\n"
+            f"Result: {result}\n\n"
+            "What is ONE technical lesson to remember for next time?\n"
+            "Focus on syntax, libraries, or logic errors.\n"
+            "Examples:\n"
+            "- 'Do not use c.move() because it does not exist.'\n"
+            "- 'Always initialize variables before the loop.'\n"
+            "- 'The canvas size is 480x320.'\n"
+            "\n"
+            "Write ONLY the lesson (1 sentence).\n"
+        )
+        return prompt
+
     def build_fix_prompt(self, code: str, error: str) -> str:
         """Build a prompt to fix broken code."""
         prompt = (
-            "The following Python script failed to run:\n\n"
+            "The following Python script failed:\n\n"
             f"{code}\n\n"
-            f"Error message:\n{error}\n\n"
-            "Fix the code. Write ONLY the fixed code.\n"
+            f"Error: {error}\n\n"
+            "FIX IT. Write ONLY the fixed code.\n"
             "NO explanations. NO markdown.\n"
-            "Keep the same logic but fix the error.\n"
-            "Ensure it runs in an infinite loop using only standard libraries.\n"
+            "Constraints:\n"
+            "- NO `def` (no functions).\n"
+            "- Keep it simple and flat.\n"
+            "- Use 'c' for drawing.\n"
         )
         return prompt
 
