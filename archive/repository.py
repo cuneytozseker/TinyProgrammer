@@ -91,7 +91,7 @@ class Repository:
     
     def save(self, code: str, program_type: str, mood: str,
              success: bool, thought_process: str = "",
-             error_message: Optional[str] = None) -> ProgramMetadata:
+             error_message: Optional[str] = None) -> Optional[ProgramMetadata]:
         """
         Save a program to the archive.
         
@@ -104,8 +104,12 @@ class Repository:
             error_message: Error if failed
             
         Returns:
-            Created metadata
+            Created metadata or None if not saved
         """
+        if not success:
+            print(f"[Archive] Program failed, not saving to archive.")
+            return None
+
         program_id = self._generate_id()
         filename = self._generate_filename(program_type)
         

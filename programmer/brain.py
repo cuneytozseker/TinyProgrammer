@@ -295,8 +295,8 @@ class Brain:
             clean_lines.append(line)
         code = '\n'.join(clean_lines).strip()
         
-        # Save cleaned code to file
-        filename = f"{self.current_program.program_type}_{int(time.time())}.py"
+        # Save cleaned code to temp file for execution
+        filename = "temp_execution.py"
         programs_dir = "programs"
         if not os.path.exists(programs_dir):
             os.makedirs(programs_dir)
