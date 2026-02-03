@@ -5,8 +5,12 @@ Controls the overall behavior loop:
 THINK → WRITE → RUN → WATCH → ARCHIVE → repeat
 """
 
+import os
+import sys
 import time
 import random
+import subprocess
+from datetime import datetime
 from enum import Enum, auto
 from typing import Optional
 from dataclasses import dataclass
@@ -25,6 +29,7 @@ class State(Enum):
     WRITE = auto()
     RUN = auto()
     WATCH = auto()
+    FIX = auto()
     ARCHIVE = auto()
     ERROR = auto()
 
@@ -68,6 +73,7 @@ class Brain:
         self.state = State.BOOT
         self.current_program: Optional[Program] = None
         self.programs_written = 0
+        self.fix_attempts = 0
     
     def run(self):
         """
@@ -87,13 +93,12 @@ class Brain:
                     self._do_run()
                 elif self.state == State.WATCH:
                     self._do_watch()
+                elif self.state == State.FIX:
+                    self._do_fix()
                 elif self.state == State.ARCHIVE:
                     self._do_archive()
                 elif self.state == State.ERROR:
                     self._do_error()
-                
-                # Check if we need a full refresh to clear ghosting
-                self.terminal.check_ghosting_refresh()
                 
             except Exception as e:
                 print(f"[Brain] Error in state {self.state}: {e}")
@@ -108,32 +113,48 @@ class Brain:
     def _do_boot(self):
         """
         Boot sequence.
-        
-        Display welcome message, initialize display.
         """
-        # TODO: Show boot message
-        # TODO: Display "Tiny Programmer v0.1"
-        # TODO: Maybe show a small ASCII art logo
-        # TODO: Wait a moment
-        # TODO: Transition to THINK
-        pass
+        self.terminal.clear()
+        self.terminal.set_status("BOOTING")
+        self.terminal.type_string("Tiny Programmer v0.1\n")
+        time.sleep(0.5)
+        self.terminal.type_string("Initializing brain...\n")
+        time.sleep(1.0)
+        self.terminal.type_string("Ready.\n")
+        time.sleep(0.5)
+        self._transition(State.THINK)
     
     def _do_think(self):
         """
         Thinking state.
-        
-        Decide what program to write, show "thinking" on display.
         """
-        # TODO: Update status bar to "thinking"
-        # TODO: Choose a program type (weighted random from config)
-        # TODO: Update mood based on recent success/failure
-        # TODO: Display thinking comments like:
-        #       "// hmm, what should i make today?"
-        #       "// maybe a bouncing ball..."
-        #       "// yes, let's try that"
-        # TODO: Build prompt for LLM
-        # TODO: Transition to WRITE
-        pass
+        self.terminal.set_status("THINKING", self.personality.get_mood_status())
+        
+        self.fix_attempts = 0
+        
+        # Decide what to write
+        program_type = self._choose_program_type()
+        
+        # Thinking comments
+        comment = self.personality.get_thinking_comment()
+        self.terminal.type_string(f"\n{comment}\n")
+        
+        # Simulate thinking time
+        time.sleep(random.uniform(2.0, 4.0))
+        
+        # Prepare for writing
+        mood = self.personality.get_mood_status()
+        self._current_prompt = self.llm.build_prompt(program_type, mood)
+        
+        # Initialize current program container
+        self.current_program = Program(
+            code="",
+            program_type=program_type,
+            thought_process=comment,
+            timestamp=time.time()
+        )
+        
+        self._transition(State.WRITE)
     
     def _choose_program_type(self) -> str:
         """Choose what type of program to write (weighted random)."""
@@ -145,18 +166,52 @@ class Brain:
         Writing state.
         
         Generate code via LLM and display character by character.
-        This is where the magic happens.
         """
-        # TODO: Update status bar to "writing" with current mood
-        # TODO: Clear terminal (or continue from thinking comments)
-        # TODO: Stream tokens from LLM
-        # TODO: For each token:
-        #       - Apply personality (maybe typo, maybe pause)
-        #       - Display via terminal.type_char()
-        #       - Small delay based on personality
-        # TODO: Collect full code into current_program
-        # TODO: Transition to RUN
-        pass
+        self.terminal.set_status("WRITING", self.personality.get_mood_status())
+        
+        # Start with the header
+        header = self.llm.get_header()
+        self.terminal.type_string(header)
+        full_code = header
+        
+        in_code_block = False
+        
+        # Stream from LLM
+        try:
+            for token in self.llm.stream(self._current_prompt, stop=["if __name__", "<|im_end|>"]):
+                # Basic markdown filtering
+                if "```" in token:
+                    if not in_code_block:
+                        in_code_block = True
+                        token = token.replace("```python", "").replace("```", "")
+                    else:
+                        break # End of block
+                
+                token = token.replace("```python", "").replace("```", "")
+                
+                if not token:
+                    continue
+                    
+                for char in token:
+                    self.terminal.type_char(char)
+                    full_code += char
+                    
+                    # Typing speed
+                    time.sleep(random.uniform(0.02, 0.08))
+                    self.terminal.tick()
+                    
+        except Exception as e:
+            print(f"[Brain] LLM Error: {e}")
+            self.terminal.type_string(f"\n// Error: {e}\n")
+            self.current_program.success = False
+            self.current_program.error_message = str(e)
+            self._transition(State.ERROR)
+            return
+
+        self.current_program.code = full_code
+        self.terminal.type_string("\n\n// running...\n")
+        time.sleep(1)
+        self._transition(State.RUN)
     
     def _do_run(self):
         """
@@ -164,16 +219,49 @@ class Brain:
         
         Try to execute the generated program.
         """
-        # TODO: Update status bar to "running"
-        # TODO: Clear terminal
-        # TODO: Save code to temp file
-        # TODO: Try to execute with subprocess
-        # TODO: If success, transition to WATCH
-        # TODO: If error, maybe try to fix (or transition to THINK to start over)
-        #
-        # Note: Programs should be sandboxed / simple enough to not cause issues
-        # Consider using exec() with restricted globals for safety
-        pass
+        self.terminal.set_status("RUNNING")
+        self.terminal.clear()
+        
+        # Clean the code
+        code = self.current_program.code
+        # Strip markdown and language identifiers
+        lines = code.split('\n')
+        clean_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('```') or stripped == 'python':
+                continue
+            clean_lines.append(line)
+        code = '\n'.join(clean_lines).strip()
+        
+        # Save cleaned code to file
+        filename = f"{self.current_program.program_type}_{int(time.time())}.py"
+        programs_dir = "programs"
+        if not os.path.exists(programs_dir):
+            os.makedirs(programs_dir)
+            
+        filepath = os.path.join(programs_dir, filename)
+        with open(filepath, 'w') as f:
+            f.write(code)
+            
+        try:
+            # Run with python -u (unbuffered) so we can see output immediately
+            self.current_process = subprocess.Popen(
+                [sys.executable, "-u", filepath],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+                bufsize=1 # Line buffered
+            )
+            
+            self.current_program.success = True
+            self._transition(State.WATCH)
+            
+        except Exception as e:
+            self.terminal.type_string(f"Error starting program: {e}\n")
+            self.current_program.success = False
+            self.current_program.error_message = str(e)
+            self._transition(State.ERROR)
     
     def _do_watch(self):
         """
@@ -181,13 +269,115 @@ class Brain:
         
         Let the program run for a while, display its output.
         """
-        # TODO: Update status bar to "watching" with proud/satisfied mood
-        # TODO: Capture program stdout
-        # TODO: Display output on terminal
-        # TODO: Wait for WATCH_DURATION
-        # TODO: Kill program subprocess
-        # TODO: Transition to ARCHIVE
-        pass
+        self.terminal.set_status("WATCHING", "proud")
+        
+        start_time = time.time()
+        duration = random.randint(config.WATCH_DURATION_MIN, config.WATCH_DURATION_MAX)
+        
+        last_output = ""
+        
+        while time.time() - start_time < duration:
+            # Check if process finished
+            if self.current_process.poll() is not None:
+                self.terminal.type_string("\n// Program finished early.\n")
+                break
+            
+            # Read output
+            try:
+                line = self.current_process.stdout.readline()
+                if line:
+                    if line.startswith("CMD:"):
+                        # Execute drawing command
+                        self.terminal.process_draw_command(line)
+                    else:
+                        # Print regular text to terminal
+                        self.terminal.type_string(line)
+                    last_output = line
+            except Exception:
+                pass
+            
+            # Flip display every tick to show drawing updates
+            # (Brain loop runs fast enough for animation)
+            if self.terminal.screen:
+                import pygame
+                pygame.display.flip()
+            
+            self.terminal.tick()
+        
+        # Cleanup process
+        exit_code = self.current_process.poll()
+        if exit_code is None:
+            self.current_process.terminate()
+            try:
+                self.current_process.wait(timeout=1.0)
+            except:
+                self.current_process.kill()
+            self.current_program.success = True
+            self._transition(State.ARCHIVE)
+        else:
+            # Process exited early, check if error
+            if exit_code != 0:
+                # Try to read remaining stderr/stdout
+                remaining = self.current_process.stdout.read()
+                error_msg = (last_output + "\n" + remaining).strip()
+                if not error_msg:
+                    error_msg = f"Process exited with code {exit_code}"
+                
+                if self.fix_attempts < 2:
+                    self.current_program.error_message = error_msg
+                    self._transition(State.FIX)
+                    return
+                else:
+                    self.current_program.success = False
+            else:
+                self.current_program.success = True
+            
+            self._transition(State.ARCHIVE)
+
+    def _do_fix(self):
+        """Fix state: try to repair broken code."""
+        self.fix_attempts += 1
+        self.terminal.set_status("FIXING", "worried")
+        self.terminal.type_string(f"\n// oh no, it broke :(\n")
+        time.sleep(1)
+        self.terminal.type_string(f"// trying to fix it (attempt {self.fix_attempts})...\n")
+        time.sleep(1)
+        
+        prompt = self.llm.build_fix_prompt(self.current_program.code, self.current_program.error_message)
+        
+        full_code = ""
+        in_code_block = False
+        
+        try:
+            for token in self.llm.stream(prompt, stop=["if __name__", "<|im_end|>"]):
+                # Basic markdown filtering
+                if "```" in token:
+                    if not in_code_block:
+                        in_code_block = True
+                        token = token.replace("```python", "").replace("```", "")
+                    else:
+                        break # End of block
+                
+                token = token.replace("```python", "").replace("```", "")
+                
+                if not token:
+                    continue
+                    
+                for char in token:
+                    self.terminal.type_char(char)
+                    full_code += char
+                    time.sleep(random.uniform(0.01, 0.05))
+                    self.terminal.tick()
+                    
+        except Exception as e:
+            print(f"[Brain] Fix Error: {e}")
+            self._transition(State.ERROR)
+            return
+
+        self.current_program.code = full_code
+        self.terminal.type_string("\n\n// retrying...\n")
+        time.sleep(1)
+        self._transition(State.RUN)
     
     def _do_archive(self):
         """
@@ -195,14 +385,26 @@ class Brain:
         
         Save the program and its metadata.
         """
-        # TODO: Update status bar to "archiving"
-        # TODO: Generate metadata (timestamp, type, success)
-        # TODO: Take screenshot of display (optional)
-        # TODO: Save to archive
-        # TODO: Increment programs_written counter
-        # TODO: Display brief "saved" message
-        # TODO: Transition to THINK
-        pass
+        self.terminal.set_status("ARCHIVING")
+        
+        try:
+            self.archive.save(
+                code=self.current_program.code,
+                program_type=self.current_program.program_type,
+                mood=self.personality.get_mood_status(),
+                success=self.current_program.success,
+                thought_process=self.current_program.thought_process,
+                error_message=self.current_program.error_message
+            )
+            self.terminal.type_string(f"\n// Saved to archive.\n")
+        except Exception as e:
+            print(f"[Brain] Archive error: {e}")
+        
+        self.personality.update_mood(self.current_program.success)
+        self.programs_written += 1
+        
+        time.sleep(1)
+        self._transition(State.THINK)
     
     def _do_error(self):
         """
@@ -210,7 +412,8 @@ class Brain:
         
         Handle errors gracefully, try to recover.
         """
-        # TODO: Display error message briefly
-        # TODO: Clear state
-        # TODO: Transition back to THINK
-        pass
+        self.terminal.set_status("ERROR", "confused")
+        self.terminal.type_string("// something went wrong...\n")
+        time.sleep(2)
+        self.personality.update_mood(False)
+        self._transition(State.THINK)

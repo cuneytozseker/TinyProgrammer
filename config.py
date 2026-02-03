@@ -1,3 +1,5 @@
+import os
+
 # Tiny Programmer Configuration
 
 # =============================================================================
@@ -39,12 +41,20 @@ TARGET_FPS = 30
 # LLM
 # =============================================================================
 
-# llama.cpp server endpoint (run server separately or use subprocess)
+# Backend type: "llamacpp" or "ollama"
+LLM_BACKEND = "ollama"
+
+# llama.cpp server endpoint
 LLM_ENDPOINT = "http://localhost:8080/completion"
 
-# Or path to model for subprocess mode
-LLM_MODEL_PATH = "/home/pi/llama.cpp/models/smollm2-135m-instruct-q4_k_m.gguf"
-LLAMA_CPP_PATH = "/home/pi/llama.cpp/llama-cli"
+# Ollama endpoint
+OLLAMA_ENDPOINT = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "qwen2.5-coder:0.5b"  # Run 'ollama pull qwen2.5-coder:0.5b' first
+
+# Or path to model for subprocess mode (llamacpp only)
+# Default relative path or absolute path
+LLM_MODEL_PATH = os.path.join(os.path.expanduser("~"), "llama.cpp", "models", "smollm2-135m-instruct-q4_k_m.gguf")
+LLAMA_CPP_PATH = os.path.join(os.path.expanduser("~"), "llama.cpp", "llama-cli")
 
 # Generation settings
 LLM_CONTEXT_SIZE = 2048
@@ -80,8 +90,8 @@ THINK_DURATION_MIN = 3
 THINK_DURATION_MAX = 10
 
 # How long to run a program before moving on
-WATCH_DURATION_MIN = 30
-WATCH_DURATION_MAX = 180
+WATCH_DURATION_MIN = 10
+WATCH_DURATION_MAX = 30
 
 # Delay between state transitions
 STATE_TRANSITION_DELAY = 2
@@ -91,7 +101,8 @@ STATE_TRANSITION_DELAY = 2
 # =============================================================================
 
 # Local storage
-ARCHIVE_PATH = "/home/pi/tiny-programmer/programs"
+# Use relative path 'programs' in current directory by default
+ARCHIVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "programs")
 
 # GitHub sync (future)
 GITHUB_ENABLED = False

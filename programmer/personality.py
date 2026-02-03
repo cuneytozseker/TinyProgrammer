@@ -146,8 +146,8 @@ class Personality:
         Returns:
             Comment string like "// hmm, this might work"
         """
-        # TODO: Return random comment appropriate to mood
-        pass
+        comments = THINKING_COMMENTS.get(self.mood, THINKING_COMMENTS[Mood.HOPEFUL])
+        return random.choice(comments)
     
     def get_mood_status(self) -> str:
         """Get mood string for status bar."""

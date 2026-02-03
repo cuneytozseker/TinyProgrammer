@@ -45,10 +45,18 @@ def main():
         status_bar_height=config.STATUS_BAR_HEIGHT
     )
     
+    # Determine endpoint based on backend
+    if config.LLM_BACKEND == "ollama":
+        endpoint = config.OLLAMA_ENDPOINT
+    else:
+        endpoint = config.LLM_ENDPOINT
+
     llm = LLMGenerator(
-        endpoint=config.LLM_ENDPOINT,
+        endpoint=endpoint,
         model_path=config.LLM_MODEL_PATH,
-        context_size=config.LLM_CONTEXT_SIZE
+        context_size=config.LLM_CONTEXT_SIZE,
+        backend=config.LLM_BACKEND,
+        model_name=getattr(config, "OLLAMA_MODEL", "")
     )
     
     personality = Personality(

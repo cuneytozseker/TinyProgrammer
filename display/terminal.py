@@ -350,6 +350,48 @@ class Terminal:
         self._render_status_bar()
         pygame.display.flip()
     
+    def process_draw_command(self, cmd_str: str):
+        """
+        Parse and execute a drawing command from the subprocess.
+        Format: CMD:COMMAND,arg1,arg2,...
+        """
+        if self.mock_mode or not cmd_str.startswith("CMD:"):
+            return
+
+        try:
+            parts = cmd_str.strip().split(':')[1].split(',')
+            cmd = parts[0]
+            args = [int(x) for x in parts[1:]]
+
+            if cmd == "CLEAR":
+                self.screen.fill((args[0], args[1], args[2]))
+            elif cmd == "PIXEL":
+                self.screen.set_at((args[0], args[1]), (args[2], args[3], args[4]))
+            elif cmd == "LINE":
+                pygame.draw.line(self.screen, (args[4], args[5], args[6]), 
+                               (args[0], args[1]), (args[2], args[3]))
+            elif cmd == "RECT":
+                pygame.draw.rect(self.screen, (args[4], args[5], args[6]), 
+                               (args[0], args[1], args[2], args[3]), 1)
+            elif cmd == "FILLRECT":
+                pygame.draw.rect(self.screen, (args[4], args[5], args[6]), 
+                               (args[0], args[1], args[2], args[3]))
+            elif cmd == "CIRCLE":
+                pygame.draw.circle(self.screen, (args[3], args[4], args[5]), 
+                                 (args[0], args[1]), args[2], 1)
+            elif cmd == "FILLCIRCLE":
+                pygame.draw.circle(self.screen, (args[3], args[4], args[5]), 
+                                 (args[0], args[1]), args[2])
+            
+            # Note: We rely on the tick() loop to flip the display, 
+            # or we could flip after every command (slower but smoother for slow updates)
+            # pygame.display.flip() 
+            
+        except Exception as e:
+            # Ignore malformed commands to avoid crashing the main display
+            # print(f"Draw error: {e}")
+            pass
+
     def shutdown(self):
         """Clean up pygame."""
         if PYGAME_AVAILABLE and not self.mock_mode:
