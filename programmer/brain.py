@@ -389,12 +389,7 @@ class Brain:
             except Exception:
                 pass
             
-            # Flip display every tick to show drawing updates
-            # (Brain loop runs fast enough for animation)
-            if self.terminal.screen:
-                import pygame
-                pygame.display.flip()
-            
+            # Flush display to show drawing updates
             self.terminal.tick()
         
         # Cleanup process
