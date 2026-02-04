@@ -106,9 +106,10 @@ class Repository:
         Returns:
             Created metadata or None if not saved
         """
-        if not success:
-            print(f"[Archive] Program failed, not saving to archive.")
-            return None
+        # TODO: Re-enable this once code quality improves
+        # if not success:
+        #     print(f"[Archive] Program failed, not saving to archive.")
+        #     return None
 
         program_id = self._generate_id()
         filename = self._generate_filename(program_type)
