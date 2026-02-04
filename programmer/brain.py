@@ -193,6 +193,8 @@ class Brain:
             "import math",
             "from tiny_canvas import Canvas",
             "c = Canvas()",
+            "python",  # From ```python markdown
+            "",  # Empty lines at start
         ]
 
         # Stream from LLM - filter duplicate header lines
