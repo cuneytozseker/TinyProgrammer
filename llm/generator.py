@@ -333,10 +333,11 @@ class LLMGenerator:
             f"{lessons_text}"
             f"Complete the Python code below. The code {description}.\n\n"
             "Rules:\n"
+            "- KEEP IT SHORT: 15-25 lines max\n"
             "- Output ONLY the code that comes AFTER the Canvas() line\n"
             "- Do NOT repeat the imports or 'c = Canvas()' line\n"
             "- Do NOT use markdown code blocks\n"
-            "- Do NOT use 'def' - write flat code only\n"
+            "- Do NOT define functions - write flat code only\n"
             "- Use 'while True:' loop for animation\n"
             "- Screen size is 480x320\n\n"
             "Canvas methods: c.clear(r,g,b), c.fill_rect(x,y,w,h,r,g,b), c.fill_circle(x,y,radius,r,g,b), c.sleep(seconds)\n\n"
@@ -349,7 +350,7 @@ class LLMGenerator:
             "\n"
             "c = Canvas()\n"
             "```\n\n"
-            "Continue from here (start with variable initialization, then while True loop):\n"
+            "Continue (15-25 lines, variables then while True loop):\n"
         )
 
         return prompt
