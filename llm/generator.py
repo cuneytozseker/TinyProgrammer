@@ -10,7 +10,13 @@ import os
 import subprocess
 import requests
 import sys
+import time
 from typing import Generator, Optional
+
+
+# Rate limiting for cloud APIs (requests per minute)
+RATE_LIMIT_RPM = 3  # Conservative limit to avoid 429 errors
+MIN_REQUEST_INTERVAL = 60.0 / RATE_LIMIT_RPM  # 20 seconds between requests
 
 
 class LLMGenerator:
@@ -45,6 +51,7 @@ class LLMGenerator:
         self.model_name = model_name
         self.api_key = api_key
         self.mode = None
+        self._last_request_time = 0  # For rate limiting
         
     def _check_server(self) -> bool:
         """Check if server is running."""
@@ -61,13 +68,24 @@ class LLMGenerator:
         except requests.exceptions.RequestException:
             return False
 
-    # ... generate method remains same ...
+    def _rate_limit(self):
+        """Enforce rate limiting for cloud APIs."""
+        if self.backend in ("gemini", "anthropic"):
+            elapsed = time.time() - self._last_request_time
+            if elapsed < MIN_REQUEST_INTERVAL:
+                wait_time = MIN_REQUEST_INTERVAL - elapsed
+                print(f"[LLM] Rate limiting: waiting {wait_time:.1f}s")
+                time.sleep(wait_time)
+            self._last_request_time = time.time()
 
     def stream(self, prompt: str, max_tokens: int = 512,
                temperature: float = 0.7, stop: list = None) -> Generator[str, None, None]:
         """
         Stream text completion token by token.
         """
+        # Apply rate limiting for cloud APIs
+        self._rate_limit()
+
         if self.backend == "ollama":
             yield from self._stream_ollama(prompt, max_tokens, temperature, stop)
         elif self.backend == "gemini":
