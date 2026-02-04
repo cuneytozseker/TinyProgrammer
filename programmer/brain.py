@@ -173,19 +173,29 @@ class Brain:
     def _do_write(self):
         """
         Writing state.
-        
+
         Generate code via LLM and display character by character.
         """
         self.terminal.set_status("WRITING", self.personality.get_mood_status())
-        
+
         # Start with the header
         header = self.llm.get_header()
         self.terminal.type_string(header)
         full_code = header
-        
+
         in_code_block = False
 
-        # Stream from LLM - just display everything, clean up later
+        # Track lines to filter duplicates from LLM output
+        current_line = ""
+        skip_patterns = [
+            "import time",
+            "import random",
+            "import math",
+            "from tiny_canvas import Canvas",
+            "c = Canvas()",
+        ]
+
+        # Stream from LLM - filter duplicate header lines
         try:
             for token in self.llm.stream(self._current_prompt, stop=["if __name__", "<|im_end|>"]):
                 # Basic markdown filtering
@@ -203,13 +213,28 @@ class Brain:
                     continue
 
                 for char in token:
-                    self.terminal.type_char(char)
-                    full_code += char
+                    current_line += char
 
-                    # Typing speed
-                    time.sleep(random.uniform(0.02, 0.08))
-                    self.terminal.tick()
-                    
+                    # When we hit a newline, check if line should be skipped
+                    if char == '\n':
+                        line_stripped = current_line.strip()
+                        should_skip = any(line_stripped == pat for pat in skip_patterns)
+
+                        if not should_skip:
+                            # Output the line
+                            for c in current_line:
+                                self.terminal.type_char(c)
+                                full_code += c
+                                time.sleep(random.uniform(0.02, 0.08))
+                                self.terminal.tick()
+                        else:
+                            print(f"[Brain] Skipping duplicate: {line_stripped}")
+
+                        current_line = ""
+                    else:
+                        # Buffer the character, don't output yet
+                        pass
+
         except Exception as e:
             print(f"[Brain] LLM Error: {e}")
             self.terminal.type_string(f"\n// Error: {e}\n")
@@ -217,6 +242,12 @@ class Brain:
             self.current_program.error_message = str(e)
             self._transition(State.ERROR)
             return
+
+        # Output any remaining buffered content
+        if current_line:
+            for c in current_line:
+                self.terminal.type_char(c)
+                full_code += c
 
         self.current_program.code = full_code
         self.terminal.type_string("\n\n// finished.\n")
