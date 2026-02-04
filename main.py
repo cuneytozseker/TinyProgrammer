@@ -5,9 +5,30 @@ Tiny Programmer - Main Entry Point
 A self-contained device that writes code, runs it, and repeats forever.
 """
 
+import os
 import time
 import signal
 import sys
+
+# Load .env file BEFORE importing config (which reads env vars at import time)
+try:
+    from dotenv import load_dotenv
+    # Load from .env in the same directory as this script
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+        print(f"[Tiny Programmer] Loaded environment from {env_path}")
+except ImportError:
+    # dotenv not installed, try manual loading
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key.strip()] = value.strip()
+        print(f"[Tiny Programmer] Loaded environment from {env_path}")
 
 import config
 from display.terminal import Terminal
