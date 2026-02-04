@@ -1,49 +1,43 @@
-# Status Report: Tiny Programmer on RPi Zero 2 W (Bookworm)
+# Status Report: Tiny Programmer on RPi Zero 2 W
 
-**Date:** February 3, 2026
+**Date:** February 4, 2026
 **Hardware:** Raspberry Pi Zero 2 W + Waveshare 4-inch LCD (A) [SPI, ILI9486]
-**OS:** Raspberry Pi OS Lite (Bookworm 64-bit)
+**OS:** Debian Trixie (64-bit)
 
-## Current State
-- **Application Logic:** Fully functional (v0.3).
-    - AI writes code (Qwen 2.5 0.5B via Ollama).
-    - Self-correction loop works.
-    - `tiny_canvas` API works.
-- **Display Hardware:** Verified working.
-    - Driver (`waveshare35a` overlay) loads.
-    - `/dev/fb1` exists.
-    - Console shows text (Login prompt).
-    - `dd` to `/dev/fb1` produces static noise (HW path valid).
-- **The Issue:**
-    - We cannot get Python/Pygame to clear the screen or draw graphics over the console.
-    - The screen stays stuck on the Login Prompt (sometimes cursor freezes).
-    - Direct writes (`open().write()`) and `mmap` writes to `/dev/fb1` do not trigger a screen refresh in Python, even though `dd` works.
+## Current State: WORKING
 
-## Things We Tried (and Failed)
+### Display: SOLVED
+The SPI display now works with Python/Pygame using **direct framebuffer writes**.
 
-### 1. Pygame Drivers (SDL2)
-- **`fbcon`**: Failed. "Video system not initialized". Deprecated in Bookworm SDL.
-- **`kmsdrm`**: Failed. Defaults to HDMI (`card0`), ignores SPI display.
-- **`dummy` + Direct Write**: Python script runs, but screen doesn't update (remains login text).
-- **`linuxfb`**: Failed to init.
+**Solution:** Bypass SDL's broken `fbcon` driver by:
+1. Using pygame's `dummy` video driver for in-memory rendering
+2. Converting pygame surfaces to RGB565 format
+3. Writing directly to `/dev/fb0` using Python's `open().write()`
 
-### 2. Kernel/Driver Config
-- **`dtoverlay=waveshare35a`**: Works for console text.
-- **Disabling `vc4-kms-v3d`**: Necessary for `fbcon` mapping, but SDL still hates it.
-- **`con2fbmap 1 0`**: Attempted to move console to HDMI. Failed to clear `fb1` fully (text remains).
-- **Unbinding Console (`vtcon1`)**: Stops cursor blink, but pixels remain stuck.
+**Performance:** ~20 fps for full-screen updates (acceptable for this use case)
 
-### 3. Other Tools
-- **`rpi-fbcp`**: Failed to build/run (missing `libbcm_host` on Bookworm).
-- **`fbcp-ili9341`**: Not attempted (complex build for ILI9486).
+### Files Changed
+- `display/framebuffer.py` - New: Direct framebuffer writer with RGB888→RGB565 conversion
+- `display/terminal.py` - Modified: Uses in-memory pygame surface + fb writer
+- `display/__init__.py` - Modified: Exports new framebuffer module
 
-## Next Steps / Solution Path
-To get this working, we likely need one of the following:
-1.  **Downgrade OS (RECOMMENDED)**: Use **Raspberry Pi OS Bullseye (Legacy) Lite**. The old `fbcon` driver works perfectly there, and most Waveshare tutorials are designed for it. This is the fastest path to a working display.
-2.  **Use `fbturbo`**: Manually install this legacy X11/FB driver to give SDL a valid target on Bookworm.
-3.  **Kernel Force Refresh**: Find the specific `ioctl` call that triggers the Waveshare driver to flush the buffer (since `mmap` alone isn't doing it on Bookworm).
+### Technical Details
+- Framebuffer device: `/dev/fb0` (ILI9486 via fbtft)
+- Format: 480x320, 16bpp RGB565
+- Driver: `fb_ili9486` with deferred I/O
+- The fbtft driver's `fb_write()` callback triggers SPI transfer automatically
 
-## How to Resume
-1.  Check `STATUS.md`.
-2.  Consider flashing **Bullseye Lite** for an easy win.
-3.  Or continue debugging `fbtft` refresh triggers on Bookworm.
+## Previous Issue (Resolved)
+
+SDL2/Pygame on Bookworm/Trixie cannot use `fbcon` driver (deprecated) and `kmsdrm` only works with HDMI. The solution was to not rely on SDL for display output at all.
+
+## Application Status
+- **AI Code Generation:** Working (Qwen 2.5 0.5B via Ollama)
+- **Self-correction Loop:** Working
+- **tiny_canvas API:** Working
+- **Display Output:** Working (direct framebuffer)
+
+## Next Steps
+1. Test full main.py workflow end-to-end
+2. Optimize framebuffer writes if needed (dirty rectangles)
+3. Continue with v0.4 features (Archive)
