@@ -112,9 +112,19 @@ class Brain:
                 print(f"[Brain] Error in state {self.state}: {e}")
                 self.state = State.ERROR
     
+    def _update_sidebar(self):
+        """Update the sidebar with recent program filenames from archive."""
+        recent = self.archive.get_recent(count=12)
+        files = [p.filename for p in recent]
+        # Show most recent at top
+        files.reverse()
+        current = files[0] if files else ""
+        self.terminal.set_file_list(files, current)
+
     def _transition(self, new_state: State):
         """Transition to a new state with delay."""
         print(f"[Brain] {self.state.name} → {new_state.name}")
+        self._update_sidebar()
         time.sleep(config.STATE_TRANSITION_DELAY)
         self.state = new_state
     

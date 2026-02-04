@@ -9,26 +9,42 @@ import os
 DISPLAY_WIDTH = 480
 DISPLAY_HEIGHT = 320
 
-# Colors (retro terminal aesthetic)
-COLOR_BG = (0, 0, 0)           # Black background
-COLOR_FG = (0, 255, 0)         # Green text (classic terminal)
-# COLOR_FG = (255, 176, 0)     # Amber alternative
-COLOR_CURSOR = (0, 255, 0)
-COLOR_STATUS_BG = (0, 40, 0)   # Darker green for status bar
-COLOR_DIM = (0, 128, 0)        # Dimmed text for comments
+# Colors (retro Mac OS IDE aesthetic)
+COLOR_BG = (255, 255, 255)      # White background
+COLOR_FG = (0, 0, 0)            # Black text
+COLOR_CURSOR = (0, 0, 0)        # Black cursor
+COLOR_LINE_NUM = (128, 128, 128)  # Gray line numbers
+COLOR_SIDEBAR_FG = (0, 0, 0)    # Black sidebar text
+COLOR_SIDEBAR_SEL = (0, 0, 0)   # Selected file (inverted)
+COLOR_STATUS_FG = (0, 0, 0)     # Status bar text
+COLOR_DIM = (128, 128, 128)     # Dimmed text for comments
 
-# Font settings (use monospace!)
-FONT_NAME = "DejaVu Sans Mono"  # pygame will find system font
-FONT_SIZE = 14
-CHAR_WIDTH = 9    # Will be calculated from font
+# Font settings (Space Mono from Google Fonts)
+FONT_NAME = "SpaceMono-Regular"
+FONT_SIZE = 12
+CHAR_WIDTH = 8    # Will be calculated from font
 CHAR_HEIGHT = 16
 
-# Terminal dimensions (in characters)
-TERMINAL_COLS = 52   # 480 / 9 ≈ 53
-TERMINAL_ROWS = 18   # Leave room for status bar (320 - 32) / 16 ≈ 18
+# Layout regions (pixel coordinates on 480x320 bg.png)
+# Sidebar: file list
+SIDEBAR_X = 5
+SIDEBAR_Y = 63
+SIDEBAR_W = 90
+SIDEBAR_H = 210
+
+# Code area: where code is rendered
+CODE_AREA_X = 130
+CODE_AREA_Y = 63
+CODE_AREA_W = 320    # ~130 to ~452
+CODE_AREA_H = 210    # ~63 to ~275
+
+# Line number column (between sidebar and code)
+LINE_NUM_X = 105
+LINE_NUM_W = 25
 
 # Status bar
-STATUS_BAR_HEIGHT = 32
+STATUS_BAR_Y = 300
+STATUS_BAR_HEIGHT = 16
 
 # Display modes
 MODE_TERMINAL = "terminal"  # Code writing mode
