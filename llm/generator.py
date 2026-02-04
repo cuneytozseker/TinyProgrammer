@@ -1,11 +1,12 @@
 """
 LLM Generator
 
-Interface to local LLM via llama.cpp.
-Supports both HTTP API mode and subprocess mode.
+Interface to LLMs for code generation.
+Supports local (llama.cpp, Ollama) and cloud (Gemini, Anthropic) backends.
 """
 
 import json
+import os
 import subprocess
 import requests
 import sys
@@ -14,30 +15,35 @@ from typing import Generator, Optional
 
 class LLMGenerator:
     """
-    Interface to local LLM for code generation.
-    
-    Can operate in two modes:
-    1. HTTP mode: Connect to running llama.cpp server
-    2. Subprocess mode: Launch llama.cpp directly (slower startup)
+    Interface to LLM for code generation.
+
+    Backends:
+    - llamacpp: Local llama.cpp server or subprocess
+    - ollama: Local Ollama server
+    - gemini: Google Gemini API (cloud)
+    - anthropic: Anthropic Claude API (cloud)
     """
-    
-    def __init__(self, endpoint: str, model_path: str, context_size: int, 
-                 backend: str = "llamacpp", model_name: str = ""):
+
+    def __init__(self, endpoint: str, model_path: str, context_size: int,
+                 backend: str = "llamacpp", model_name: str = "",
+                 api_key: str = ""):
         """
         Initialize LLM interface.
-        
+
         Args:
-            endpoint: HTTP endpoint (llama.cpp or ollama)
-            model_path: Path to GGUF model file (for subprocess mode)
+            endpoint: HTTP endpoint (for local backends)
+            model_path: Path to GGUF model file (for llamacpp subprocess)
             context_size: Context window size in tokens
-            backend: "llamacpp" or "ollama"
-            model_name: Model name for Ollama (e.g. "smollm:135m")
+            backend: "llamacpp", "ollama", "gemini", or "anthropic"
+            model_name: Model name (for Ollama/cloud APIs)
+            api_key: API key (for cloud backends)
         """
         self.endpoint = endpoint
         self.model_path = model_path
         self.context_size = context_size
         self.backend = backend
         self.model_name = model_name
+        self.api_key = api_key
         self.mode = None
         
     def _check_server(self) -> bool:
@@ -64,6 +70,10 @@ class LLMGenerator:
         """
         if self.backend == "ollama":
             yield from self._stream_ollama(prompt, max_tokens, temperature, stop)
+        elif self.backend == "gemini":
+            yield from self._stream_gemini(prompt, max_tokens, temperature, stop)
+        elif self.backend == "anthropic":
+            yield from self._stream_anthropic(prompt, max_tokens, temperature, stop)
         elif self._check_server():
             yield from self._stream_http(prompt, max_tokens, temperature, stop)
         else:
@@ -110,7 +120,99 @@ class LLMGenerator:
         except Exception as e:
             print(f"[LLM] Error streaming from Ollama: {e}")
 
-    
+    def _stream_gemini(self, prompt: str, max_tokens: int,
+                       temperature: float, stop: list) -> Generator[str, None, None]:
+        """Stream from Google Gemini API."""
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:streamGenerateContent"
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        data = {
+            "contents": [
+                {"parts": [{"text": prompt}]}
+            ],
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+                "temperature": temperature,
+                "stopSequences": stop or []
+            }
+        }
+
+        print(f"[LLM] Sending request to Gemini ({self.model_name})")
+
+        try:
+            with requests.post(
+                f"{url}?key={self.api_key}&alt=sse",
+                headers=headers,
+                json=data,
+                stream=True
+            ) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if line:
+                        decoded = line.decode('utf-8')
+                        if decoded.startswith('data: '):
+                            try:
+                                chunk = json.loads(decoded[6:])
+                                candidates = chunk.get('candidates', [])
+                                if candidates:
+                                    content = candidates[0].get('content', {})
+                                    parts = content.get('parts', [])
+                                    if parts:
+                                        text = parts[0].get('text', '')
+                                        if text:
+                                            yield text
+                            except json.JSONDecodeError:
+                                pass
+        except Exception as e:
+            print(f"[LLM] Error streaming from Gemini: {e}")
+
+    def _stream_anthropic(self, prompt: str, max_tokens: int,
+                          temperature: float, stop: list) -> Generator[str, None, None]:
+        """Stream from Anthropic Claude API."""
+        url = "https://api.anthropic.com/v1/messages"
+
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01"
+        }
+
+        data = {
+            "model": self.model_name,
+            "max_tokens": max_tokens,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+            "stream": True
+        }
+
+        if stop:
+            data["stop_sequences"] = stop
+
+        print(f"[LLM] Sending request to Anthropic ({self.model_name})")
+
+        try:
+            with requests.post(url, headers=headers, json=data, stream=True) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if line:
+                        decoded = line.decode('utf-8')
+                        if decoded.startswith('data: '):
+                            try:
+                                chunk = json.loads(decoded[6:])
+                                if chunk.get('type') == 'content_block_delta':
+                                    delta = chunk.get('delta', {})
+                                    text = delta.get('text', '')
+                                    if text:
+                                        yield text
+                            except json.JSONDecodeError:
+                                pass
+        except Exception as e:
+            print(f"[LLM] Error streaming from Anthropic: {e}")
+
     def _stream_http(self, prompt: str, max_tokens: int,
                      temperature: float, stop: list) -> Generator[str, None, None]:
         """

@@ -41,20 +41,29 @@ TARGET_FPS = 30
 # LLM
 # =============================================================================
 
-# Backend type: "llamacpp" or "ollama"
-LLM_BACKEND = "ollama"
+# Backend type: "ollama", "llamacpp", "gemini", or "anthropic"
+LLM_BACKEND = "gemini"  # Cloud API for Pi Zero
 
+# --- Local backends (for Pi 4B with more RAM) ---
 # llama.cpp server endpoint
 LLM_ENDPOINT = "http://localhost:8080/completion"
 
 # Ollama endpoint
 OLLAMA_ENDPOINT = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen2.5-coder:0.5b"  # Run 'ollama pull qwen2.5-coder:0.5b' first
+OLLAMA_MODEL = "qwen2.5-coder:0.5b"
 
-# Or path to model for subprocess mode (llamacpp only)
-# Default relative path or absolute path
+# Path to model for subprocess mode (llamacpp only)
 LLM_MODEL_PATH = os.path.join(os.path.expanduser("~"), "llama.cpp", "models", "smollm2-135m-instruct-q4_k_m.gguf")
 LLAMA_CPP_PATH = os.path.join(os.path.expanduser("~"), "llama.cpp", "llama-cli")
+
+# --- Cloud API backends (for Pi Zero) ---
+# Gemini (Google AI)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = "gemini-2.0-flash-lite"  # Fast and cheap
+
+# Anthropic (Claude)
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"  # Fast and cheap
 
 # Generation settings
 LLM_CONTEXT_SIZE = 2048
