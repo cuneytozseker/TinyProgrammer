@@ -184,7 +184,12 @@ class Brain:
         full_code = header
         
         in_code_block = False
-        
+        skip_buffer = ""  # Buffer to detect and skip repeated imports
+
+        # Patterns to skip (model might repeat these despite instructions)
+        skip_patterns = ["import time", "import random", "import math",
+                         "from tiny_canvas", "c = Canvas()", "```python", "```"]
+
         # Stream from LLM
         try:
             for token in self.llm.stream(self._current_prompt, stop=["if __name__", "<|im_end|>"]):
@@ -194,18 +199,55 @@ class Brain:
                         in_code_block = True
                         token = token.replace("```python", "").replace("```", "")
                     else:
-                        break # End of block
-                
+                        break  # End of block
+
                 token = token.replace("```python", "").replace("```", "")
-                
+                token = token.replace("<|im_end|>", "")
+
                 if not token:
                     continue
-                    
-                for char in token:
+
+                # Buffer tokens to detect patterns to skip
+                skip_buffer += token
+
+                # Check if buffer contains patterns to skip
+                should_skip = False
+                for pattern in skip_patterns:
+                    if pattern.lower() in skip_buffer.lower():
+                        should_skip = True
+                        break
+
+                # If newline in buffer, process it
+                if "\n" in skip_buffer:
+                    lines = skip_buffer.split("\n")
+                    for i, line in enumerate(lines[:-1]):  # Process all but last incomplete line
+                        line_lower = line.lower().strip()
+                        # Skip lines that are just imports or Canvas init
+                        if any(p.lower() in line_lower for p in skip_patterns):
+                            continue
+                        if not line.strip():
+                            continue
+                        # Output this line
+                        for char in line + "\n":
+                            self.terminal.type_char(char)
+                            full_code += char
+                            time.sleep(random.uniform(0.02, 0.08))
+                            self.terminal.tick()
+                    skip_buffer = lines[-1]  # Keep incomplete line in buffer
+                elif not should_skip and len(skip_buffer) > 50:
+                    # Buffer is getting long without newline, flush it
+                    for char in skip_buffer:
+                        self.terminal.type_char(char)
+                        full_code += char
+                        time.sleep(random.uniform(0.02, 0.08))
+                        self.terminal.tick()
+                    skip_buffer = ""
+
+            # Flush remaining buffer
+            if skip_buffer.strip() and not any(p.lower() in skip_buffer.lower() for p in skip_patterns):
+                for char in skip_buffer:
                     self.terminal.type_char(char)
                     full_code += char
-                    
-                    # Typing speed
                     time.sleep(random.uniform(0.02, 0.08))
                     self.terminal.tick()
                     

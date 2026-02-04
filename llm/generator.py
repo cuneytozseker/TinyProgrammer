@@ -305,45 +305,35 @@ class LLMGenerator:
         Build a prompt for generating a specific type of program.
         """
         description = PROGRAM_DESCRIPTIONS.get(program_type, "does something interesting")
-        
+
         # Add learned lessons if available
         lessons_text = ""
         if lessons:
-            lessons_text = (
-                "\n### REMEMBER THESE LESSONS ###\n"
-                f"{lessons}\n"
-            )
-        
+            lessons_text = f"Remember: {lessons}\n\n"
+
         prompt = (
-            f"Write a Python script that {description}.\n"
-            "You are a tiny programmer. Write ONLY the code.\n"
-            "NO explanations. NO markdown code blocks.\n"
             f"{lessons_text}"
-            "### VISUALS ###\n"
-            "You MUST use the custom 'Canvas' library I provided.\n"
-            "The variable 'c' is already initialized as 'c = Canvas()'.\n"
-            "Methods available on 'c':\n"
-            "- c.clear(r, g, b)\n"
-            "- c.fill_rect(x, y, w, h, r, g, b)\n"
-            "- c.fill_circle(x, y, radius, r, g, b)\n"
-            "- c.sleep(seconds)\n"
-            "\n"
-            "### CONSTRAINTS ###\n"
-            "- USE THE CANVAS 'c' (480x320).\n"
-            "- NEVER use `def`. Write ONLY top-level code.\n"
-            "- The program MUST run in an infinite `while True:` loop.\n"
-            "- Initialize variables BEFORE the loop.\n"
-            "- Do NOT import anything else.\n"
-            "\n"
-            "### START CODE NOW ###\n"
+            f"Complete the Python code below. The code {description}.\n\n"
+            "Rules:\n"
+            "- Output ONLY the code that comes AFTER the Canvas() line\n"
+            "- Do NOT repeat the imports or 'c = Canvas()' line\n"
+            "- Do NOT use markdown code blocks\n"
+            "- Do NOT use 'def' - write flat code only\n"
+            "- Use 'while True:' loop for animation\n"
+            "- Screen size is 480x320\n\n"
+            "Canvas methods: c.clear(r,g,b), c.fill_rect(x,y,w,h,r,g,b), c.fill_circle(x,y,radius,r,g,b), c.sleep(seconds)\n\n"
+            "Code so far:\n"
+            "```\n"
             "import time\n"
             "import random\n"
             "import math\n"
             "from tiny_canvas import Canvas\n"
             "\n"
             "c = Canvas()\n"
+            "```\n\n"
+            "Continue from here (start with variable initialization, then while True loop):\n"
         )
-        
+
         return prompt
 
     def build_reflection_prompt(self, code: str, result: str) -> str:
