@@ -174,7 +174,10 @@ class Terminal:
             return
         canvas_path = os.path.join(ASSETS_DIR, "canvas.png")
         if os.path.exists(canvas_path):
-            self.canvas_image = pygame.image.load(canvas_path).convert_alpha()
+            # Don't use convert_alpha() — it requires a display surface
+            # which doesn't exist with the dummy driver + framebuffer path.
+            # pygame.image.load() preserves the PNG alpha channel already.
+            self.canvas_image = pygame.image.load(canvas_path)
             print(f"[Terminal] Loaded canvas chrome: {canvas_path}")
         else:
             print(f"[Terminal] Warning: canvas.png not found")
