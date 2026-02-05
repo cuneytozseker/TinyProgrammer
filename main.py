@@ -30,6 +30,9 @@ except ImportError:
                     os.environ[key.strip()] = value.strip()
         print(f"[Tiny Programmer] Loaded environment from {env_path}")
 
+# Hide the Linux console cursor (the blinking rectangle on framebuffer)
+os.system('sudo sh -c \'echo -e "\\033[?25l" > /dev/tty1\' 2>/dev/null')
+
 import config
 from display.terminal import Terminal
 from llm.generator import LLMGenerator
