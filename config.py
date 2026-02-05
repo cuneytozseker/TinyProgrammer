@@ -68,7 +68,7 @@ TARGET_FPS = 30
 # =============================================================================
 
 # Backend type: "ollama", "llamacpp", "gemini", or "anthropic"
-LLM_BACKEND = "gemini"  # Cloud API for Pi Zero
+LLM_BACKEND = "anthropic"  # Claude Haiku for Pi Zero
 
 # --- Local backends (for Pi 4B with more RAM) ---
 # llama.cpp server endpoint
