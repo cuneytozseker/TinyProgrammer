@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import random
+import select
 import subprocess
 from datetime import datetime
 from enum import Enum, auto
@@ -392,21 +393,22 @@ class Brain:
             if self.current_process.poll() is not None:
                 self.terminal.type_string("\n// Program finished early.\n")
                 break
-            
-            # Read output
+
+            # Non-blocking read so timeout always works
             try:
-                line = self.current_process.stdout.readline()
-                if line:
-                    if line.startswith("CMD:"):
-                        # Execute drawing command
-                        self.terminal.process_draw_command(line)
-                    else:
-                        # Print regular text to terminal
-                        self.terminal.type_string(line)
-                    last_output = line
+                ready, _, _ = select.select(
+                    [self.current_process.stdout], [], [], 0.1)
+                if ready:
+                    line = self.current_process.stdout.readline()
+                    if line:
+                        if line.startswith("CMD:"):
+                            self.terminal.process_draw_command(line)
+                        else:
+                            self.terminal.type_string(line)
+                        last_output = line
             except Exception:
                 pass
-            
+
             # Flush display to show drawing updates
             self.terminal.tick()
         
