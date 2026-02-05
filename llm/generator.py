@@ -78,7 +78,7 @@ class LLMGenerator:
                 time.sleep(wait_time)
             self._last_request_time = time.time()
 
-    def stream(self, prompt: str, max_tokens: int = 512,
+    def stream(self, prompt: str, max_tokens: int = 1024,
                temperature: float = 0.7, stop: list = None) -> Generator[str, None, None]:
         """
         Stream text completion token by token.
