@@ -115,6 +115,9 @@ class Terminal:
             self.mock_mode = True
             return
 
+        # Hide system mouse cursor
+        pygame.mouse.set_visible(False)
+
         # Create in-memory surface for rendering
         self.screen = pygame.Surface((self.width, self.height))
 
