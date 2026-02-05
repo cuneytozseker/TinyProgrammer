@@ -125,8 +125,8 @@ THINK_DURATION_MIN = 3
 THINK_DURATION_MAX = 10
 
 # How long to run a program before moving on
-WATCH_DURATION_MIN = 10
-WATCH_DURATION_MAX = 30
+WATCH_DURATION_MIN = 300
+WATCH_DURATION_MAX = 300
 
 # Delay between state transitions
 STATE_TRANSITION_DELAY = 2
