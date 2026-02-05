@@ -335,33 +335,23 @@ class LLMGenerator:
             "RULES:\n"
             "- 20-50 lines of code\n"
             "- NO imports (already done)\n"
-            "- NO functions, NO classes\n"
             "- Start with variables, then while True loop\n"
             "- Canvas: 416x218 pixels, SPI display runs at ~4 FPS\n"
             "- ALWAYS call c.sleep(0.2) at end of loop (slow screen)\n"
             "- Use simple shapes, avoid too many draw calls per frame\n"
             "- Add short casual comments like a human thinking out loud\n"
             "  e.g. '# hmm let's try a spiral', '# this should bounce nicely'\n\n"
-            "ONLY these methods exist:\n"
+            "ONLY these methods exist on 'c':\n"
             "  c.clear(r,g,b)\n"
+            "  c.pixel(x,y,r,g,b)\n"
+            "  c.line(x1,y1,x2,y2,r,g,b)\n"
+            "  c.rect(x,y,w,h,r,g,b)\n"
             "  c.fill_rect(x,y,w,h,r,g,b)\n"
+            "  c.circle(x,y,radius,r,g,b)\n"
             "  c.fill_circle(x,y,radius,r,g,b)\n"
             "  c.sleep(seconds)\n"
             "Do NOT use any other methods.\n\n"
-            "Output ONLY code, no markdown, no explanation:\n"
-            "# let's make a bouncy ball\n"
-            "x = 100\n"
-            "y = 100\n"
-            "dx = 3\n"
-            "while True:\n"
-            "    c.clear(0,0,0)\n"
-            "    # draw the ball\n"
-            "    c.fill_circle(x,y,20,255,0,0)\n"
-            "    x += dx\n"
-            "    # bounce off walls\n"
-            "    if x > 396 or x < 20:\n"
-            "        dx = -dx\n"
-            "    c.sleep(0.2)\n"
+            "Output ONLY Python code. No markdown, no explanation.\n"
         )
 
         return prompt
@@ -391,8 +381,7 @@ class LLMGenerator:
             "FIX IT. Write ONLY the fixed code.\n"
             "NO explanations. NO markdown.\n"
             "Constraints:\n"
-            "- NO `def` (no functions).\n"
-            "- Keep it simple and flat.\n"
+            "- Keep it simple.\n"
             "- Use 'c' for drawing.\n"
         )
         return prompt
@@ -400,12 +389,16 @@ class LLMGenerator:
 
 # Program type descriptions for prompts
 PROGRAM_DESCRIPTIONS = {
-    "bouncing_ball": "animates a ball bouncing around the screen using ASCII characters",
-    "clock": "displays a simple digital clock that updates every second",
-    "pattern": "generates a mesmerizing repeating pattern",
-    "animation": "creates a simple looping ASCII animation",
-    "game_of_life": "implements Conway's Game of Life in a small grid",
-    "spiral": "draws an expanding spiral pattern",
-    "text_scroller": "scrolls a message across the screen",
-    "random_walker": "animates a dot randomly walking around the screen",
+    "bouncing_ball": "animates a ball bouncing around the canvas",
+    "pattern": "generates a mesmerizing geometric pattern with shapes and colors",
+    "animation": "creates a simple looping animation with moving shapes",
+    "game_of_life": "implements Conway's Game of Life using small filled rectangles as cells",
+    "cellular_automata": "implements a 1D cellular automaton (like Rule 30 or Rule 110) drawing rows of cells",
+    "l_system": "draws an L-system fractal pattern like a tree, snowflake, or fern using lines",
+    "spiral": "draws an expanding or rotating spiral pattern",
+    "random_walker": "animates a dot randomly walking around the canvas leaving a trail",
+    "starfield": "simulates stars flying toward the viewer",
+    "rain": "simulates falling raindrops using lines",
+    "generative_glyphs": "generates abstract procedural glyphs or symbols on a grid using basic shapes",
+    "pong": "simulates a game of pong with a ball bouncing between two paddles that move on their own",
 }
