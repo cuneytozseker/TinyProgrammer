@@ -50,6 +50,16 @@ STATUS_BAR_HEIGHT = 16
 MODE_TERMINAL = "terminal"  # Code writing mode
 MODE_RUN = "run"            # Program execution mode
 
+# Canvas popup window (Mac OS floating window for program output)
+CANVAS_X = 29                # Position of canvas.png on screen
+CANVAS_Y = 35
+CANVAS_W = 422               # Full chrome size (including title bar)
+CANVAS_H = 242
+CANVAS_DRAW_OFFSET_X = 2     # Drawable area offset within chrome
+CANVAS_DRAW_OFFSET_Y = 20
+CANVAS_DRAW_W = 416           # Drawable area size
+CANVAS_DRAW_H = 218
+
 # Framerate cap (saves CPU, SPI can't go much faster anyway)
 TARGET_FPS = 30
 

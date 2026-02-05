@@ -325,8 +325,8 @@ class Brain:
         Try to execute the generated program.
         """
         self.terminal.set_status("RUNNING")
-        self.terminal.clear()
-        
+        self.terminal.show_canvas()
+
         # Clean the code
         code = self.current_program.code
         # Strip markdown and language identifiers
@@ -404,6 +404,9 @@ class Brain:
             # Flush display to show drawing updates
             self.terminal.tick()
         
+        # Hide canvas popup
+        self.terminal.hide_canvas()
+
         # Cleanup process
         exit_code = self.current_process.poll()
         if exit_code is None:

@@ -10,6 +10,7 @@ Layout (480x320):
 - Sidebar: dynamic file list
 - Code area: code with line numbers
 - Status bar: line/col info and state
+- Canvas popup: floating window for program output (composited on top)
 """
 
 import os
@@ -21,6 +22,7 @@ os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 import pygame
 
+import config
 from .framebuffer import get_writer, IS_FRAMEBUFFER_AVAILABLE
 
 # Initialize pygame with dummy driver
@@ -38,7 +40,8 @@ ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 class Terminal:
     """
     TFT terminal emulator with retro Mac OS IDE theme.
-    Uses bg.png as background, Space Mono for code text.
+    Uses bg.png as background, Space Mono for code text,
+    canvas.png as popup window for program output.
     """
 
     def __init__(self, width: int, height: int,
@@ -55,7 +58,7 @@ class Terminal:
         self.mock_mode = False
         self.fb_writer = None
 
-        # Layout regions (from config, but with sensible defaults)
+        # Layout regions
         self.code_area_x = 130
         self.code_area_y = 63
         self.code_area_w = 320
@@ -82,7 +85,7 @@ class Terminal:
 
         # Text buffer
         self.lines = [""] * self.rows
-        self.line_offset = 0  # For tracking total lines written
+        self.line_offset = 0
 
         # State
         self.current_state = "booting"
@@ -91,6 +94,12 @@ class Terminal:
         # Sidebar file list
         self.sidebar_files: List[str] = []
         self.sidebar_current: str = ""
+
+        # Canvas popup state
+        self.canvas_surface = None
+        self.canvas_visible = False
+        self.canvas_image = None
+        self._load_canvas_assets()
 
         # Performance
         self.clock = pygame.time.Clock() if PYGAME_AVAILABLE else None
@@ -112,13 +121,11 @@ class Terminal:
         bg_path = os.path.join(ASSETS_DIR, "bg.png")
         if os.path.exists(bg_path):
             self.bg_image = pygame.image.load(bg_path)
-            # Ensure correct size
             if self.bg_image.get_size() != (self.width, self.height):
                 self.bg_image = pygame.transform.scale(
                     self.bg_image, (self.width, self.height))
             print(f"[Terminal] Loaded background: {bg_path}")
         else:
-            # Fallback: white background
             self.bg_image = pygame.Surface((self.width, self.height))
             self.bg_image.fill((255, 255, 255))
             print(f"[Terminal] No bg.png found, using white background")
@@ -128,14 +135,12 @@ class Terminal:
             self.fb_writer = get_writer(self.width, self.height)
             print(f"[Terminal] Using direct framebuffer: {self.fb_writer.device}")
         else:
-            # Desktop mode - create a window for testing
             print("[Terminal] No framebuffer, using windowed mode")
             os.environ.pop("SDL_VIDEODRIVER", None)
             pygame.quit()
             pygame.init()
             self._window = pygame.display.set_mode((self.width, self.height))
             pygame.display.set_caption("Tiny Programmer")
-            # Reload bg image after pygame reinit
             bg_path = os.path.join(ASSETS_DIR, "bg.png")
             if os.path.exists(bg_path):
                 self.bg_image = pygame.image.load(bg_path)
@@ -149,7 +154,6 @@ class Terminal:
             self.font = pygame.font.Font(font_path, font_size)
             print(f"[Terminal] Loaded font: SpaceMono-Regular ({font_size}pt)")
         else:
-            # Fallback to system monospace
             try:
                 self.font = pygame.font.SysFont(font_name, font_size)
                 print(f"[Terminal] Using system font: {font_name}")
@@ -164,11 +168,46 @@ class Terminal:
         else:
             self.font_bold = self.font
 
+    def _load_canvas_assets(self):
+        """Load the canvas.png popup window chrome."""
+        if self.mock_mode:
+            return
+        canvas_path = os.path.join(ASSETS_DIR, "canvas.png")
+        if os.path.exists(canvas_path):
+            self.canvas_image = pygame.image.load(canvas_path).convert_alpha()
+            print(f"[Terminal] Loaded canvas chrome: {canvas_path}")
+        else:
+            print(f"[Terminal] Warning: canvas.png not found")
+
     def _get_char_size(self) -> Tuple[int, int]:
         if self.mock_mode:
             return (8, 16)
         surface = self.font.render("M", True, self.color_fg)
         return surface.get_width(), surface.get_height()
+
+    # =========================================================================
+    # Canvas popup methods
+    # =========================================================================
+
+    def show_canvas(self):
+        """Show the canvas popup window and create the drawing surface."""
+        self.canvas_surface = pygame.Surface(
+            (config.CANVAS_DRAW_W, config.CANVAS_DRAW_H))
+        self.canvas_surface.fill((0, 0, 0))
+        self.canvas_visible = True
+        self._dirty = True
+        print("[Terminal] Canvas popup shown")
+
+    def hide_canvas(self):
+        """Hide the canvas popup window."""
+        self.canvas_visible = False
+        self.canvas_surface = None
+        self._dirty = True
+        print("[Terminal] Canvas popup hidden")
+
+    # =========================================================================
+    # Text input methods
+    # =========================================================================
 
     def clear(self):
         """Clear the code area."""
@@ -245,12 +284,16 @@ class Terminal:
         self.sidebar_current = current
         self._dirty = True
 
+    # =========================================================================
+    # Rendering pipeline (single composited frame)
+    # =========================================================================
+
     def _render(self):
-        """Render the full IDE display."""
+        """Render the full IDE display with optional canvas popup."""
         if self.mock_mode:
             return
 
-        # 1. Draw background image (title bar, toolbar, borders, etc.)
+        # 1. Draw background image (title bar, toolbar, borders)
         self.screen.blit(self.bg_image, (0, 0))
 
         # 2. Render sidebar file list
@@ -265,7 +308,15 @@ class Terminal:
         # 5. Render status bar
         self._render_status()
 
-        # 6. Output to display
+        # 6. Composite canvas popup on top (if visible)
+        if self.canvas_visible and self.canvas_image and self.canvas_surface:
+            self.screen.blit(self.canvas_image,
+                             (config.CANVAS_X, config.CANVAS_Y))
+            self.screen.blit(self.canvas_surface,
+                             (config.CANVAS_X + config.CANVAS_DRAW_OFFSET_X,
+                              config.CANVAS_Y + config.CANVAS_DRAW_OFFSET_Y))
+
+        # 7. Single flip to framebuffer
         self._flip()
 
     def _render_sidebar(self):
@@ -278,7 +329,6 @@ class Terminal:
         max_files = self.sidebar_h // (sidebar_font_size + 4)
 
         for i, filename in enumerate(self.sidebar_files[:max_files]):
-            # Truncate long filenames
             display_name = filename
             if len(display_name) > 12:
                 display_name = display_name[:11] + "."
@@ -286,7 +336,6 @@ class Terminal:
             is_current = (filename == self.sidebar_current)
 
             if is_current:
-                # Draw inverted (white on black) for selected file
                 sel_rect = pygame.Rect(
                     self.sidebar_x, y - 1,
                     self.sidebar_w, sidebar_font_size + 3)
@@ -302,25 +351,20 @@ class Terminal:
 
     def _render_code(self):
         """Render line numbers and code text in the code area."""
-        # Calculate first visible line number
         total_lines_before = max(0, self.line_offset - self.cursor_y)
 
         for row, line in enumerate(self.lines):
             y = self.code_area_y + row * self.char_height
 
-            # Don't render below code area
             if y + self.char_height > self.code_area_y + self.code_area_h:
                 break
 
-            # Line number
             line_num = total_lines_before + row + 1
             ln_text = f"{line_num:3d}"
             ln_surface = self.font.render(ln_text, True, (128, 128, 128))
             self.screen.blit(ln_surface, (self.line_num_x, y))
 
-            # Code text
             if line:
-                # Clip text to fit code area width
                 max_chars = self.cols
                 display_line = line[:max_chars]
                 txt_surface = self.font.render(
@@ -332,7 +376,6 @@ class Terminal:
         if self.cursor_visible:
             cx = self.code_area_x + self.cursor_x * self.char_width
             cy = self.code_area_y + self.cursor_y * self.char_height
-            # Only draw if within code area
             if (cx < self.code_area_x + self.code_area_w and
                     cy < self.code_area_y + self.code_area_h):
                 cursor_rect = pygame.Rect(
@@ -341,7 +384,6 @@ class Terminal:
 
     def _render_status(self):
         """Render the status bar at the bottom."""
-        # Line and column info
         line_num = self.line_offset + 1
         col_num = self.cursor_x + 1
         status_left = f"Line: {line_num}    Col: {col_num}"
@@ -349,16 +391,17 @@ class Terminal:
         if self.current_mood:
             status_right += f"  {self.current_mood}"
 
-        # Render left-aligned status
         st_left = self.font.render(status_left, True, (0, 0, 0))
         self.screen.blit(st_left, (8, self.status_bar_y))
 
-        # Render right-aligned state with separator
         separator = " |  "
         full_right = separator + status_right
         st_right = self.font.render(full_right, True, (0, 0, 0))
-        right_x = 170  # After the line/col info
-        self.screen.blit(st_right, (right_x, self.status_bar_y))
+        self.screen.blit(st_right, (170, self.status_bar_y))
+
+    # =========================================================================
+    # Framebuffer output
+    # =========================================================================
 
     def _flip(self, force: bool = False):
         """Send the rendered surface to the display. Rate-limited."""
@@ -375,41 +418,58 @@ class Terminal:
             self._window.blit(self.screen, (0, 0))
             pygame.display.flip()
 
+    # =========================================================================
+    # Canvas drawing commands (from running programs)
+    # =========================================================================
+
     def process_draw_command(self, cmd_str: str):
-        """Process drawing commands from running programs."""
+        """Process drawing commands onto the canvas surface (not the screen).
+
+        Commands are drawn to self.canvas_surface and composited during
+        _render(). No direct _flip() call — avoids tearing on SPI display.
+        """
         if self.mock_mode or not cmd_str.startswith("CMD:"):
             return
+        if self.canvas_surface is None:
+            return
+
+        target = self.canvas_surface
+
         try:
             parts = cmd_str.strip().split(':')[1].split(',')
             c = parts[0]
             args = [int(x) for x in parts[1:]]
             if c == "CLEAR":
-                self.screen.fill(tuple(args[:3]))
+                target.fill(tuple(args[:3]))
             elif c == "PIXEL":
-                self.screen.set_at((args[0], args[1]), tuple(args[2:]))
+                target.set_at((args[0], args[1]), tuple(args[2:]))
             elif c == "LINE":
                 pygame.draw.line(
-                    self.screen, tuple(args[4:]),
+                    target, tuple(args[4:]),
                     (args[0], args[1]), (args[2], args[3]))
             elif c == "RECT":
                 pygame.draw.rect(
-                    self.screen, tuple(args[4:]),
+                    target, tuple(args[4:]),
                     (args[0], args[1], args[2], args[3]), 1)
             elif c == "FILLRECT":
                 pygame.draw.rect(
-                    self.screen, tuple(args[4:]),
+                    target, tuple(args[4:]),
                     (args[0], args[1], args[2], args[3]))
             elif c == "CIRCLE":
                 pygame.draw.circle(
-                    self.screen, tuple(args[3:]),
+                    target, tuple(args[3:]),
                     (args[0], args[1]), args[2], 1)
             elif c == "FILLCIRCLE":
                 pygame.draw.circle(
-                    self.screen, tuple(args[3:]),
+                    target, tuple(args[3:]),
                     (args[0], args[1]), args[2])
-            self._flip()
+            self._dirty = True  # Will be composited on next _render()
         except Exception as e:
             pass  # Silently ignore malformed commands
+
+    # =========================================================================
+    # Event handling and tick
+    # =========================================================================
 
     def update_cursor_blink(self):
         if time.time() - self.cursor_blink_time > 0.5:

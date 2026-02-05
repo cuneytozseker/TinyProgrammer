@@ -337,7 +337,7 @@ class LLMGenerator:
             "- NO imports (already done)\n"
             "- NO functions, NO classes\n"
             "- Start with variables, then while True loop\n"
-            "- Screen: 480x320, SPI display runs at ~4 FPS\n"
+            "- Canvas: 416x218 pixels, SPI display runs at ~4 FPS\n"
             "- ALWAYS call c.sleep(0.2) at end of loop (slow screen)\n"
             "- Use simple shapes, avoid too many draw calls per frame\n"
             "- Add short casual comments like a human thinking out loud\n"
@@ -359,7 +359,7 @@ class LLMGenerator:
             "    c.fill_circle(x,y,20,255,0,0)\n"
             "    x += dx\n"
             "    # bounce off walls\n"
-            "    if x > 460 or x < 20:\n"
+            "    if x > 396 or x < 20:\n"
             "        dx = -dx\n"
             "    c.sleep(0.2)\n"
         )
@@ -376,7 +376,7 @@ class LLMGenerator:
             "Examples:\n"
             "- 'Do not use c.move() because it does not exist.'\n"
             "- 'Always initialize variables before the loop.'\n"
-            "- 'The canvas size is 480x320.'\n"
+            "- 'The canvas size is 416x218.'\n"
             "\n"
             "Write ONLY the lesson (1 sentence).\n"
         )
