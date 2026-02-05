@@ -152,14 +152,18 @@ GITHUB_SYNC_INTERVAL = 3600  # Sync every hour
 
 # Types of programs to generate (weighted)
 PROGRAM_TYPES = [
-    ("bouncing_ball", 3),
-    ("clock", 2),
-    ("pattern", 3),
-    ("animation", 2),
+    ("bouncing_ball", 1),
+    ("pattern", 1),
+    ("animation", 1),
     ("game_of_life", 1),
-    ("spiral", 2),
-    ("text_scroller", 1),
-    ("random_walker", 2),
+    ("cellular_automata", 1),
+    ("l_system", 1),
+    ("spiral", 1),
+    ("random_walker", 1),
+    ("starfield", 1),
+    ("rain", 1),
+    ("generative_glyphs", 1),
+    ("pong", 1),
 ]
 
 # Maximum lines of code to generate

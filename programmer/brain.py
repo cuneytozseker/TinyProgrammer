@@ -176,9 +176,15 @@ class Brain:
         self._transition(State.WRITE)
     
     def _choose_program_type(self) -> str:
-        """Choose what type of program to write (weighted random)."""
+        """Choose what type of program to write, avoiding immediate repeats."""
         types, weights = zip(*config.PROGRAM_TYPES)
-        return random.choices(types, weights=weights)[0]
+        # Filter out last type to avoid back-to-back repeats
+        if hasattr(self, '_last_program_type') and self._last_program_type in types:
+            filtered = [(t, w) for t, w in zip(types, weights) if t != self._last_program_type]
+            types, weights = zip(*filtered)
+        choice = random.choices(types, weights=weights)[0]
+        self._last_program_type = choice
+        return choice
     
     def _do_write(self):
         """
