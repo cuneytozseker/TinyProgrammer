@@ -90,7 +90,7 @@ GEMINI_MODEL = "gemini-3-flash-preview"
 
 # Anthropic (Claude)
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"  # Fast and cheap
+ANTHROPIC_MODEL = "claude-haiku-4-5-20250116"  # Haiku 4.5
 
 # Generation settings
 LLM_CONTEXT_SIZE = 2048
