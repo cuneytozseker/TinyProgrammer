@@ -400,9 +400,9 @@ class Terminal:
         """Render the status bar at the bottom as a single line."""
         line_num = self.line_offset + 1
         col_num = self.cursor_x + 1
-        status = f"Line: {line_num}  Col: {col_num}  |  {self.current_state}"
+        status = f"STATUS: {self.current_state}"
         if self.current_mood:
-            status += f"  {self.current_mood}"
+            status += f" | Mood: {self.current_mood}"
 
         st_surface = self.font.render(status, True, (0, 0, 0))
         self.screen.blit(st_surface, (8, self.status_bar_y))
