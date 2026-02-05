@@ -398,16 +398,12 @@ class Terminal:
 
     def _render_status(self):
         """Render the status bar at the bottom as a single line."""
-        # Cover bg.png's static "Col: 10" text after the | separator
-        status_rect = pygame.Rect(145, 286, 175, 14)
-        pygame.draw.rect(self.screen, (255, 255, 255), status_rect)
-
         status = f"STATUS: {self.current_state}"
         if self.current_mood:
             status += f" | Mood: {self.current_mood}"
 
-        st_surface = self.font.render(status, True, (0, 0, 0))
-        self.screen.blit(st_surface, (150, 287))
+        st_surface = self.font_bold.render(status, True, (0, 0, 0))
+        self.screen.blit(st_surface, (150, 289))
 
     # =========================================================================
     # Framebuffer output
