@@ -338,6 +338,7 @@ class LLMGenerator:
             "- Start with variables, then while True loop\n"
             "- Canvas: 416x218 pixels, SPI display runs at ~4 FPS\n"
             "- ALWAYS call c.sleep(0.2) at end of loop (slow screen)\n"
+            "- Use creative background colors with c.clear(), not just black\n"
             "- Use simple shapes, avoid too many draw calls per frame\n"
             "- Add short casual comments like a human thinking out loud\n"
             "  e.g. '# hmm let's try a spiral', '# this should bounce nicely'\n\n"
