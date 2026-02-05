@@ -194,6 +194,7 @@ class Brain:
         Generate code via LLM and display character by character.
         """
         self.terminal.set_status("WRITING", self.personality.get_mood_status())
+        self.terminal.clear()
 
         # Start with the header
         header = self.llm.get_header()
