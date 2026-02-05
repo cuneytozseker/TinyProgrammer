@@ -397,21 +397,15 @@ class Terminal:
                 pygame.draw.rect(self.screen, self.color_fg, cursor_rect)
 
     def _render_status(self):
-        """Render the status bar at the bottom."""
+        """Render the status bar at the bottom as a single line."""
         line_num = self.line_offset + 1
         col_num = self.cursor_x + 1
-        status_left = f"Line: {line_num}    Col: {col_num}"
-        status_right = self.current_state
+        status = f"Line: {line_num}  Col: {col_num}  |  {self.current_state}"
         if self.current_mood:
-            status_right += f"  {self.current_mood}"
+            status += f"  {self.current_mood}"
 
-        st_left = self.font.render(status_left, True, (0, 0, 0))
-        self.screen.blit(st_left, (8, self.status_bar_y))
-
-        separator = " |  "
-        full_right = separator + status_right
-        st_right = self.font.render(full_right, True, (0, 0, 0))
-        self.screen.blit(st_right, (170, self.status_bar_y))
+        st_surface = self.font.render(status, True, (0, 0, 0))
+        self.screen.blit(st_surface, (8, self.status_bar_y))
 
     # =========================================================================
     # Framebuffer output
