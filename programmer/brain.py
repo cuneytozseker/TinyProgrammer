@@ -187,6 +187,7 @@ class Brain:
         Generate code via LLM and display character by character.
         """
         self.terminal.set_status("WRITING", self.personality.get_mood_status())
+        self.terminal.enable_cursor()
 
         # Start with the header
         header = self.llm.get_header()
@@ -250,6 +251,7 @@ class Brain:
         except Exception as e:
             print(f"[Brain] LLM Error: {e}")
             self.terminal.type_string(f"\n// Error: {e}\n")
+            self.terminal.disable_cursor()
             self.current_program.success = False
             self.current_program.error_message = str(e)
             self._transition(State.ERROR)
@@ -263,6 +265,7 @@ class Brain:
 
         self.current_program.code = full_code
         self.terminal.type_string("\n\n// finished.\n")
+        self.terminal.disable_cursor()
         time.sleep(0.5)
         self._transition(State.REVIEW)
     

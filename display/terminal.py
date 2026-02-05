@@ -81,6 +81,7 @@ class Terminal:
         self.cursor_x = 0
         self.cursor_y = 0
         self.cursor_visible = True
+        self.cursor_enabled = False
         self.cursor_blink_time = 0
 
         # Text buffer
@@ -207,6 +208,16 @@ class Terminal:
         self.canvas_surface = None
         self._dirty = True
         print("[Terminal] Canvas popup hidden")
+
+    def enable_cursor(self):
+        """Show the blinking text cursor."""
+        self.cursor_enabled = True
+        self._dirty = True
+
+    def disable_cursor(self):
+        """Hide the blinking text cursor."""
+        self.cursor_enabled = False
+        self._dirty = True
 
     # =========================================================================
     # Text input methods
@@ -376,7 +387,7 @@ class Terminal:
 
     def _render_cursor(self):
         """Render the blinking cursor in the code area."""
-        if self.cursor_visible:
+        if self.cursor_enabled and self.cursor_visible:
             cx = self.code_area_x + self.cursor_x * self.char_width
             cy = self.code_area_y + self.cursor_y * self.char_height
             if (cx < self.code_area_x + self.code_area_w and
