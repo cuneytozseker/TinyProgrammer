@@ -85,8 +85,8 @@ LLAMA_CPP_PATH = os.path.join(os.path.expanduser("~"), "llama.cpp", "llama-cli")
 # --- Cloud API backends (for Pi Zero) ---
 # Gemini (Google AI)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-#GEMINI_MODEL = "gemini-2.0-flash-lite"  # Fast and cheap
-GEMINI_MODEL = "gemini-3-flash-preview"
+GEMINI_MODEL = "gemini-2.0-flash-lite"  # Fast and cheap
+#GEMINI_MODEL = "gemini-3-flash-preview"
 
 # Anthropic (Claude)
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
