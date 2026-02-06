@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - TinyProgrammer{% endblock %}
+
+{% block content %}
+<h1>Settings</h1>
+
+<form method="POST" action="{{ url_for('settings') }}">
+
+    <section class="settings-section">
+        <h2>LLM Configuration</h2>
+
+        <div class="form-group">
+            <label for="llm_backend">Backend</label>
+            <select name="llm_backend" id="llm_backend">
+                <option value="ollama" {% if config.LLM_BACKEND == 'ollama' %}selected{% endif %}>Ollama</option>
+                <option value="llamacpp" {% if config.LLM_BACKEND == 'llamacpp' %}selected{% endif %}>llama.cpp</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="ollama_model">Ollama Model</label>
+            <input type="text" name="ollama_model" id="ollama_model"
+                   value="{{ config.OLLAMA_MODEL or '' }}"
+                   placeholder="qwen2.5-coder:0.5b">
+        </div>
+
+        <div class="form-group">
+            <label for="ollama_endpoint">Ollama Endpoint</label>
+            <input type="text" name="ollama_endpoint" id="ollama_endpoint"
+                   value="{{ config.OLLAMA_ENDPOINT or '' }}"
+                   placeholder="http://localhost:11434/api/generate">
+        </div>
+
+        <div class="form-group">
+            <label for="llm_temperature">Temperature (0.0 - 1.0)</label>
+            <input type="number" name="llm_temperature" id="llm_temperature"
+                   value="{{ config.LLM_TEMPERATURE or 0.7 }}"
+                   min="0" max="1" step="0.1">
+        </div>
+
+        <div class="form-group">
+            <label for="llm_max_tokens">Max Tokens</label>
+            <input type="number" name="llm_max_tokens" id="llm_max_tokens"
+                   value="{{ config.LLM_MAX_TOKENS or 1024 }}"
+                   min="256" max="4096">
+        </div>
+    </section>
+
+    <section class="settings-section">
+        <h2>Timing</h2>
+
+        <div class="form-group">
+            <label for="watch_duration_min">Watch Duration Min (seconds)</label>
+            <input type="number" name="watch_duration_min" id="watch_duration_min"
+                   value="{{ config.WATCH_DURATION_MIN or 600 }}"
+                   min="10" max="3600">
+        </div>
+
+        <div class="form-group">
+            <label for="watch_duration_max">Watch Duration Max (seconds)</label>
+            <input type="number" name="watch_duration_max" id="watch_duration_max"
+                   value="{{ config.WATCH_DURATION_MAX or 600 }}"
+                   min="10" max="3600">
+        </div>
+
+        <div class="form-group">
+            <label for="think_duration_min">Think Duration Min (seconds)</label>
+            <input type="number" name="think_duration_min" id="think_duration_min"
+                   value="{{ config.THINK_DURATION_MIN or 3 }}"
+                   min="1" max="60">
+        </div>
+
+        <div class="form-group">
+            <label for="think_duration_max">Think Duration Max (seconds)</label>
+            <input type="number" name="think_duration_max" id="think_duration_max"
+                   value="{{ config.THINK_DURATION_MAX or 10 }}"
+                   min="1" max="60">
+        </div>
+
+        <div class="form-group">
+            <label for="state_transition_delay">State Transition Delay (seconds)</label>
+            <input type="number" name="state_transition_delay" id="state_transition_delay"
+                   value="{{ config.STATE_TRANSITION_DELAY or 2 }}"
+                   min="0" max="10">
+        </div>
+    </section>
+
+    <section class="settings-section">
+        <h2>Personality</h2>
+
+        <div class="form-group">
+            <label for="typing_speed_min">Typing Speed Min (chars/sec)</label>
+            <input type="number" name="typing_speed_min" id="typing_speed_min"
+                   value="{{ config.TYPING_SPEED_MIN or 2 }}"
+                   min="1" max="50">
+        </div>
+
+        <div class="form-group">
+            <label for="typing_speed_max">Typing Speed Max (chars/sec)</label>
+            <input type="number" name="typing_speed_max" id="typing_speed_max"
+                   value="{{ config.TYPING_SPEED_MAX or 8 }}"
+                   min="1" max="50">
+        </div>
+
+        <div class="form-group">
+            <label for="typo_probability">Typo Probability (0.0 - 1.0)</label>
+            <input type="number" name="typo_probability" id="typo_probability"
+                   value="{{ config.TYPO_PROBABILITY or 0.02 }}"
+                   min="0" max="1" step="0.01">
+        </div>
+
+        <div class="form-group">
+            <label for="pause_probability">Pause Probability (0.0 - 1.0)</label>
+            <input type="number" name="pause_probability" id="pause_probability"
+                   value="{{ config.PAUSE_PROBABILITY or 0.05 }}"
+                   min="0" max="1" step="0.01">
+        </div>
+    </section>
+
+    <section class="settings-section">
+        <h2>Program Types</h2>
+        <p class="hint">Enable/disable program types and set their weights (higher = more likely).</p>
+
+        <div class="program-types-grid">
+            {% set default_types = ['bouncing_ball', 'pattern', 'animation', 'game_of_life',
+                                    'cellular_automata', 'l_system', 'spiral', 'random_walker',
+                                    'starfield', 'rain', 'generative_glyphs', 'pong'] %}
+            {% set current_types = config.PROGRAM_TYPES or [] %}
+            {% set current_dict = dict(current_types) %}
+
+            {% for ptype in default_types %}
+            <div class="program-type-item">
+                <label>
+                    <input type="checkbox" name="ptype_{{ ptype }}"
+                           {% if ptype in current_dict %}checked{% endif %}>
+                    {{ ptype|replace('_', ' ')|title }}
+                </label>
+                <input type="number" name="pweight_{{ ptype }}"
+                       value="{{ current_dict.get(ptype, 1) }}"
+                       min="1" max="10" class="weight-input">
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="form-actions">
+        <button type="submit" class="btn-primary">Save Settings</button>
+        <a href="{{ url_for('settings') }}" class="btn-secondary">Reset Form</a>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - TinyProgrammer{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="status-grid">
+    <div class="status-card">
+        <h3>Current State</h3>
+        <div class="status-value state-{{ status.state|lower if status.state else 'unknown' }}">
+            {{ status.state or 'Unknown' }}
+        </div>
+    </div>
+
+    <div class="status-card">
+        <h3>Mood</h3>
+        <div class="status-value">
+            {{ status.mood or 'Unknown' }}
+        </div>
+    </div>
+
+    <div class="status-card">
+        <h3>Programs Written</h3>
+        <div class="status-value">
+            {{ status.programs_written or 0 }}
+        </div>
+    </div>
+
+    <div class="status-card">
+        <h3>Success Rate</h3>
+        <div class="status-value">
+            {{ status.success_rate or 0 }}%
+        </div>
+    </div>
+
+    <div class="status-card">
+        <h3>Total Archived</h3>
+        <div class="status-value">
+            {{ status.total_archived or 0 }}
+        </div>
+    </div>
+
+    <div class="status-card">
+        <h3>Current Program</h3>
+        <div class="status-value">
+            {{ status.current_program_type or 'None' }}
+        </div>
+    </div>
+</div>
+
+{% if status.by_type %}
+<h2>Programs by Type</h2>
+<div class="type-stats">
+    {% for ptype, count in status.by_type.items() %}
+    <div class="type-stat">
+        <span class="type-name">{{ ptype }}</span>
+        <span class="type-count">{{ count }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<p class="refresh-hint">Page refreshes manually. <a href="{{ url_for('dashboard') }}">Refresh now</a></p>
+{% endblock %}

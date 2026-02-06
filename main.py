@@ -82,7 +82,21 @@ def main():
         personality=personality,
         archive=archive
     )
-    
+
+    # Start web interface if enabled
+    if getattr(config, 'WEB_ENABLED', False):
+        try:
+            from web import start_web_server
+            start_web_server(
+                brain,
+                host=getattr(config, 'WEB_HOST', '0.0.0.0'),
+                port=getattr(config, 'WEB_PORT', 5000)
+            )
+        except ImportError as e:
+            print(f"[Tiny Programmer] Web interface not available: {e}")
+        except Exception as e:
+            print(f"[Tiny Programmer] Web interface failed to start: {e}")
+
     print("[Tiny Programmer] All systems ready.")
     print("[Tiny Programmer] Starting main loop...")
     

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TinyProgrammer{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <div class="nav-brand">TinyProgrammer</div>
+        <div class="nav-links">
+            <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="active"{% endif %}>Settings</a>
+            <a href="{{ url_for('prompt_editor') }}" {% if request.endpoint == 'prompt_editor' %}class="active"{% endif %}>Prompts</a>
+        </div>
+    </nav>
+
+    <main>
+        {% if message %}
+        <div class="message success">{{ message }}</div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>TinyProgrammer v0.1 - <a href="#" onclick="location.reload()">Refresh</a></p>
+    </footer>
+</body>
+</html>

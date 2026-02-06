@@ -158,3 +158,12 @@ PROGRAM_TYPES = [
 
 # Maximum lines of code to generate
 MAX_PROGRAM_LINES = 50
+
+# =============================================================================
+# WEB INTERFACE
+# =============================================================================
+
+# Web server settings
+WEB_ENABLED = True
+WEB_HOST = "0.0.0.0"  # Listen on all interfaces
+WEB_PORT = 5000
