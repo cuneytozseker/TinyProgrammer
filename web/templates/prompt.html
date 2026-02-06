@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Prompt Editor - TinyProgrammer{% endblock %}
+
+{% block content %}
+<h1>Prompt Editor</h1>
+<p>Customize the descriptions used to generate each program type.</p>
+
+<form method="POST" action="{{ url_for('prompt_editor') }}">
+
+    <section class="settings-section">
+        <h2>Canvas Constraints</h2>
+        <p class="hint">These values are included in every prompt.</p>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="canvas_width">Canvas Width (pixels)</label>
+                <input type="number" name="canvas_width" id="canvas_width"
+                       value="{{ config.CANVAS_CONSTRAINTS.width if config.CANVAS_CONSTRAINTS else 416 }}"
+                       min="100" max="800">
+            </div>
+
+            <div class="form-group">
+                <label for="canvas_height">Canvas Height (pixels)</label>
+                <input type="number" name="canvas_height" id="canvas_height"
+                       value="{{ config.CANVAS_CONSTRAINTS.height if config.CANVAS_CONSTRAINTS else 218 }}"
+                       min="100" max="600">
+            </div>
+
+            <div class="form-group">
+                <label for="canvas_sleep">Sleep Time (seconds)</label>
+                <input type="number" name="canvas_sleep" id="canvas_sleep"
+                       value="{{ config.CANVAS_CONSTRAINTS.sleep if config.CANVAS_CONSTRAINTS else 0.1 }}"
+                       min="0.01" max="1.0" step="0.01">
+            </div>
+        </div>
+    </section>
+
+    <section class="settings-section">
+        <h2>Program Descriptions</h2>
+        <p class="hint">Each description completes the sentence: "Write a short Python program that..."</p>
+
+        {% set program_types = ['bouncing_ball', 'pattern', 'animation', 'game_of_life',
+                                'cellular_automata', 'l_system', 'spiral', 'random_walker',
+                                'starfield', 'rain', 'generative_glyphs', 'pong'] %}
+
+        {% for ptype in program_types %}
+        <div class="form-group">
+            <label for="desc_{{ ptype }}">{{ ptype|replace('_', ' ')|title }}</label>
+            <textarea name="desc_{{ ptype }}" id="desc_{{ ptype }}"
+                      rows="2" class="description-input"
+                      placeholder="{{ defaults.get(ptype, '') }}">{{ descriptions.get(ptype, defaults.get(ptype, '')) }}</textarea>
+            <small class="default-hint">Default: {{ defaults.get(ptype, 'N/A') }}</small>
+        </div>
+        {% endfor %}
+    </section>
+
+    <div class="form-actions">
+        <button type="submit" class="btn-primary">Save Prompts</button>
+        <a href="{{ url_for('prompt_editor') }}" class="btn-secondary">Reset Form</a>
+    </div>
+</form>
+{% endblock %}

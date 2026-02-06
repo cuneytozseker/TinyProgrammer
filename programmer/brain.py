@@ -79,7 +79,21 @@ class Brain:
         self.current_program: Optional[Program] = None
         self.programs_written = 0
         self.fix_attempts = 0
-    
+
+    def get_status(self) -> dict:
+        """Get current status for web UI."""
+        stats = self.archive.get_stats()
+        return {
+            "state": self.state.name,
+            "mood": self.personality.get_mood_status(),
+            "programs_written": self.programs_written,
+            "current_program_type": self.current_program.program_type if self.current_program else None,
+            "fix_attempts": self.fix_attempts,
+            "total_archived": stats.get("total_programs", 0),
+            "success_rate": round(stats.get("successful", 0) / stats.get("total_programs", 1) * 100) if stats.get("total_programs", 0) > 0 else 0,
+            "by_type": stats.get("by_type", {}),
+        }
+
     def run(self):
         """
         Main loop. Runs forever.

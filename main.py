@@ -123,8 +123,21 @@ def main():
     )
     
     print("[Tiny Programmer] All systems ready.")
+
+    # Start web server in background if enabled
+    if getattr(config, 'WEB_ENABLED', False):
+        try:
+            from web import start_web_server
+            start_web_server(
+                brain,
+                host=getattr(config, 'WEB_HOST', '0.0.0.0'),
+                port=getattr(config, 'WEB_PORT', 5000)
+            )
+        except ImportError as e:
+            print(f"[Tiny Programmer] Web server not available: {e}")
+
     print("[Tiny Programmer] Starting main loop...")
-    
+
     # Run forever
     try:
         brain.run()
