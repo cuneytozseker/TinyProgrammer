@@ -1,7 +1,7 @@
 """
 LLM Generator
 
-Interface to local LLM via llama.cpp.
+Interface to local LLM via llama.cpp or Ollama.
 Supports both HTTP API mode and subprocess mode.
 """
 
@@ -15,17 +15,17 @@ from typing import Generator, Optional
 class LLMGenerator:
     """
     Interface to local LLM for code generation.
-    
+
     Can operate in two modes:
-    1. HTTP mode: Connect to running llama.cpp server
+    1. HTTP mode: Connect to running llama.cpp server or Ollama
     2. Subprocess mode: Launch llama.cpp directly (slower startup)
     """
-    
-    def __init__(self, endpoint: str, model_path: str, context_size: int, 
+
+    def __init__(self, endpoint: str, model_path: str, context_size: int,
                  backend: str = "llamacpp", model_name: str = ""):
         """
         Initialize LLM interface.
-        
+
         Args:
             endpoint: HTTP endpoint (llama.cpp or ollama)
             model_path: Path to GGUF model file (for subprocess mode)
@@ -39,7 +39,7 @@ class LLMGenerator:
         self.backend = backend
         self.model_name = model_name
         self.mode = None
-        
+
     def _check_server(self) -> bool:
         """Check if server is running."""
         try:
@@ -55,9 +55,7 @@ class LLMGenerator:
         except requests.exceptions.RequestException:
             return False
 
-    # ... generate method remains same ...
-
-    def stream(self, prompt: str, max_tokens: int = 512,
+    def stream(self, prompt: str, max_tokens: int = 1024,
                temperature: float = 0.7, stop: list = None) -> Generator[str, None, None]:
         """
         Stream text completion token by token.
@@ -74,7 +72,7 @@ class LLMGenerator:
         """Stream from Ollama API using Chat endpoint."""
         # Use /api/chat instead of /api/generate for better compatibility
         chat_endpoint = self.endpoint.replace("/api/generate", "/api/chat")
-        
+
         data = {
             "model": self.model_name,
             "messages": [
@@ -87,10 +85,9 @@ class LLMGenerator:
             },
             "stream": True
         }
-        
+
         print(f"[LLM] Sending request to {chat_endpoint} with model {self.model_name}")
-        # print(f"[LLM] Prompt: {prompt[:50]}...")
-        
+
         try:
             with requests.post(chat_endpoint, json=data, stream=True) as response:
                 response.raise_for_status()
@@ -101,7 +98,6 @@ class LLMGenerator:
                             # Chat endpoint returns 'message' object
                             content = chunk.get('message', {}).get('content', '')
                             if content:
-                                # print(f"[LLM] Token: {repr(content)}")
                                 yield content
                             if chunk.get('done', False):
                                 break
@@ -110,12 +106,11 @@ class LLMGenerator:
         except Exception as e:
             print(f"[LLM] Error streaming from Ollama: {e}")
 
-    
     def _stream_http(self, prompt: str, max_tokens: int,
                      temperature: float, stop: list) -> Generator[str, None, None]:
         """
         Stream from llama.cpp HTTP server.
-        
+
         Uses the /completion endpoint with stream=true.
         """
         data = {
@@ -125,7 +120,7 @@ class LLMGenerator:
             "stop": stop or [],
             "stream": True
         }
-        
+
         try:
             with requests.post(self.endpoint, json=data, stream=True) as response:
                 response.raise_for_status()
@@ -145,7 +140,7 @@ class LLMGenerator:
                                 pass
         except Exception as e:
             print(f"[LLM] Error streaming from HTTP: {e}")
-    
+
     def _stream_subprocess(self, prompt: str, max_tokens: int,
                            temperature: float, stop: list) -> Generator[str, None, None]:
         """
@@ -155,10 +150,7 @@ class LLMGenerator:
         executable = "llama-cli"
         if sys.platform == "win32":
             executable = "llama-cli.exe"
-            
-        # If model path is absolute, use it. If not, maybe we should warn.
-        # But we'll try to execute 'llama-cli' from PATH.
-        
+
         cmd = [
             executable,
             "-m", self.model_path,
@@ -167,33 +159,33 @@ class LLMGenerator:
             "--temp", str(temperature),
             "--no-display-prompt"  # Don't echo the prompt
         ]
-        
+
         if stop:
             for s in stop:
                 cmd.extend(["-r", s])
-                
+
         try:
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL, # Hide logging
+                stderr=subprocess.DEVNULL,  # Hide logging
                 universal_newlines=True,
                 encoding='utf-8',
                 bufsize=0  # Unbuffered
             )
-            
+
             while True:
                 char = process.stdout.read(1)
                 if not char and process.poll() is not None:
                     break
                 if char:
                     yield char
-                    
+
         except FileNotFoundError:
             print(f"[LLM] {executable} not found. Make sure it is in your PATH.")
         except Exception as e:
             print(f"[LLM] Error in subprocess: {e}")
-    
+
     def get_header(self) -> str:
         """Get the standard imports header."""
         return "import time\nimport random\nimport math\nfrom tiny_canvas import Canvas\n\nc = Canvas()\n"
@@ -203,45 +195,38 @@ class LLMGenerator:
         Build a prompt for generating a specific type of program.
         """
         description = PROGRAM_DESCRIPTIONS.get(program_type, "does something interesting")
-        
+
         # Add learned lessons if available
         lessons_text = ""
         if lessons:
-            lessons_text = (
-                "\n### REMEMBER THESE LESSONS ###\n"
-                f"{lessons}\n"
-            )
-        
+            lessons_text = f"Remember: {lessons}\n\n"
+
         prompt = (
-            f"Write a Python script that {description}.\n"
-            "You are a tiny programmer. Write ONLY the code.\n"
-            "NO explanations. NO markdown code blocks.\n"
             f"{lessons_text}"
-            "### VISUALS ###\n"
-            "You MUST use the custom 'Canvas' library I provided.\n"
-            "The variable 'c' is already initialized as 'c = Canvas()'.\n"
-            "Methods available on 'c':\n"
-            "- c.clear(r, g, b)\n"
-            "- c.fill_rect(x, y, w, h, r, g, b)\n"
-            "- c.fill_circle(x, y, radius, r, g, b)\n"
-            "- c.sleep(seconds)\n"
-            "\n"
-            "### CONSTRAINTS ###\n"
-            "- USE THE CANVAS 'c' (480x320).\n"
-            "- NEVER use `def`. Write ONLY top-level code.\n"
-            "- The program MUST run in an infinite `while True:` loop.\n"
-            "- Initialize variables BEFORE the loop.\n"
-            "- Do NOT import anything else.\n"
-            "\n"
-            "### START CODE NOW ###\n"
-            "import time\n"
-            "import random\n"
-            "import math\n"
-            "from tiny_canvas import Canvas\n"
-            "\n"
-            "c = Canvas()\n"
+            f"Write a short Python program that {description}.\n\n"
+            "RULES:\n"
+            "- 20-50 lines of code\n"
+            "- NO imports (already done)\n"
+            "- Start with variables, then while True loop\n"
+            "- Canvas: 416x218 pixels\n"
+            "- ALWAYS call c.sleep(0.1) at end of loop\n"
+            "- Use creative background colors with c.clear(), not just black\n"
+            "- Use simple shapes, avoid too many draw calls per frame\n"
+            "- Add short casual comments like a human thinking out loud\n"
+            "  e.g. '# hmm let's try a spiral', '# this should bounce nicely'\n\n"
+            "ONLY these methods exist on 'c':\n"
+            "  c.clear(r,g,b)\n"
+            "  c.pixel(x,y,r,g,b)\n"
+            "  c.line(x1,y1,x2,y2,r,g,b)\n"
+            "  c.rect(x,y,w,h,r,g,b)\n"
+            "  c.fill_rect(x,y,w,h,r,g,b)\n"
+            "  c.circle(x,y,radius,r,g,b)\n"
+            "  c.fill_circle(x,y,radius,r,g,b)\n"
+            "  c.sleep(seconds)\n"
+            "Do NOT use any other methods.\n\n"
+            "Output ONLY Python code. No markdown, no explanation.\n"
         )
-        
+
         return prompt
 
     def build_reflection_prompt(self, code: str, result: str) -> str:
@@ -254,7 +239,7 @@ class LLMGenerator:
             "Examples:\n"
             "- 'Do not use c.move() because it does not exist.'\n"
             "- 'Always initialize variables before the loop.'\n"
-            "- 'The canvas size is 480x320.'\n"
+            "- 'The canvas size is 416x218.'\n"
             "\n"
             "Write ONLY the lesson (1 sentence).\n"
         )
@@ -269,8 +254,7 @@ class LLMGenerator:
             "FIX IT. Write ONLY the fixed code.\n"
             "NO explanations. NO markdown.\n"
             "Constraints:\n"
-            "- NO `def` (no functions).\n"
-            "- Keep it simple and flat.\n"
+            "- Keep it simple.\n"
             "- Use 'c' for drawing.\n"
         )
         return prompt
@@ -278,12 +262,16 @@ class LLMGenerator:
 
 # Program type descriptions for prompts
 PROGRAM_DESCRIPTIONS = {
-    "bouncing_ball": "animates a ball bouncing around the screen using ASCII characters",
-    "clock": "displays a simple digital clock that updates every second",
-    "pattern": "generates a mesmerizing repeating pattern",
-    "animation": "creates a simple looping ASCII animation",
-    "game_of_life": "implements Conway's Game of Life in a small grid",
-    "spiral": "draws an expanding spiral pattern",
-    "text_scroller": "scrolls a message across the screen",
-    "random_walker": "animates a dot randomly walking around the screen",
+    "bouncing_ball": "animates a ball bouncing around the canvas",
+    "pattern": "generates a mesmerizing geometric pattern with shapes and colors",
+    "animation": "creates a simple looping animation with moving shapes",
+    "game_of_life": "implements Conway's Game of Life using small filled rectangles as cells",
+    "cellular_automata": "implements a 1D cellular automaton (like Rule 30 or Rule 110) drawing rows of cells",
+    "l_system": "draws an L-system fractal pattern like a tree, snowflake, or fern using lines",
+    "spiral": "draws an expanding or rotating spiral pattern",
+    "random_walker": "animates a dot randomly walking around the canvas leaving a trail",
+    "starfield": "simulates stars flying toward the viewer",
+    "rain": "simulates falling raindrops using lines",
+    "generative_glyphs": "generates abstract procedural glyphs or symbols on a grid using basic shapes",
+    "pong": "simulates a game of pong with a ball bouncing between two paddles that move on their own",
 }

@@ -9,30 +9,56 @@ import os
 DISPLAY_WIDTH = 480
 DISPLAY_HEIGHT = 320
 
-# Colors (retro terminal aesthetic)
-COLOR_BG = (0, 0, 0)           # Black background
-COLOR_FG = (0, 255, 0)         # Green text (classic terminal)
-# COLOR_FG = (255, 176, 0)     # Amber alternative
-COLOR_CURSOR = (0, 255, 0)
-COLOR_STATUS_BG = (0, 40, 0)   # Darker green for status bar
-COLOR_DIM = (0, 128, 0)        # Dimmed text for comments
+# Colors (retro Mac OS IDE aesthetic)
+COLOR_BG = (255, 255, 255)      # White background
+COLOR_FG = (0, 0, 0)            # Black text
+COLOR_CURSOR = (0, 0, 0)        # Black cursor
+COLOR_LINE_NUM = (128, 128, 128)  # Gray line numbers
+COLOR_SIDEBAR_FG = (0, 0, 0)    # Black sidebar text
+COLOR_SIDEBAR_SEL = (0, 0, 0)   # Selected file (inverted)
+COLOR_STATUS_FG = (0, 0, 0)     # Status bar text
+COLOR_DIM = (128, 128, 128)     # Dimmed text for comments
 
-# Font settings (use monospace!)
-FONT_NAME = "DejaVu Sans Mono"  # pygame will find system font
-FONT_SIZE = 14
-CHAR_WIDTH = 9    # Will be calculated from font
+# Font settings (Space Mono from Google Fonts)
+FONT_NAME = "SpaceMono-Regular"
+FONT_SIZE = 12
+CHAR_WIDTH = 8    # Will be calculated from font
 CHAR_HEIGHT = 16
 
-# Terminal dimensions (in characters)
-TERMINAL_COLS = 52   # 480 / 9 ≈ 53
-TERMINAL_ROWS = 18   # Leave room for status bar (320 - 32) / 16 ≈ 18
+# Layout regions (pixel coordinates on 480x320 bg.png)
+# Sidebar: file list
+SIDEBAR_X = 5
+SIDEBAR_Y = 63
+SIDEBAR_W = 90
+SIDEBAR_H = 210
+
+# Code area: where code is rendered
+CODE_AREA_X = 130
+CODE_AREA_Y = 63
+CODE_AREA_W = 320    # ~130 to ~452
+CODE_AREA_H = 210    # ~63 to ~275
+
+# Line number column (between sidebar and code)
+LINE_NUM_X = 105
+LINE_NUM_W = 25
 
 # Status bar
-STATUS_BAR_HEIGHT = 32
+STATUS_BAR_Y = 300
+STATUS_BAR_HEIGHT = 16
 
 # Display modes
 MODE_TERMINAL = "terminal"  # Code writing mode
 MODE_RUN = "run"            # Program execution mode
+
+# Canvas popup window (Mac OS floating window for program output)
+CANVAS_X = 29                # Position of canvas.png on screen
+CANVAS_Y = 35
+CANVAS_W = 422               # Full chrome size (including title bar)
+CANVAS_H = 242
+CANVAS_DRAW_OFFSET_X = 2     # Drawable area offset within chrome
+CANVAS_DRAW_OFFSET_Y = 20
+CANVAS_DRAW_W = 416           # Drawable area size
+CANVAS_DRAW_H = 218
 
 # Framerate cap (saves CPU, SPI can't go much faster anyway)
 TARGET_FPS = 30
@@ -58,7 +84,7 @@ LLAMA_CPP_PATH = os.path.join(os.path.expanduser("~"), "llama.cpp", "llama-cli")
 
 # Generation settings
 LLM_CONTEXT_SIZE = 2048
-LLM_MAX_TOKENS = 512
+LLM_MAX_TOKENS = 1024
 LLM_TEMPERATURE = 0.7
 LLM_STOP_TOKENS = ["```", "# END", "if __name__"]
 
@@ -89,9 +115,9 @@ REWRITE_PROBABILITY = 0.03
 THINK_DURATION_MIN = 3
 THINK_DURATION_MAX = 10
 
-# How long to run a program before moving on
-WATCH_DURATION_MIN = 10
-WATCH_DURATION_MAX = 30
+# How long to run a program before moving on (10 minutes)
+WATCH_DURATION_MIN = 600
+WATCH_DURATION_MAX = 600
 
 # Delay between state transitions
 STATE_TRANSITION_DELAY = 2
@@ -114,16 +140,20 @@ GITHUB_SYNC_INTERVAL = 3600  # Sync every hour
 # PROGRAMS
 # =============================================================================
 
-# Types of programs to generate (weighted)
+# Types of programs to generate (weighted equally, no repeats)
 PROGRAM_TYPES = [
-    ("bouncing_ball", 3),
-    ("clock", 2),
-    ("pattern", 3),
-    ("animation", 2),
+    ("bouncing_ball", 1),
+    ("pattern", 1),
+    ("animation", 1),
     ("game_of_life", 1),
-    ("spiral", 2),
-    ("text_scroller", 1),
-    ("random_walker", 2),
+    ("cellular_automata", 1),
+    ("l_system", 1),
+    ("spiral", 1),
+    ("random_walker", 1),
+    ("starfield", 1),
+    ("rain", 1),
+    ("generative_glyphs", 1),
+    ("pong", 1),
 ]
 
 # Maximum lines of code to generate

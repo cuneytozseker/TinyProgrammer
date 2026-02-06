@@ -5,9 +5,13 @@ Tiny Programmer - Main Entry Point
 A self-contained device that writes code, runs it, and repeats forever.
 """
 
+import os
 import time
 import signal
 import sys
+
+# Hide the Linux console cursor (the blinking rectangle on framebuffer)
+os.system('sudo sh -c \'echo -e "\\033[?25l" > /dev/tty1\' 2>/dev/null')
 
 import config
 from display.terminal import Terminal
