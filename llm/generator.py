@@ -343,7 +343,7 @@ class LLMGenerator:
             "- NO imports (already done)\n"
             "- Start with variables, then while True loop\n"
             f"- Canvas: {canvas_w}x{canvas_h} pixels\n"
-            "- ALWAYS call c.sleep(0.1) at end of loop\n"
+            "- ALWAYS call c.sleep(0.033) at end of loop\n"
             "- Use creative background colors with c.clear(), not just black\n"
             "- Use simple shapes, avoid too many draw calls per frame\n"
             "- Add short casual comments like a human thinking out loud\n"
