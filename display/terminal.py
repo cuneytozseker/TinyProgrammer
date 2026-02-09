@@ -58,17 +58,17 @@ class Terminal:
         self.mock_mode = False
         self.fb_writer = None
 
-        # Layout regions
-        self.code_area_x = 130
-        self.code_area_y = 63
-        self.code_area_w = 320
-        self.code_area_h = 210
-        self.line_num_x = 105
-        self.sidebar_x = 5
-        self.sidebar_y = 63
-        self.sidebar_w = 90
-        self.sidebar_h = 210
-        self.status_bar_y = 300
+        # Layout regions from config (scaled for display size)
+        self.code_area_x = config.CODE_AREA_X
+        self.code_area_y = config.CODE_AREA_Y
+        self.code_area_w = config.CODE_AREA_W
+        self.code_area_h = config.CODE_AREA_H
+        self.line_num_x = config.LINE_NUM_X
+        self.sidebar_x = config.SIDEBAR_X
+        self.sidebar_y = config.SIDEBAR_Y
+        self.sidebar_w = config.SIDEBAR_W
+        self.sidebar_h = config.SIDEBAR_H
+        self.status_bar_y = config.STATUS_BAR_Y
 
         self._init_display(font_name, font_size)
         self.char_width, self.char_height = self._get_char_size()
@@ -182,6 +182,10 @@ class Terminal:
             # which doesn't exist with the dummy driver + framebuffer path.
             # pygame.image.load() preserves the PNG alpha channel already.
             self.canvas_image = pygame.image.load(canvas_path)
+            # Scale canvas chrome to match display resolution
+            if self.canvas_image.get_size() != (config.CANVAS_W, config.CANVAS_H):
+                self.canvas_image = pygame.transform.scale(
+                    self.canvas_image, (config.CANVAS_W, config.CANVAS_H))
             print(f"[Terminal] Loaded canvas chrome: {canvas_path}")
         else:
             print(f"[Terminal] Warning: canvas.png not found")
@@ -406,7 +410,10 @@ class Terminal:
             status += f" | Mood: {self.current_mood}"
 
         st_surface = self.font_bold.render(status, True, (0, 0, 0))
-        self.screen.blit(st_surface, (150, 289))
+        # Position status text relative to code area
+        status_x = self.code_area_x
+        status_y = self.status_bar_y + 5
+        self.screen.blit(st_surface, (status_x, status_y))
 
     # =========================================================================
     # Framebuffer output

@@ -26,40 +26,43 @@ CHAR_WIDTH = 10                 # Will be calculated from font
 CHAR_HEIGHT = 20
 
 # Layout regions (pixel coordinates on 800x480 - scaled from 480x320)
-# Scale factor: 800/480 = 1.67 horizontal, 480/320 = 1.5 vertical
-# Sidebar: file list
-SIDEBAR_X = 8
-SIDEBAR_Y = 95
-SIDEBAR_W = 150
-SIDEBAR_H = 315
+# Scale factors: 800/480 = 1.667 horizontal, 480/320 = 1.5 vertical
+# Original 480x320 values scaled up:
+# Sidebar: file list (orig: x=5, y=63, w=90, h=210)
+SIDEBAR_X = 8                   # 5 * 1.667
+SIDEBAR_Y = 95                  # 63 * 1.5
+SIDEBAR_W = 150                 # 90 * 1.667
+SIDEBAR_H = 315                 # 210 * 1.5
 
-# Code area: where code is rendered
-CODE_AREA_X = 217
-CODE_AREA_Y = 95
-CODE_AREA_W = 533               # ~217 to ~750
-CODE_AREA_H = 315               # ~95 to ~410
+# Code area: where code is rendered (orig: x=130, y=63, w=320, h=210)
+CODE_AREA_X = 217               # 130 * 1.667
+CODE_AREA_Y = 95                # 63 * 1.5
+CODE_AREA_W = 533               # 320 * 1.667
+CODE_AREA_H = 315               # 210 * 1.5
 
-# Line number column (between sidebar and code)
-LINE_NUM_X = 175
+# Line number column (orig: x=105)
+LINE_NUM_X = 175                # 105 * 1.667
 LINE_NUM_W = 42
 
-# Status bar
-STATUS_BAR_Y = 450
-STATUS_BAR_HEIGHT = 24
+# Status bar (orig: y=289)
+STATUS_BAR_Y = 434              # 289 * 1.5
+STATUS_BAR_HEIGHT = 36          # 24 * 1.5
 
 # Display modes
 MODE_TERMINAL = "terminal"  # Code writing mode
 MODE_RUN = "run"            # Program execution mode
 
 # Canvas popup window (Mac OS floating window for program output)
-CANVAS_X = 48                # Position of canvas.png on screen
-CANVAS_Y = 53
-CANVAS_W = 704               # Full chrome size (including title bar)
-CANVAS_H = 363
-CANVAS_DRAW_OFFSET_X = 3     # Drawable area offset within chrome
-CANVAS_DRAW_OFFSET_Y = 30
-CANVAS_DRAW_W = 694          # Drawable area size
-CANVAS_DRAW_H = 327
+# Original 480x320: x=29, y=35, chrome=422x242, draw_area=416x212
+# The canvas.png is 422x242, will be scaled to 703x363
+CANVAS_X = 48                # 29 * 1.667 (position on screen)
+CANVAS_Y = 53                # 35 * 1.5
+CANVAS_W = 703               # 422 * 1.667 (full chrome size after scaling)
+CANVAS_H = 363               # 242 * 1.5
+CANVAS_DRAW_OFFSET_X = 5     # Offset within scaled chrome
+CANVAS_DRAW_OFFSET_Y = 45    # 30 * 1.5 (title bar height scaled)
+CANVAS_DRAW_W = 693          # Draw area width (416 * 1.667)
+CANVAS_DRAW_H = 318          # Draw area height (212 * 1.5)
 
 # Framerate cap (HDMI can handle higher FPS)
 TARGET_FPS = 60
