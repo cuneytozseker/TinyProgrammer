@@ -72,9 +72,9 @@ class FramebufferWriter:
                         # Auto-detect rotation if framebuffer is portrait but we render landscape
                         if self.rotation == -1:
                             if self.fb_width < self.fb_height and width > height:
-                                # Framebuffer is portrait, we render landscape - need 90° CW rotation
-                                self.rotation = 1
-                                print(f"[FB] Auto-detected rotation: 90° CW (portrait FB {self.fb_width}x{self.fb_height} -> landscape {width}x{height})")
+                                # Framebuffer is portrait, we render landscape - need 270° CW (90° CCW) rotation
+                                self.rotation = 3
+                                print(f"[FB] Auto-detected rotation: 270° CW (portrait FB {self.fb_width}x{self.fb_height} -> landscape {width}x{height})")
                             else:
                                 self.rotation = 0
 
