@@ -13,6 +13,8 @@ import sys
 import time
 from typing import Generator, Optional
 
+import config
+
 
 # Rate limiting for cloud APIs (requests per minute)
 RATE_LIMIT_RPM = 3  # Conservative limit to avoid 429 errors
@@ -329,6 +331,10 @@ class LLMGenerator:
         if lessons:
             lessons_text = f"Remember: {lessons}\n\n"
 
+        # Get canvas dimensions from config
+        canvas_w = config.CANVAS_DRAW_W
+        canvas_h = config.CANVAS_DRAW_H
+
         prompt = (
             f"{lessons_text}"
             f"Write a short Python program that {description}.\n\n"
@@ -336,7 +342,7 @@ class LLMGenerator:
             "- 20-50 lines of code\n"
             "- NO imports (already done)\n"
             "- Start with variables, then while True loop\n"
-            "- Canvas: 416x218 pixels\n"
+            f"- Canvas: {canvas_w}x{canvas_h} pixels\n"
             "- ALWAYS call c.sleep(0.1) at end of loop\n"
             "- Use creative background colors with c.clear(), not just black\n"
             "- Use simple shapes, avoid too many draw calls per frame\n"
@@ -359,6 +365,10 @@ class LLMGenerator:
 
     def build_reflection_prompt(self, code: str, result: str) -> str:
         """Build a prompt to learn from code execution."""
+        # Get canvas dimensions from config
+        canvas_w = config.CANVAS_DRAW_W
+        canvas_h = config.CANVAS_DRAW_H
+
         prompt = (
             "Review this Python code execution:\n"
             f"Result: {result}\n\n"
@@ -367,7 +377,7 @@ class LLMGenerator:
             "Examples:\n"
             "- 'Do not use c.move() because it does not exist.'\n"
             "- 'Always initialize variables before the loop.'\n"
-            "- 'The canvas size is 416x218.'\n"
+            f"- 'The canvas size is {canvas_w}x{canvas_h}.'\n"
             "\n"
             "Write ONLY the lesson (1 sentence).\n"
         )
