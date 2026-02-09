@@ -35,3 +35,4 @@ venv/
 programs/*.py
 !programs/.gitkeep
 programs/screenshots/
+lessons.md
