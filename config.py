@@ -3,11 +3,11 @@ import os
 # Tiny Programmer Configuration
 
 # =============================================================================
-# DISPLAY (Waveshare 4inch RPi LCD A - 480x320 TFT)
+# DISPLAY (Waveshare 4inch HDMI LCD - 800x480)
 # =============================================================================
 
-DISPLAY_WIDTH = 480
-DISPLAY_HEIGHT = 320
+DISPLAY_WIDTH = 800
+DISPLAY_HEIGHT = 480
 
 # Colors (retro Mac OS IDE aesthetic)
 COLOR_BG = (255, 255, 255)      # White background
@@ -21,47 +21,48 @@ COLOR_DIM = (128, 128, 128)     # Dimmed text for comments
 
 # Font settings (Space Mono from Google Fonts)
 FONT_NAME = "SpaceMono-Regular"
-FONT_SIZE = 12
-CHAR_WIDTH = 8    # Will be calculated from font
-CHAR_HEIGHT = 16
+FONT_SIZE = 16                  # Larger font for bigger display
+CHAR_WIDTH = 10                 # Will be calculated from font
+CHAR_HEIGHT = 20
 
-# Layout regions (pixel coordinates on 480x320 bg.png)
+# Layout regions (pixel coordinates on 800x480 - scaled from 480x320)
+# Scale factor: 800/480 = 1.67 horizontal, 480/320 = 1.5 vertical
 # Sidebar: file list
-SIDEBAR_X = 5
-SIDEBAR_Y = 63
-SIDEBAR_W = 90
-SIDEBAR_H = 210
+SIDEBAR_X = 8
+SIDEBAR_Y = 95
+SIDEBAR_W = 150
+SIDEBAR_H = 315
 
 # Code area: where code is rendered
-CODE_AREA_X = 130
-CODE_AREA_Y = 63
-CODE_AREA_W = 320    # ~130 to ~452
-CODE_AREA_H = 210    # ~63 to ~275
+CODE_AREA_X = 217
+CODE_AREA_Y = 95
+CODE_AREA_W = 533               # ~217 to ~750
+CODE_AREA_H = 315               # ~95 to ~410
 
 # Line number column (between sidebar and code)
-LINE_NUM_X = 105
-LINE_NUM_W = 25
+LINE_NUM_X = 175
+LINE_NUM_W = 42
 
 # Status bar
-STATUS_BAR_Y = 300
-STATUS_BAR_HEIGHT = 16
+STATUS_BAR_Y = 450
+STATUS_BAR_HEIGHT = 24
 
 # Display modes
 MODE_TERMINAL = "terminal"  # Code writing mode
 MODE_RUN = "run"            # Program execution mode
 
 # Canvas popup window (Mac OS floating window for program output)
-CANVAS_X = 29                # Position of canvas.png on screen
-CANVAS_Y = 35
-CANVAS_W = 422               # Full chrome size (including title bar)
-CANVAS_H = 242
-CANVAS_DRAW_OFFSET_X = 2     # Drawable area offset within chrome
-CANVAS_DRAW_OFFSET_Y = 20
-CANVAS_DRAW_W = 416           # Drawable area size
-CANVAS_DRAW_H = 218
+CANVAS_X = 48                # Position of canvas.png on screen
+CANVAS_Y = 53
+CANVAS_W = 704               # Full chrome size (including title bar)
+CANVAS_H = 363
+CANVAS_DRAW_OFFSET_X = 3     # Drawable area offset within chrome
+CANVAS_DRAW_OFFSET_Y = 30
+CANVAS_DRAW_W = 694          # Drawable area size
+CANVAS_DRAW_H = 327
 
-# Framerate cap (saves CPU, SPI can't go much faster anyway)
-TARGET_FPS = 30
+# Framerate cap (HDMI can handle higher FPS)
+TARGET_FPS = 60
 
 # =============================================================================
 # LLM
