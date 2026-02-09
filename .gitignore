@@ -34,5 +34,6 @@ venv/
 .gemini/
 programs/*.py
 !programs/.gitkeep
+!programs/tiny_canvas.py
 programs/screenshots/
 lessons.md
