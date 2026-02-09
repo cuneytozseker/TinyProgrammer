@@ -6,6 +6,7 @@ Bypasses SDL's broken fbcon driver on Bookworm/Trixie by:
 2. Converting to RGB565 and writing directly to /dev/fb0
 
 Works with fbtft-based displays (ILI9486, ILI9341, etc.)
+Also works with HDMI displays that report portrait framebuffer (480x800)
 """
 
 import os
@@ -14,6 +15,10 @@ import numpy as np
 # Check if we're on a system with a framebuffer
 FB_DEVICE = os.environ.get("FB_DEVICE", "/dev/fb0")
 IS_FRAMEBUFFER_AVAILABLE = os.path.exists(FB_DEVICE)
+
+# Rotation setting: 0=none, 1=90°CW, 2=180°, 3=270°CW (90°CCW)
+# Set via environment variable or auto-detect based on framebuffer dimensions
+FB_ROTATION = int(os.environ.get("FB_ROTATION", "-1"))  # -1 = auto-detect
 
 
 def rgb888_to_rgb565(surface) -> np.ndarray:
@@ -44,31 +49,45 @@ def rgb888_to_rgb565(surface) -> np.ndarray:
 class FramebufferWriter:
     """
     Writes pygame surfaces directly to a Linux framebuffer device.
+    Supports rotation for displays with portrait-mode framebuffers.
     """
 
     def __init__(self, width: int = 480, height: int = 320, device: str = None):
-        self.width = width
-        self.height = height
+        self.render_width = width   # What we render at (landscape)
+        self.render_height = height
         self.device = device or FB_DEVICE
         self.enabled = IS_FRAMEBUFFER_AVAILABLE
+        self.rotation = FB_ROTATION
+        self.fb_width = width
+        self.fb_height = height
 
         if self.enabled:
-            # Verify framebuffer dimensions match
+            # Get actual framebuffer dimensions
             try:
                 size_path = f"/sys/class/graphics/{os.path.basename(self.device)}/virtual_size"
                 if os.path.exists(size_path):
                     with open(size_path) as f:
-                        fb_w, fb_h = map(int, f.read().strip().split(','))
-                        if fb_w != width or fb_h != height:
-                            print(f"[FB] Warning: Expected {width}x{height}, got {fb_w}x{fb_h}")
-                            self.width = fb_w
-                            self.height = fb_h
+                        self.fb_width, self.fb_height = map(int, f.read().strip().split(','))
+
+                        # Auto-detect rotation if framebuffer is portrait but we render landscape
+                        if self.rotation == -1:
+                            if self.fb_width < self.fb_height and width > height:
+                                # Framebuffer is portrait, we render landscape - need 90° CW rotation
+                                self.rotation = 1
+                                print(f"[FB] Auto-detected rotation: 90° CW (portrait FB {self.fb_width}x{self.fb_height} -> landscape {width}x{height})")
+                            else:
+                                self.rotation = 0
+
+                        if self.rotation == 0 and (self.fb_width != width or self.fb_height != height):
+                            print(f"[FB] Warning: Expected {width}x{height}, got {self.fb_width}x{self.fb_height}")
             except Exception as e:
                 print(f"[FB] Could not verify dimensions: {e}")
+                self.rotation = 0 if self.rotation == -1 else self.rotation
 
     def write(self, surface) -> bool:
         """
         Write a pygame surface to the framebuffer.
+        Handles rotation if framebuffer orientation differs from render orientation.
         Returns True on success, False on failure.
         """
         if not self.enabled:
@@ -77,6 +96,17 @@ class FramebufferWriter:
         try:
             # Convert to RGB565
             rgb565 = rgb888_to_rgb565(surface)
+
+            # Apply rotation if needed
+            if self.rotation == 1:  # 90° CW
+                rgb565 = np.rot90(rgb565, k=-1)  # k=-1 is 90° CW
+            elif self.rotation == 2:  # 180°
+                rgb565 = np.rot90(rgb565, k=2)
+            elif self.rotation == 3:  # 270° CW (90° CCW)
+                rgb565 = np.rot90(rgb565, k=1)  # k=1 is 90° CCW
+
+            # Ensure contiguous array for writing
+            rgb565 = np.ascontiguousarray(rgb565)
 
             # Write to framebuffer
             with open(self.device, 'r+b') as fb:
