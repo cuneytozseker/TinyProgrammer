@@ -216,6 +216,13 @@ class LLMGenerator:
 
         try:
             with requests.post(url, headers=headers, json=data, stream=True) as response:
+                # Check for API errors
+                if response.status_code == 529:
+                    raise Exception("Oh no! My brain is fried! (err: 529 overloaded)")
+                elif response.status_code == 429:
+                    raise Exception("Whoa, too many thoughts! (err: 429 rate limited)")
+                elif response.status_code >= 500:
+                    raise Exception(f"Cloud brain is having issues! (err: {response.status_code})")
                 response.raise_for_status()
                 for line in response.iter_lines():
                     if line:
@@ -230,8 +237,18 @@ class LLMGenerator:
                                         yield text
                             except json.JSONDecodeError:
                                 pass
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 529:
+                raise Exception("Oh no! My brain is fried! (err: 529 overloaded)")
+            elif e.response.status_code == 429:
+                raise Exception("Whoa, too many thoughts! (err: 429 rate limited)")
+            else:
+                raise Exception(f"Cloud brain error! (err: {e.response.status_code})")
         except Exception as e:
+            if "529" in str(e) or "overloaded" in str(e).lower():
+                raise Exception("Oh no! My brain is fried! (err: 529 overloaded)")
             print(f"[LLM] Error streaming from Anthropic: {e}")
+            raise
 
     def _stream_http(self, prompt: str, max_tokens: int,
                      temperature: float, stop: list) -> Generator[str, None, None]:
