@@ -29,8 +29,8 @@ AVAILABLE_MODELS = {
 # Special mode for random model selection
 SURPRISE_ME = "surprise_me"
 
-# Default model
-DEFAULT_MODEL = "anthropic/claude-haiku-4.5"
+# Default model (surprise_me = random selection each program)
+DEFAULT_MODEL = "surprise_me"
 
 
 class LLMGenerator:
