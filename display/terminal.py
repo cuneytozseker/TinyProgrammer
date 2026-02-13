@@ -122,8 +122,11 @@ class Terminal:
         # Create in-memory surface for rendering
         self.screen = pygame.Surface((self.width, self.height))
 
-        # Load background image
-        bg_path = os.path.join(ASSETS_DIR, "bg.png")
+        # Load background image (use resolution-specific if available)
+        bg_path = os.path.join(ASSETS_DIR, f"bg-{self.width}-{self.height}.png")
+        if not os.path.exists(bg_path):
+            bg_path = os.path.join(ASSETS_DIR, "bg.png")
+
         if os.path.exists(bg_path):
             self.bg_image = pygame.image.load(bg_path)
             if self.bg_image.get_size() != (self.width, self.height):
@@ -146,7 +149,10 @@ class Terminal:
             pygame.init()
             self._window = pygame.display.set_mode((self.width, self.height))
             pygame.display.set_caption("Tiny Programmer")
-            bg_path = os.path.join(ASSETS_DIR, "bg.png")
+            # Load resolution-specific background if available
+            bg_path = os.path.join(ASSETS_DIR, f"bg-{self.width}-{self.height}.png")
+            if not os.path.exists(bg_path):
+                bg_path = os.path.join(ASSETS_DIR, "bg.png")
             if os.path.exists(bg_path):
                 self.bg_image = pygame.image.load(bg_path)
                 if self.bg_image.get_size() != (self.width, self.height):
