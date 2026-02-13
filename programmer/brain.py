@@ -79,6 +79,12 @@ class Brain:
         self.current_program: Optional[Program] = None
         self.programs_written = 0
         self.fix_attempts = 0
+        self._restart_requested = False
+
+    def request_restart(self):
+        """Request a restart - skip to next program cycle."""
+        self._restart_requested = True
+        print("[Brain] Restart requested via web UI")
 
     def get_status(self) -> dict:
         """Get current status for web UI."""
@@ -408,6 +414,14 @@ class Brain:
         last_output = ""
         
         while time.time() - start_time < duration:
+            # Check for restart request
+            if self._restart_requested:
+                self._restart_requested = False
+                self.terminal.type_string("\n// Restart requested!\n")
+                if self.current_process.poll() is None:
+                    self.current_process.terminate()
+                break
+
             # Check if process finished
             if self.current_process.poll() is not None:
                 self.terminal.type_string("\n// Program finished early.\n")

@@ -51,6 +51,14 @@ def create_app():
             return jsonify(_brain.get_status())
         return jsonify({"error": "Brain not initialized"})
 
+    @app.route('/api/restart', methods=['POST'])
+    def api_restart():
+        """Restart the program - skip to next cycle."""
+        if _brain:
+            _brain.request_restart()
+            return jsonify({"success": True, "message": "Restart requested"})
+        return jsonify({"error": "Brain not initialized"})
+
     @app.route('/settings', methods=['GET', 'POST'])
     def settings():
         """Settings page - view and edit configuration."""

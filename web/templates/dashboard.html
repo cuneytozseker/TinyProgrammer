@@ -61,5 +61,24 @@
 </div>
 {% endif %}
 
-<p class="refresh-hint">Page refreshes manually. <a href="{{ url_for('dashboard') }}">Refresh now</a></p>
+<div class="actions">
+    <button onclick="restartProgram()" class="btn-primary">Restart Program</button>
+    <a href="{{ url_for('dashboard') }}" class="btn-secondary">Refresh</a>
+</div>
+
+<script>
+function restartProgram() {
+    fetch('/api/restart', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Restart requested! Starting new program...');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(err => alert('Error: ' + err));
+}
+</script>
 {% endblock %}

@@ -133,13 +133,14 @@ class LLMGenerator:
         }
 
         # Add seed if set (same seed for retries, new seed for new programs)
-        if self.current_seed is not None:
-            data["seed"] = self.current_seed
+        # NOTE: Disabled - some models (Kimi, Codex) return empty with seed
+        # if self.current_seed is not None:
+        #     data["seed"] = self.current_seed
 
         if stop:
             data["stop"] = stop
 
-        print(f"[LLM] Sending request to OpenRouter ({self.model_name}) [seed: {self.current_seed}]")
+        print(f"[LLM] Sending request to OpenRouter ({self.model_name})")
 
         try:
             with requests.post(url, headers=headers, json=data, stream=True, timeout=60) as response:
