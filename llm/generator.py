@@ -50,6 +50,7 @@ class LLMGenerator:
         self.model_setting = model_name or DEFAULT_MODEL  # What user selected
         self.model_name = model_name or DEFAULT_MODEL     # Actual model to use
         self._last_request_time = 0
+        self.current_seed = None  # Seed for current program
 
         # If surprise_me, pick a random model now
         if self.model_setting == SURPRISE_ME:
@@ -72,7 +73,11 @@ class LLMGenerator:
             print(f"[LLM] Unknown model: {model_name}, keeping {self.model_name}")
 
     def select_for_new_program(self):
-        """Called when starting a new program - picks random if in surprise mode."""
+        """Called when starting a new program - picks random model and new seed."""
+        # New seed for new program
+        self.current_seed = random.randint(0, 2147483647)
+        print(f"[LLM] New seed: {self.current_seed}")
+
         if self.model_setting == SURPRISE_ME:
             self._pick_random_model()
 
@@ -126,10 +131,14 @@ class LLMGenerator:
             "stream": True
         }
 
+        # Add seed if set (same seed for retries, new seed for new programs)
+        if self.current_seed is not None:
+            data["seed"] = self.current_seed
+
         if stop:
             data["stop"] = stop
 
-        print(f"[LLM] Sending request to OpenRouter ({self.model_name})")
+        print(f"[LLM] Sending request to OpenRouter ({self.model_name}) [seed: {self.current_seed}]")
 
         try:
             with requests.post(url, headers=headers, json=data, stream=True, timeout=60) as response:
