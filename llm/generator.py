@@ -17,7 +17,8 @@ import config
 
 # Available models on OpenRouter {model_id: (display_name, short_name)}
 AVAILABLE_MODELS = {
-    "anthropic/claude-haiku-4.5": ("Claude Haiku 4.5", "Haiku"),
+    "anthropic/claude-haiku-4.5": ("Claude Haiku 4.5", "Haiku 4.5"),
+    "anthropic/claude-3.5-haiku": ("Claude 3.5 Haiku", "Haiku 3.5"),
     "google/gemini-3-flash-preview": ("Gemini 3 Flash", "Flash"),
     "openai/gpt-5.1-codex-mini": ("GPT-5.1 Codex Mini", "Codex"),
     "x-ai/grok-code-fast-1": ("Grok Code Fast", "Grok"),
