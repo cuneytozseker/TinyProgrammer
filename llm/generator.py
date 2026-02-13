@@ -125,6 +125,7 @@ class LLMGenerator:
             "model": self.model_name,
             "max_tokens": max_tokens,
             "temperature": temperature,
+            "reasoning": {"exclude": True},  # Skip reasoning for faster response
             "messages": [
                 {"role": "user", "content": prompt}
             ],
