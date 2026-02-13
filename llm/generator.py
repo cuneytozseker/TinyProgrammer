@@ -16,14 +16,14 @@ import config
 
 
 # Available models on OpenRouter {model_id: (display_name, short_name)}
+# Note: Reasoning models (Kimi, Codex) removed - they use tokens on thinking, not code
 AVAILABLE_MODELS = {
     "anthropic/claude-haiku-4.5": ("Claude Haiku 4.5", "Haiku 4.5"),
     "anthropic/claude-3.5-haiku": ("Claude 3.5 Haiku", "Haiku 3.5"),
     "google/gemini-3-flash-preview": ("Gemini 3 Flash", "Flash"),
-    "openai/gpt-5.1-codex-mini": ("GPT-5.1 Codex Mini", "Codex"),
+    "openai/gpt-4.1-mini": ("GPT-4.1 Mini", "GPT-4.1"),
     "x-ai/grok-code-fast-1": ("Grok Code Fast", "Grok"),
     "deepseek/deepseek-v3.2": ("DeepSeek V3.2", "DeepSeek"),
-    "moonshotai/kimi-k2.5": ("Kimi K2.5", "Kimi"),
 }
 
 # Special mode for random model selection
