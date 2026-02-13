@@ -17,19 +17,19 @@ import config
 
 # Available models on OpenRouter {model_id: (display_name, short_name)}
 AVAILABLE_MODELS = {
-    "anthropic/claude-3.5-haiku": ("Claude 3.5 Haiku", "Haiku"),
-    "google/gemini-2.0-flash-001": ("Gemini 2.0 Flash", "Flash"),
-    "openai/gpt-4.1-nano": ("GPT-4.1 Nano", "Nano"),
-    "x-ai/grok-3-fast": ("Grok 3 Fast", "Grok"),
-    "deepseek/deepseek-chat-v3-0324": ("DeepSeek V3", "DeepSeek"),
-    "moonshotai/kimi-k2": ("Kimi K2", "Kimi"),
+    "anthropic/claude-haiku-4.5": ("Claude Haiku 4.5", "Haiku"),
+    "google/gemini-3-flash-preview": ("Gemini 3 Flash", "Flash"),
+    "openai/gpt-5.1-codex-mini": ("GPT-5.1 Codex Mini", "Codex"),
+    "x-ai/grok-code-fast-1": ("Grok Code Fast", "Grok"),
+    "deepseek/deepseek-v3.2": ("DeepSeek V3.2", "DeepSeek"),
+    "moonshotai/kimi-k2.5": ("Kimi K2.5", "Kimi"),
 }
 
 # Special mode for random model selection
 SURPRISE_ME = "surprise_me"
 
 # Default model
-DEFAULT_MODEL = "anthropic/claude-3.5-haiku"
+DEFAULT_MODEL = "anthropic/claude-haiku-4.5"
 
 
 class LLMGenerator:
