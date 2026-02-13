@@ -129,9 +129,9 @@ REWRITE_PROBABILITY = 0.03
 THINK_DURATION_MIN = 3
 THINK_DURATION_MAX = 10
 
-# How long to run a program before moving on
-WATCH_DURATION_MIN = 600
-WATCH_DURATION_MAX = 600
+# How long to run a program before moving on (seconds)
+WATCH_DURATION_MIN = 120
+WATCH_DURATION_MAX = 120
 
 # Delay between state transitions
 STATE_TRANSITION_DELAY = 2

@@ -54,7 +54,7 @@ def create_app():
     @app.route('/settings', methods=['GET', 'POST'])
     def settings():
         """Settings page - view and edit configuration."""
-        from llm.generator import AVAILABLE_MODELS, DEFAULT_MODEL
+        from llm.generator import AVAILABLE_MODELS, DEFAULT_MODEL, SURPRISE_ME
 
         message = None
         if request.method == 'POST':
@@ -107,10 +107,16 @@ def create_app():
         if _brain and hasattr(_brain, 'llm'):
             current_model = _brain.llm.get_current_model()
 
+        # Build models dict with display names for template
+        models_for_template = {}
+        models_for_template[SURPRISE_ME] = "Surprise Me!"
+        for k, v in AVAILABLE_MODELS.items():
+            models_for_template[k] = v[0]  # v is (display_name, short_name)
+
         return render_template('settings.html',
                              config=current,
                              message=message,
-                             available_models=AVAILABLE_MODELS,
+                             available_models=models_for_template,
                              current_model=current_model)
 
     @app.route('/prompt', methods=['GET', 'POST'])

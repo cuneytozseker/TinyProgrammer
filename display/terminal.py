@@ -91,6 +91,7 @@ class Terminal:
         # State
         self.current_state = "booting"
         self.current_mood = ""
+        self.current_model = "?"
 
         # Sidebar file list
         self.sidebar_files: List[str] = []
@@ -405,15 +406,21 @@ class Terminal:
 
     def _render_status(self):
         """Render the status bar at the bottom as a single line."""
-        status = f"STATUS: {self.current_state}"
+        # Build status with model name
+        status = f"Who: {self.current_model} | STATUS: {self.current_state}"
         if self.current_mood:
             status += f" | Mood: {self.current_mood}"
 
         st_surface = self.font_bold.render(status, True, (0, 0, 0))
-        # Position status text relative to code area
-        status_x = self.code_area_x
-        status_y = self.status_bar_y + 5
+        # Position status text (moved 4px up and 30px right)
+        status_x = self.code_area_x + 30
+        status_y = self.status_bar_y + 1  # was +5, now +1 (4px up)
         self.screen.blit(st_surface, (status_x, status_y))
+
+    def set_model_name(self, model_name: str):
+        """Set the display name for the current model."""
+        self.current_model = model_name
+        self._dirty = True
 
     # =========================================================================
     # Framebuffer output

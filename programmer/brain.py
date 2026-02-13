@@ -162,9 +162,13 @@ class Brain:
         Thinking state.
         """
         self.terminal.set_status("THINKING", self.personality.get_mood_status())
-        
+
         self.fix_attempts = 0
-        
+
+        # Select model for this new program (picks random if in surprise mode)
+        self.llm.select_for_new_program()
+        self.terminal.set_model_name(self.llm.get_short_name())
+
         # Decide what to write
         program_type = self._choose_program_type()
         

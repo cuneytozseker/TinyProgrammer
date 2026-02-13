@@ -7,6 +7,7 @@ Supports easy model switching through a unified API.
 
 import json
 import os
+import random
 import requests
 import time
 from typing import Generator, Optional
@@ -14,15 +15,18 @@ from typing import Generator, Optional
 import config
 
 
-# Available models on OpenRouter
+# Available models on OpenRouter {model_id: (display_name, short_name)}
 AVAILABLE_MODELS = {
-    "anthropic/claude-3.5-haiku": "Claude 3.5 Haiku",
-    "google/gemini-2.0-flash-001": "Gemini 2.0 Flash",
-    "openai/gpt-4.1-nano": "GPT-4.1 Nano",
-    "x-ai/grok-3-fast": "Grok 3 Fast",
-    "deepseek/deepseek-chat-v3-0324": "DeepSeek V3",
-    "moonshotai/kimi-k2": "Kimi K2",
+    "anthropic/claude-3.5-haiku": ("Claude 3.5 Haiku", "Haiku"),
+    "google/gemini-2.0-flash-001": ("Gemini 2.0 Flash", "Flash"),
+    "openai/gpt-4.1-nano": ("GPT-4.1 Nano", "Nano"),
+    "x-ai/grok-3-fast": ("Grok 3 Fast", "Grok"),
+    "deepseek/deepseek-chat-v3-0324": ("DeepSeek V3", "DeepSeek"),
+    "moonshotai/kimi-k2": ("Kimi K2", "Kimi"),
 }
+
+# Special mode for random model selection
+SURPRISE_ME = "surprise_me"
 
 # Default model
 DEFAULT_MODEL = "anthropic/claude-3.5-haiku"
@@ -39,27 +43,58 @@ class LLMGenerator:
 
         Args:
             api_key: OpenRouter API key
-            model_name: Model name (e.g., 'anthropic/claude-3.5-haiku')
+            model_name: Model name (e.g., 'anthropic/claude-3.5-haiku') or 'surprise_me'
         """
         self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
-        self.model_name = model_name or DEFAULT_MODEL
+        self.model_setting = model_name or DEFAULT_MODEL  # What user selected
+        self.model_name = model_name or DEFAULT_MODEL     # Actual model to use
         self._last_request_time = 0
 
+        # If surprise_me, pick a random model now
+        if self.model_setting == SURPRISE_ME:
+            self._pick_random_model()
+
+    def _pick_random_model(self):
+        """Pick a random model from available models."""
+        self.model_name = random.choice(list(AVAILABLE_MODELS.keys()))
+        print(f"[LLM] Surprise! Selected: {self.get_short_name()}")
+
     def set_model(self, model_name: str):
-        """Change the current model."""
-        if model_name in AVAILABLE_MODELS:
+        """Change the current model (or set to surprise_me mode)."""
+        self.model_setting = model_name
+        if model_name == SURPRISE_ME:
+            self._pick_random_model()
+        elif model_name in AVAILABLE_MODELS:
             self.model_name = model_name
-            print(f"[LLM] Switched to model: {AVAILABLE_MODELS[model_name]}")
+            print(f"[LLM] Switched to model: {AVAILABLE_MODELS[model_name][0]}")
         else:
             print(f"[LLM] Unknown model: {model_name}, keeping {self.model_name}")
 
+    def select_for_new_program(self):
+        """Called when starting a new program - picks random if in surprise mode."""
+        if self.model_setting == SURPRISE_ME:
+            self._pick_random_model()
+
     def get_current_model(self) -> str:
-        """Get the current model name."""
+        """Get the current model setting (may be 'surprise_me')."""
+        return self.model_setting
+
+    def get_actual_model(self) -> str:
+        """Get the actual model being used for requests."""
         return self.model_name
 
+    def get_short_name(self) -> str:
+        """Get the short display name for the current model."""
+        if self.model_name in AVAILABLE_MODELS:
+            return AVAILABLE_MODELS[self.model_name][1]
+        return "?"
+
     def get_available_models(self) -> dict:
-        """Get dict of available models {id: display_name}."""
-        return AVAILABLE_MODELS.copy()
+        """Get dict of available models {id: display_name} including Surprise Me."""
+        models = {SURPRISE_ME: ("Surprise Me!", "?")}
+        for k, v in AVAILABLE_MODELS.items():
+            models[k] = v
+        return models
 
     def stream(self, prompt: str, max_tokens: int = 1024,
                temperature: float = 0.7, stop: list = None) -> Generator[str, None, None]:
