@@ -69,37 +69,15 @@ def main():
         status_bar_height=config.STATUS_BAR_HEIGHT
     )
     
-    # Determine endpoint, model name, and API key based on backend
-    if config.LLM_BACKEND == "ollama":
-        endpoint = config.OLLAMA_ENDPOINT
-        model_name = config.OLLAMA_MODEL
-        api_key = ""
-    elif config.LLM_BACKEND == "gemini":
-        endpoint = ""  # Not used for cloud APIs
-        model_name = config.GEMINI_MODEL
-        api_key = config.GEMINI_API_KEY
-        if not api_key:
-            print("[ERROR] GEMINI_API_KEY not set. Export it or add to config.py")
-            sys.exit(1)
-    elif config.LLM_BACKEND == "anthropic":
-        endpoint = ""  # Not used for cloud APIs
-        model_name = config.ANTHROPIC_MODEL
-        api_key = config.ANTHROPIC_API_KEY
-        if not api_key:
-            print("[ERROR] ANTHROPIC_API_KEY not set. Export it or add to config.py")
-            sys.exit(1)
-    else:
-        endpoint = config.LLM_ENDPOINT
-        model_name = ""
-        api_key = ""
+    # Initialize LLM with OpenRouter
+    api_key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not api_key:
+        print("[ERROR] OPENROUTER_API_KEY not set. Add it to .env file")
+        sys.exit(1)
 
     llm = LLMGenerator(
-        endpoint=endpoint,
-        model_path=config.LLM_MODEL_PATH,
-        context_size=config.LLM_CONTEXT_SIZE,
-        backend=config.LLM_BACKEND,
-        model_name=model_name,
-        api_key=api_key
+        api_key=api_key,
+        model_name=getattr(config, 'LLM_MODEL', '')
     )
     
     personality = Personality(

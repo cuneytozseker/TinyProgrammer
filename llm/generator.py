@@ -1,208 +1,89 @@
 """
 LLM Generator
 
-Interface to LLMs for code generation.
-Supports local (llama.cpp, Ollama) and cloud (Gemini, Anthropic) backends.
+Interface to LLMs via OpenRouter API.
+Supports easy model switching through a unified API.
 """
 
 import json
 import os
-import subprocess
 import requests
-import sys
 import time
 from typing import Generator, Optional
 
 import config
 
 
-# Rate limiting for cloud APIs (requests per minute)
-RATE_LIMIT_RPM = 3  # Conservative limit to avoid 429 errors
-MIN_REQUEST_INTERVAL = 60.0 / RATE_LIMIT_RPM  # 20 seconds between requests
+# Available models on OpenRouter
+AVAILABLE_MODELS = {
+    "anthropic/claude-3.5-haiku": "Claude 3.5 Haiku",
+    "google/gemini-2.0-flash-001": "Gemini 2.0 Flash",
+    "openai/gpt-4.1-nano": "GPT-4.1 Nano",
+    "x-ai/grok-3-fast": "Grok 3 Fast",
+    "deepseek/deepseek-chat-v3-0324": "DeepSeek V3",
+    "moonshotai/kimi-k2": "Kimi K2",
+}
+
+# Default model
+DEFAULT_MODEL = "anthropic/claude-3.5-haiku"
 
 
 class LLMGenerator:
     """
-    Interface to LLM for code generation.
-
-    Backends:
-    - llamacpp: Local llama.cpp server or subprocess
-    - ollama: Local Ollama server
-    - gemini: Google Gemini API (cloud)
-    - anthropic: Anthropic Claude API (cloud)
+    Interface to LLM for code generation via OpenRouter.
     """
 
-    def __init__(self, endpoint: str, model_path: str, context_size: int,
-                 backend: str = "llamacpp", model_name: str = "",
-                 api_key: str = ""):
+    def __init__(self, api_key: str = "", model_name: str = ""):
         """
         Initialize LLM interface.
 
         Args:
-            endpoint: HTTP endpoint (for local backends)
-            model_path: Path to GGUF model file (for llamacpp subprocess)
-            context_size: Context window size in tokens
-            backend: "llamacpp", "ollama", "gemini", or "anthropic"
-            model_name: Model name (for Ollama/cloud APIs)
-            api_key: API key (for cloud backends)
+            api_key: OpenRouter API key
+            model_name: Model name (e.g., 'anthropic/claude-3.5-haiku')
         """
-        self.endpoint = endpoint
-        self.model_path = model_path
-        self.context_size = context_size
-        self.backend = backend
-        self.model_name = model_name
-        self.api_key = api_key
-        self.mode = None
-        self._last_request_time = 0  # For rate limiting
-        
-    def _check_server(self) -> bool:
-        """Check if server is running."""
-        try:
-            # simple health check
-            if self.backend == "ollama":
-                # Ollama is usually at localhost:11434
-                # We can check root /
-                root_url = self.endpoint.replace("/api/generate", "")
-                requests.get(root_url, timeout=0.5)
-            else:
-                requests.get(self.endpoint, timeout=0.5)
-            return True
-        except requests.exceptions.RequestException:
-            return False
+        self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
+        self.model_name = model_name or DEFAULT_MODEL
+        self._last_request_time = 0
 
-    def _rate_limit(self):
-        """Enforce rate limiting for cloud APIs."""
-        if self.backend in ("gemini", "anthropic"):
-            elapsed = time.time() - self._last_request_time
-            if elapsed < MIN_REQUEST_INTERVAL:
-                wait_time = MIN_REQUEST_INTERVAL - elapsed
-                print(f"[LLM] Rate limiting: waiting {wait_time:.1f}s")
-                time.sleep(wait_time)
-            self._last_request_time = time.time()
+    def set_model(self, model_name: str):
+        """Change the current model."""
+        if model_name in AVAILABLE_MODELS:
+            self.model_name = model_name
+            print(f"[LLM] Switched to model: {AVAILABLE_MODELS[model_name]}")
+        else:
+            print(f"[LLM] Unknown model: {model_name}, keeping {self.model_name}")
+
+    def get_current_model(self) -> str:
+        """Get the current model name."""
+        return self.model_name
+
+    def get_available_models(self) -> dict:
+        """Get dict of available models {id: display_name}."""
+        return AVAILABLE_MODELS.copy()
 
     def stream(self, prompt: str, max_tokens: int = 1024,
                temperature: float = 0.7, stop: list = None) -> Generator[str, None, None]:
         """
-        Stream text completion token by token.
+        Stream text completion token by token via OpenRouter.
         """
-        # Apply rate limiting for cloud APIs
-        self._rate_limit()
+        yield from self._stream_openrouter(prompt, max_tokens, temperature, stop)
 
-        if self.backend == "ollama":
-            yield from self._stream_ollama(prompt, max_tokens, temperature, stop)
-        elif self.backend == "gemini":
-            yield from self._stream_gemini(prompt, max_tokens, temperature, stop)
-        elif self.backend == "anthropic":
-            yield from self._stream_anthropic(prompt, max_tokens, temperature, stop)
-        elif self._check_server():
-            yield from self._stream_http(prompt, max_tokens, temperature, stop)
-        else:
-            yield from self._stream_subprocess(prompt, max_tokens, temperature, stop)
-
-    def _stream_ollama(self, prompt: str, max_tokens: int,
-                       temperature: float, stop: list) -> Generator[str, None, None]:
-        """Stream from Ollama API using Chat endpoint."""
-        # Use /api/chat instead of /api/generate for better compatibility
-        chat_endpoint = self.endpoint.replace("/api/generate", "/api/chat")
-        
-        data = {
-            "model": self.model_name,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
-            "options": {
-                "num_predict": max_tokens,
-                "temperature": temperature,
-                "stop": stop or []
-            },
-            "stream": True
-        }
-        
-        print(f"[LLM] Sending request to {chat_endpoint} with model {self.model_name}")
-        # print(f"[LLM] Prompt: {prompt[:50]}...")
-        
-        try:
-            with requests.post(chat_endpoint, json=data, stream=True) as response:
-                response.raise_for_status()
-                for line in response.iter_lines():
-                    if line:
-                        try:
-                            chunk = json.loads(line)
-                            # Chat endpoint returns 'message' object
-                            content = chunk.get('message', {}).get('content', '')
-                            if content:
-                                # print(f"[LLM] Token: {repr(content)}")
-                                yield content
-                            if chunk.get('done', False):
-                                break
-                        except json.JSONDecodeError:
-                            pass
-        except Exception as e:
-            print(f"[LLM] Error streaming from Ollama: {e}")
-
-    def _stream_gemini(self, prompt: str, max_tokens: int,
-                       temperature: float, stop: list) -> Generator[str, None, None]:
-        """Stream from Google Gemini API."""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:streamGenerateContent"
+    def _stream_openrouter(self, prompt: str, max_tokens: int,
+                           temperature: float, stop: list) -> Generator[str, None, None]:
+        """Stream from OpenRouter API (OpenAI-compatible)."""
+        url = "https://openrouter.ai/api/v1/chat/completions"
 
         headers = {
             "Content-Type": "application/json",
-        }
-
-        data = {
-            "contents": [
-                {"parts": [{"text": prompt}]}
-            ],
-            "generationConfig": {
-                "maxOutputTokens": max_tokens,
-                "temperature": temperature,
-                "stopSequences": stop or []
-            }
-        }
-
-        print(f"[LLM] Sending request to Gemini ({self.model_name})")
-
-        try:
-            with requests.post(
-                f"{url}?key={self.api_key}&alt=sse",
-                headers=headers,
-                json=data,
-                stream=True
-            ) as response:
-                response.raise_for_status()
-                for line in response.iter_lines():
-                    if line:
-                        decoded = line.decode('utf-8')
-                        if decoded.startswith('data: '):
-                            try:
-                                chunk = json.loads(decoded[6:])
-                                candidates = chunk.get('candidates', [])
-                                if candidates:
-                                    content = candidates[0].get('content', {})
-                                    parts = content.get('parts', [])
-                                    if parts:
-                                        text = parts[0].get('text', '')
-                                        if text:
-                                            yield text
-                            except json.JSONDecodeError:
-                                pass
-        except Exception as e:
-            print(f"[LLM] Error streaming from Gemini: {e}")
-
-    def _stream_anthropic(self, prompt: str, max_tokens: int,
-                          temperature: float, stop: list) -> Generator[str, None, None]:
-        """Stream from Anthropic Claude API."""
-        url = "https://api.anthropic.com/v1/messages"
-
-        headers = {
-            "Content-Type": "application/json",
-            "x-api-key": self.api_key,
-            "anthropic-version": "2023-06-01"
+            "Authorization": f"Bearer {self.api_key}",
+            "HTTP-Referer": "https://github.com/cuneytozseker/TinyProgrammer",
+            "X-Title": "TinyProgrammer"
         }
 
         data = {
             "model": self.model_name,
             "max_tokens": max_tokens,
+            "temperature": temperature,
             "messages": [
                 {"role": "user", "content": prompt}
             ],
@@ -210,129 +91,57 @@ class LLMGenerator:
         }
 
         if stop:
-            data["stop_sequences"] = stop
+            data["stop"] = stop
 
-        print(f"[LLM] Sending request to Anthropic ({self.model_name})")
+        print(f"[LLM] Sending request to OpenRouter ({self.model_name})")
 
         try:
-            with requests.post(url, headers=headers, json=data, stream=True) as response:
+            with requests.post(url, headers=headers, json=data, stream=True, timeout=60) as response:
                 # Check for API errors
                 if response.status_code == 529:
                     raise Exception("Oh no! My brain is fried! (err: 529 overloaded)")
                 elif response.status_code == 429:
                     raise Exception("Whoa, too many thoughts! (err: 429 rate limited)")
+                elif response.status_code == 402:
+                    raise Exception("Oops! Out of credits! (err: 402 payment required)")
                 elif response.status_code >= 500:
                     raise Exception(f"Cloud brain is having issues! (err: {response.status_code})")
-                response.raise_for_status()
+                elif response.status_code >= 400:
+                    raise Exception(f"Request error! (err: {response.status_code})")
+
                 for line in response.iter_lines():
                     if line:
                         decoded = line.decode('utf-8')
                         if decoded.startswith('data: '):
+                            data_str = decoded[6:]
+                            if data_str == '[DONE]':
+                                break
                             try:
-                                chunk = json.loads(decoded[6:])
-                                if chunk.get('type') == 'content_block_delta':
-                                    delta = chunk.get('delta', {})
-                                    text = delta.get('text', '')
+                                chunk = json.loads(data_str)
+                                choices = chunk.get('choices', [])
+                                if choices:
+                                    delta = choices[0].get('delta', {})
+                                    text = delta.get('content', '')
                                     if text:
                                         yield text
                             except json.JSONDecodeError:
                                 pass
+        except requests.exceptions.Timeout:
+            raise Exception("Brain timed out! (err: timeout)")
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 529:
+            status = e.response.status_code if e.response else 0
+            if status == 529:
                 raise Exception("Oh no! My brain is fried! (err: 529 overloaded)")
-            elif e.response.status_code == 429:
+            elif status == 429:
                 raise Exception("Whoa, too many thoughts! (err: 429 rate limited)")
             else:
-                raise Exception(f"Cloud brain error! (err: {e.response.status_code})")
+                raise Exception(f"Cloud brain error! (err: {status})")
         except Exception as e:
-            if "529" in str(e) or "overloaded" in str(e).lower():
-                raise Exception("Oh no! My brain is fried! (err: 529 overloaded)")
-            print(f"[LLM] Error streaming from Anthropic: {e}")
+            if "fried" in str(e) or "thoughts" in str(e) or "credits" in str(e):
+                raise  # Re-raise our custom exceptions
+            print(f"[LLM] Error streaming from OpenRouter: {e}")
             raise
 
-    def _stream_http(self, prompt: str, max_tokens: int,
-                     temperature: float, stop: list) -> Generator[str, None, None]:
-        """
-        Stream from llama.cpp HTTP server.
-        
-        Uses the /completion endpoint with stream=true.
-        """
-        data = {
-            "prompt": prompt,
-            "n_predict": max_tokens,
-            "temperature": temperature,
-            "stop": stop or [],
-            "stream": True
-        }
-        
-        try:
-            with requests.post(self.endpoint, json=data, stream=True) as response:
-                response.raise_for_status()
-                for line in response.iter_lines():
-                    if line:
-                        decoded_line = line.decode('utf-8')
-                        if decoded_line.startswith('data: '):
-                            json_str = decoded_line[6:]
-                            try:
-                                chunk = json.loads(json_str)
-                                content = chunk.get('content', '')
-                                if content:
-                                    yield content
-                                if chunk.get('stop', False):
-                                    break
-                            except json.JSONDecodeError:
-                                pass
-        except Exception as e:
-            print(f"[LLM] Error streaming from HTTP: {e}")
-    
-    def _stream_subprocess(self, prompt: str, max_tokens: int,
-                           temperature: float, stop: list) -> Generator[str, None, None]:
-        """
-        Stream from llama.cpp subprocess.
-        """
-        # Determine executable name based on platform
-        executable = "llama-cli"
-        if sys.platform == "win32":
-            executable = "llama-cli.exe"
-            
-        # If model path is absolute, use it. If not, maybe we should warn.
-        # But we'll try to execute 'llama-cli' from PATH.
-        
-        cmd = [
-            executable,
-            "-m", self.model_path,
-            "-p", prompt,
-            "-n", str(max_tokens),
-            "--temp", str(temperature),
-            "--no-display-prompt"  # Don't echo the prompt
-        ]
-        
-        if stop:
-            for s in stop:
-                cmd.extend(["-r", s])
-                
-        try:
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL, # Hide logging
-                universal_newlines=True,
-                encoding='utf-8',
-                bufsize=0  # Unbuffered
-            )
-            
-            while True:
-                char = process.stdout.read(1)
-                if not char and process.poll() is not None:
-                    break
-                if char:
-                    yield char
-                    
-        except FileNotFoundError:
-            print(f"[LLM] {executable} not found. Make sure it is in your PATH.")
-        except Exception as e:
-            print(f"[LLM] Error in subprocess: {e}")
-    
     def get_header(self) -> str:
         """Get the standard imports header."""
         return "import time\nimport random\nimport math\nfrom tiny_canvas import Canvas\n\nc = Canvas()\n"

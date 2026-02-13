@@ -54,14 +54,21 @@ def create_app():
     @app.route('/settings', methods=['GET', 'POST'])
     def settings():
         """Settings page - view and edit configuration."""
+        from llm.generator import AVAILABLE_MODELS, DEFAULT_MODEL
+
         message = None
         if request.method == 'POST':
             # Collect form data
             updates = {}
 
-            # LLM settings
-            updates['LLM_BACKEND'] = request.form.get('llm_backend', 'anthropic')
-            updates['ANTHROPIC_MODEL'] = request.form.get('anthropic_model', 'claude-haiku-4-5-20251001')
+            # LLM model selection (OpenRouter)
+            selected_model = request.form.get('llm_model', DEFAULT_MODEL)
+            updates['LLM_MODEL'] = selected_model
+
+            # If brain is running, update the model immediately
+            if _brain and hasattr(_brain, 'llm'):
+                _brain.llm.set_model(selected_model)
+
             updates['LLM_TEMPERATURE'] = float(request.form.get('llm_temperature', 0.7))
             updates['LLM_MAX_TOKENS'] = int(request.form.get('llm_max_tokens', 512))
 
@@ -94,7 +101,17 @@ def create_app():
 
         # Load current config
         current = config_mgr.get_all()
-        return render_template('settings.html', config=current, message=message)
+
+        # Get current model from brain if available
+        current_model = DEFAULT_MODEL
+        if _brain and hasattr(_brain, 'llm'):
+            current_model = _brain.llm.get_current_model()
+
+        return render_template('settings.html',
+                             config=current,
+                             message=message,
+                             available_models=AVAILABLE_MODELS,
+                             current_model=current_model)
 
     @app.route('/prompt', methods=['GET', 'POST'])
     def prompt_editor():

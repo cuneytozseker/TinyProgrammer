@@ -11,21 +11,13 @@
         <h2>LLM Configuration</h2>
 
         <div class="form-group">
-            <label for="llm_backend">Backend</label>
-            <select name="llm_backend" id="llm_backend">
-                <option value="anthropic" {% if config.LLM_BACKEND == 'anthropic' %}selected{% endif %}>Claude API (Anthropic)</option>
-                <option value="gemini" {% if config.LLM_BACKEND == 'gemini' %}selected{% endif %}>Gemini API (Google)</option>
-                <option value="ollama" {% if config.LLM_BACKEND == 'ollama' %}selected{% endif %}>Ollama (Local)</option>
+            <label for="llm_model">Model (via OpenRouter)</label>
+            <select name="llm_model" id="llm_model">
+                {% for model_id, model_name in available_models.items() %}
+                <option value="{{ model_id }}" {% if model_id == current_model %}selected{% endif %}>{{ model_name }}</option>
+                {% endfor %}
             </select>
-        </div>
-
-        <div class="form-group">
-            <label for="anthropic_model">Claude Model</label>
-            <select name="anthropic_model" id="anthropic_model">
-                <option value="claude-haiku-4-5-20251001" {% if config.ANTHROPIC_MODEL == 'claude-haiku-4-5-20251001' %}selected{% endif %}>Claude Haiku 4.5 (Fast & Cheap)</option>
-                <option value="claude-sonnet-4-5-20250929" {% if config.ANTHROPIC_MODEL == 'claude-sonnet-4-5-20250929' %}selected{% endif %}>Claude Sonnet 4.5 (Better Quality)</option>
-            </select>
-            <p class="hint">API key loaded from .env file (ANTHROPIC_API_KEY)</p>
+            <p class="hint">API key loaded from .env file (OPENROUTER_API_KEY)</p>
         </div>
 
         <div class="form-group">
