@@ -27,25 +27,29 @@ CHAR_HEIGHT = 20
 
 # Layout regions (pixel coordinates on 800x480 - scaled from 480x320)
 # Scale factors: 800/480 = 1.667 horizontal, 480/320 = 1.5 vertical
+# Global offset to align with background
+LAYOUT_OFFSET_X = 4             # Shift everything right
+LAYOUT_OFFSET_Y = 2             # Shift everything down
+
 # Original 480x320 values scaled up:
 # Sidebar: file list (orig: x=5, y=63, w=90, h=210)
-SIDEBAR_X = 8                   # 5 * 1.667
-SIDEBAR_Y = 95                  # 63 * 1.5
+SIDEBAR_X = 8 + LAYOUT_OFFSET_X                   # 5 * 1.667
+SIDEBAR_Y = 95 + LAYOUT_OFFSET_Y                  # 63 * 1.5
 SIDEBAR_W = 150                 # 90 * 1.667
 SIDEBAR_H = 315                 # 210 * 1.5
 
 # Code area: where code is rendered (orig: x=130, y=63, w=320, h=210)
-CODE_AREA_X = 217               # 130 * 1.667
-CODE_AREA_Y = 95                # 63 * 1.5
+CODE_AREA_X = 217 + LAYOUT_OFFSET_X               # 130 * 1.667
+CODE_AREA_Y = 95 + LAYOUT_OFFSET_Y                # 63 * 1.5
 CODE_AREA_W = 533               # 320 * 1.667
 CODE_AREA_H = 315               # 210 * 1.5
 
 # Line number column (orig: x=105)
-LINE_NUM_X = 175                # 105 * 1.667
+LINE_NUM_X = 175 + LAYOUT_OFFSET_X                # 105 * 1.667
 LINE_NUM_W = 42
 
 # Status bar (orig: y=289)
-STATUS_BAR_Y = 434              # 289 * 1.5
+STATUS_BAR_Y = 434 + LAYOUT_OFFSET_Y              # 289 * 1.5
 STATUS_BAR_HEIGHT = 36          # 24 * 1.5
 
 # Display modes
@@ -55,8 +59,8 @@ MODE_RUN = "run"            # Program execution mode
 # Canvas popup window (Mac OS floating window for program output)
 # Original 480x320: x=29, y=35, chrome=422x242, draw_area=416x212
 # The canvas.png is 422x242, will be scaled to 703x363
-CANVAS_X = 48                # 29 * 1.667 (position on screen)
-CANVAS_Y = 53                # 35 * 1.5
+CANVAS_X = 48 + LAYOUT_OFFSET_X  # 29 * 1.667 (position on screen)
+CANVAS_Y = 53 + LAYOUT_OFFSET_Y  # 35 * 1.5
 CANVAS_W = 703               # 422 * 1.667 (full chrome size after scaling)
 CANVAS_H = 363               # 242 * 1.5
 CANVAS_DRAW_OFFSET_X = 5     # Offset within scaled chrome
