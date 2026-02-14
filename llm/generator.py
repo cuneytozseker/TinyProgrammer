@@ -27,7 +27,7 @@ AVAILABLE_MODELS = {
     "x-ai/grok-code-fast-1": ("Grok Code Fast", "Grok"),
     "deepseek/deepseek-v3.2": ("DeepSeek V3.2", "DeepSeek"),
     # Local models (Ollama) - require Ollama running locally
-    "ollama/qwen2.5-coder:1.5b": ("Qwen 2.5 Coder 1.5B (Local)", "Qwen-Local"),
+    "ollama/phi3:mini": ("Phi-3 Mini 3.8B (Local)", "Phi3-Local"),
 }
 
 # Ollama endpoint (can override via env)
