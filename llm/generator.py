@@ -27,7 +27,8 @@ AVAILABLE_MODELS = {
     "x-ai/grok-code-fast-1": ("Grok Code Fast", "Grok"),
     "deepseek/deepseek-v3.2": ("DeepSeek V3.2", "DeepSeek"),
     # Local models (Ollama) - require Ollama running locally
-    "ollama/phi3:mini": ("Phi-3 Mini 3.8B (Local)", "Phi3-Local"),
+    # Note: Local models may be slow on Pi4, cloud models recommended
+    "ollama/deepseek-coder:1.3b": ("DeepSeek Coder 1.3B (Local)", "DS-Local"),
 }
 
 # Ollama endpoint (can override via env)
