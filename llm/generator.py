@@ -27,8 +27,10 @@ AVAILABLE_MODELS = {
     "x-ai/grok-code-fast-1": ("Grok Code Fast", "Grok"),
     "deepseek/deepseek-v3.2": ("DeepSeek V3.2", "DeepSeek"),
     # Local models (Ollama) - require Ollama running locally
-    # Note: Local models may be slow on Pi4, cloud models recommended
-    "ollama/deepseek-coder:1.3b": ("DeepSeek Coder 1.3B (Local)", "DS-Local"),
+    # EXPERIMENTAL: Local models may be slow and produce lower quality code on Pi4
+    # Install: curl -fsSL https://ollama.com/install.sh | sh
+    # Pull model: ollama pull qwen2.5-coder:1.5b
+    "ollama/qwen2.5-coder:1.5b": ("Qwen 2.5 Coder 1.5B (Local/Experimental)", "Qwen-Local"),
 }
 
 # Ollama endpoint (can override via env)
