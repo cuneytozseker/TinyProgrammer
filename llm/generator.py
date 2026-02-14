@@ -1,7 +1,7 @@
 """
 LLM Generator
 
-Interface to LLMs via OpenRouter API.
+Interface to LLMs via OpenRouter API and local Ollama.
 Supports easy model switching through a unified API.
 """
 
@@ -15,21 +15,28 @@ from typing import Generator, Optional
 import config
 
 
-# Available models on OpenRouter {model_id: (display_name, short_name)}
-# Note: Reasoning models (Kimi, Codex) removed - they use tokens on thinking, not code
+# Available models {model_id: (display_name, short_name)}
+# Cloud models via OpenRouter, local models via Ollama (prefix: "ollama/")
+# Note: Reasoning models removed - they use tokens on thinking, not code
 AVAILABLE_MODELS = {
+    # Cloud models (OpenRouter) - require OPENROUTER_API_KEY
     "anthropic/claude-haiku-4.5": ("Claude Haiku 4.5", "Haiku 4.5"),
     "anthropic/claude-3.5-haiku": ("Claude 3.5 Haiku", "Haiku 3.5"),
     "google/gemini-3-flash-preview": ("Gemini 3 Flash", "Flash"),
     "openai/gpt-4.1-mini": ("GPT-4.1 Mini", "GPT-4.1"),
     "x-ai/grok-code-fast-1": ("Grok Code Fast", "Grok"),
     "deepseek/deepseek-v3.2": ("DeepSeek V3.2", "DeepSeek"),
+    # Local models (Ollama) - require Ollama running locally
+    "ollama/qwen2.5-coder:1.5b": ("Qwen 2.5 Coder 1.5B (Local)", "Qwen-Local"),
 }
 
-# Special mode for random model selection
+# Ollama endpoint (can override via env)
+OLLAMA_ENDPOINT = os.environ.get("OLLAMA_ENDPOINT", "http://localhost:11434")
+
+# Special mode for random model selection (cloud models only)
 SURPRISE_ME = "surprise_me"
 
-# Default model (surprise_me = random selection each program)
+# Default model
 DEFAULT_MODEL = "surprise_me"
 
 
@@ -57,8 +64,9 @@ class LLMGenerator:
             self._pick_random_model()
 
     def _pick_random_model(self):
-        """Pick a random model from available models."""
-        self.model_name = random.choice(list(AVAILABLE_MODELS.keys()))
+        """Pick a random cloud model (exclude local ollama models)."""
+        cloud_models = [k for k in AVAILABLE_MODELS.keys() if not k.startswith("ollama/")]
+        self.model_name = random.choice(cloud_models)
         print(f"[LLM] Surprise! Selected: {self.get_short_name()}")
 
     def set_model(self, model_name: str):
@@ -105,9 +113,13 @@ class LLMGenerator:
     def stream(self, prompt: str, max_tokens: int = 1024,
                temperature: float = 0.7, stop: list = None) -> Generator[str, None, None]:
         """
-        Stream text completion token by token via OpenRouter.
+        Stream text completion token by token.
+        Routes to OpenRouter (cloud) or Ollama (local) based on model prefix.
         """
-        yield from self._stream_openrouter(prompt, max_tokens, temperature, stop)
+        if self.model_name.startswith("ollama/"):
+            yield from self._stream_ollama(prompt, max_tokens, temperature, stop)
+        else:
+            yield from self._stream_openrouter(prompt, max_tokens, temperature, stop)
 
     def _stream_openrouter(self, prompt: str, max_tokens: int,
                            temperature: float, stop: list) -> Generator[str, None, None]:
@@ -186,6 +198,54 @@ class LLMGenerator:
             if "fried" in str(e) or "thoughts" in str(e) or "credits" in str(e):
                 raise  # Re-raise our custom exceptions
             print(f"[LLM] Error streaming from OpenRouter: {e}")
+            raise
+
+    def _stream_ollama(self, prompt: str, max_tokens: int,
+                       temperature: float, stop: list) -> Generator[str, None, None]:
+        """Stream from local Ollama server."""
+        # Extract model name (remove "ollama/" prefix)
+        model = self.model_name.replace("ollama/", "")
+        url = f"{OLLAMA_ENDPOINT}/api/generate"
+
+        data = {
+            "model": model,
+            "prompt": prompt,
+            "stream": True,
+            "options": {
+                "num_predict": max_tokens,
+                "temperature": temperature,
+            }
+        }
+
+        if stop:
+            data["options"]["stop"] = stop
+
+        print(f"[LLM] Sending request to Ollama ({model})")
+
+        try:
+            with requests.post(url, json=data, stream=True, timeout=120) as response:
+                if response.status_code != 200:
+                    raise Exception(f"Ollama error! (err: {response.status_code})")
+
+                for line in response.iter_lines():
+                    if line:
+                        try:
+                            chunk = json.loads(line.decode('utf-8'))
+                            text = chunk.get('response', '')
+                            if text:
+                                yield text
+                            if chunk.get('done', False):
+                                break
+                        except json.JSONDecodeError:
+                            pass
+        except requests.exceptions.ConnectionError:
+            raise Exception("Can't connect to Ollama! Is it running? (ollama serve)")
+        except requests.exceptions.Timeout:
+            raise Exception("Ollama timed out! Model might be too slow.")
+        except Exception as e:
+            if "Ollama" in str(e):
+                raise
+            print(f"[LLM] Error streaming from Ollama: {e}")
             raise
 
     def get_header(self) -> str:
