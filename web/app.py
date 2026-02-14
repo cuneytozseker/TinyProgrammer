@@ -81,8 +81,8 @@ def create_app():
             updates['LLM_MAX_TOKENS'] = int(request.form.get('llm_max_tokens', 512))
 
             # Timing settings
-            updates['WATCH_DURATION_MIN'] = int(request.form.get('watch_duration_min', 600))
-            updates['WATCH_DURATION_MAX'] = int(request.form.get('watch_duration_max', 600))
+            updates['WATCH_DURATION_MIN'] = int(request.form.get('watch_duration_min', 120))
+            updates['WATCH_DURATION_MAX'] = int(request.form.get('watch_duration_max', 120))
             updates['THINK_DURATION_MIN'] = int(request.form.get('think_duration_min', 3))
             updates['THINK_DURATION_MAX'] = int(request.form.get('think_duration_max', 10))
             updates['STATE_TRANSITION_DELAY'] = int(request.form.get('state_transition_delay', 2))
@@ -104,6 +104,17 @@ def create_app():
             if program_types:
                 updates['PROGRAM_TYPES'] = program_types
 
+            # Color scheme (display adjustment layer)
+            color_scheme = request.form.get('color_scheme', 'none')
+            updates['COLOR_SCHEME'] = color_scheme
+
+            # Apply color scheme immediately to framebuffer
+            try:
+                from display.framebuffer import set_color_scheme
+                set_color_scheme(color_scheme)
+            except ImportError:
+                pass  # Framebuffer not available (e.g., on dev machine)
+
             config_mgr.save_overrides(updates)
             message = "Settings saved! Changes will apply on next program cycle."
 
@@ -121,11 +132,16 @@ def create_app():
         for k, v in AVAILABLE_MODELS.items():
             models_for_template[k] = v[0]  # v is (display_name, short_name)
 
+        # Get available color schemes
+        from display.color_adjustment import COLOR_SCHEMES
+        color_schemes = list(COLOR_SCHEMES.keys())
+
         return render_template('settings.html',
                              config=current,
                              message=message,
                              available_models=models_for_template,
-                             current_model=current_model)
+                             current_model=current_model,
+                             color_schemes=color_schemes)
 
     @app.route('/prompt', methods=['GET', 'POST'])
     def prompt_editor():

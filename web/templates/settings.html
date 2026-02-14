@@ -41,14 +41,14 @@
         <div class="form-group">
             <label for="watch_duration_min">Watch Duration Min (seconds)</label>
             <input type="number" name="watch_duration_min" id="watch_duration_min"
-                   value="{{ config.WATCH_DURATION_MIN or 600 }}"
+                   value="{{ config.WATCH_DURATION_MIN or 120 }}"
                    min="10" max="3600">
         </div>
 
         <div class="form-group">
             <label for="watch_duration_max">Watch Duration Max (seconds)</label>
             <input type="number" name="watch_duration_max" id="watch_duration_max"
-                   value="{{ config.WATCH_DURATION_MAX or 600 }}"
+                   value="{{ config.WATCH_DURATION_MAX or 120 }}"
                    min="10" max="3600">
         </div>
 
@@ -129,6 +129,32 @@
                        min="1" max="10" class="weight-input">
             </div>
             {% endfor %}
+        </div>
+    </section>
+
+    <section class="settings-section">
+        <h2>Display</h2>
+
+        <div class="form-group">
+            <label for="color_scheme">Color Scheme</label>
+            <select name="color_scheme" id="color_scheme">
+                {% set scheme_names = {
+                    'none': 'None (Original)',
+                    'amber': 'Amber Terminal',
+                    'green': 'Green Terminal',
+                    'blue': 'Cool Blue',
+                    'sepia': 'Sepia',
+                    'cool': 'Cool',
+                    'warm': 'Warm',
+                    'night': 'Night Mode (Red)'
+                } %}
+                {% for scheme in color_schemes %}
+                <option value="{{ scheme }}" {% if config.COLOR_SCHEME == scheme %}selected{% endif %}>
+                    {{ scheme_names.get(scheme, scheme|title) }}
+                </option>
+                {% endfor %}
+            </select>
+            <p class="hint">Applies a color overlay to the entire display (like a Photoshop adjustment layer)</p>
         </div>
     </section>
 

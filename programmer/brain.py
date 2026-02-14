@@ -407,10 +407,11 @@ class Brain:
         Let the program run for a while, display its output.
         """
         self.terminal.set_status("WATCHING", "proud")
-        
+
         start_time = time.time()
         duration = random.randint(config.WATCH_DURATION_MIN, config.WATCH_DURATION_MAX)
-        
+        print(f"[Brain] Watch duration: {duration}s (range: {config.WATCH_DURATION_MIN}-{config.WATCH_DURATION_MAX})")
+
         last_output = ""
         
         while time.time() - start_time < duration:

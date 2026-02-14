@@ -102,6 +102,14 @@ def main():
     
     print("[Tiny Programmer] All systems ready.")
 
+    # Initialize color scheme from config
+    if hasattr(config, 'COLOR_SCHEME') and config.COLOR_SCHEME != 'none':
+        try:
+            from display.framebuffer import set_color_scheme
+            set_color_scheme(config.COLOR_SCHEME)
+        except ImportError:
+            pass  # Framebuffer not available
+
     # Start web server in background if enabled
     if getattr(config, 'WEB_ENABLED', False):
         try:

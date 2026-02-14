@@ -12,6 +12,24 @@ Also works with HDMI displays that report portrait framebuffer (480x800)
 import os
 import numpy as np
 
+from .color_adjustment import apply_color_adjustment
+
+# Module-level color scheme setting (can be changed at runtime)
+_color_scheme = "none"
+
+
+def set_color_scheme(scheme_name: str):
+    """Set the active color scheme for framebuffer output."""
+    global _color_scheme
+    _color_scheme = scheme_name
+    print(f"[FB] Color scheme set to: {scheme_name}")
+
+
+def get_color_scheme() -> str:
+    """Get the current color scheme name."""
+    return _color_scheme
+
+
 # Check if we're on a system with a framebuffer
 FB_DEVICE = os.environ.get("FB_DEVICE", "/dev/fb0")
 IS_FRAMEBUFFER_AVAILABLE = os.path.exists(FB_DEVICE)
@@ -24,6 +42,7 @@ FB_ROTATION = int(os.environ.get("FB_ROTATION", "-1"))  # -1 = auto-detect
 def rgb888_to_rgb565(surface) -> np.ndarray:
     """
     Convert a pygame surface (RGB888) to RGB565 numpy array.
+    Applies color adjustment layer if set.
 
     RGB565 format: RRRRR GGGGGG BBBBB (16 bits)
     """
@@ -35,6 +54,10 @@ def rgb888_to_rgb565(surface) -> np.ndarray:
     r = arr[:, :, 0].astype(np.uint16)
     g = arr[:, :, 1].astype(np.uint16)
     b = arr[:, :, 2].astype(np.uint16)
+
+    # Apply color adjustment layer if active
+    if _color_scheme != "none":
+        r, g, b = apply_color_adjustment(r, g, b, _color_scheme)
 
     # Convert to RGB565
     # R: 8 bits -> 5 bits (shift right 3, then left 11)

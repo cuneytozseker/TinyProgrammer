@@ -64,7 +64,7 @@ CANVAS_Y = 53 + LAYOUT_OFFSET_Y  # 35 * 1.5
 CANVAS_W = 703               # 422 * 1.667 (full chrome size after scaling)
 CANVAS_H = 363               # 242 * 1.5
 CANVAS_DRAW_OFFSET_X = 5     # Offset within scaled chrome
-CANVAS_DRAW_OFFSET_Y = 45    # 30 * 1.5 (title bar height scaled)
+CANVAS_DRAW_OFFSET_Y = 28    # Adjusted to close gap with title bar
 CANVAS_DRAW_W = 693          # Draw area width (416 * 1.667)
 CANVAS_DRAW_H = 318          # Draw area height (212 * 1.5)
 
@@ -185,3 +185,11 @@ MAX_PROGRAM_LINES = 50
 WEB_ENABLED = True
 WEB_HOST = "0.0.0.0"   # Listen on all interfaces
 WEB_PORT = 5000
+
+# =============================================================================
+# DISPLAY COLOR SCHEME
+# =============================================================================
+
+# Color adjustment layer (like Photoshop adjustment layer)
+# Options: none, amber, green, blue, sepia, cool, warm, night
+COLOR_SCHEME = "none"
