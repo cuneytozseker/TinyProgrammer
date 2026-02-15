@@ -6,6 +6,9 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/home/aerovisual/TinyProgrammer
+# Hide console cursor before starting
+ExecStartPre=/bin/sh -c 'echo 0 > /sys/class/graphics/fbcon/cursor_blink'
+ExecStartPre=/bin/sh -c 'setterm -cursor off > /dev/tty1'
 ExecStart=/usr/bin/python3 /home/aerovisual/TinyProgrammer/main.py
 Restart=on-failure
 RestartSec=5
