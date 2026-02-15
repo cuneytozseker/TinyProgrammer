@@ -1,0 +1,16 @@
+[Unit]
+Description=TinyProgrammer - Autonomous Code Writing Device
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/aerovisual/TinyProgrammer
+ExecStart=/usr/bin/python3 /home/aerovisual/TinyProgrammer/main.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/var/log/tinyprogrammer.log
+StandardError=append:/var/log/tinyprogrammer.log
+
+[Install]
+WantedBy=multi-user.target
