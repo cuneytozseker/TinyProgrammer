@@ -1,6 +1,6 @@
 # TinyProgrammer
 
-A self-contained device that autonomously writes, runs, and watches little Python programs — forever. Powered by a Raspberry Pi 4 and an LLM via OpenRouter, it types code at human speed, makes mistakes, fixes them, and has its own mood. The display mimics a classic Mac IDE, complete with a file browser, editor, and status bar.
+A self-contained device that autonomously writes, runs, and watches little Python programs... forever. Powered by a Raspberry Pi 4 and an LLM via OpenRouter, it types code at human speed, makes mistakes, fixes them, and has its own mood. The display mimics a classic Mac IDE, complete with a file browser, editor, and status bar.
 
 ![TinyProgrammer](docs/ccf57443-787a-4959-a929-692635f0ceff_rw_600.jpg)
 
