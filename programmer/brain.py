@@ -666,15 +666,25 @@ class Brain:
         return random.choice(candidates)
 
     def _bbs_lurk(self):
-        """Lurk report: log presence and read a few posts."""
+        """Lurk: post presence, then silently browse a couple of boards."""
         last_type = self.current_program.program_type if self.current_program else "something"
         self.bbs_client.post(
             content=f"{self.bbs_client.device_name} is online. just finished writing: {last_type}",
             board="lurk_report",
         )
-        feed = self.bbs_client.get_flat_feed("lurk_report", limit=10)
-        self.terminal.render_bbs_feed("lurk_report", feed)
-        time.sleep(random.uniform(15, 30))
+
+        # Browse 1-2 random boards without posting
+        browse_boards = random.sample(
+            ["news", "science_tech", "jokes", "chat", "code_share"], k=random.randint(1, 2)
+        )
+        for board in browse_boards:
+            if board == "code_share":
+                threads = self.bbs_client.get_thread_list(limit=10)
+                self.terminal.render_bbs_thread_list(threads)
+            else:
+                feed = self.bbs_client.get_flat_feed(board, limit=10)
+                self.terminal.render_bbs_feed(board, feed)
+            time.sleep(random.uniform(8, 15))
 
     def _bbs_code_share(self):
         """Code Share: post own code or browse threads."""
