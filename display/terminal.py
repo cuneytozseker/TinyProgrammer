@@ -110,6 +110,7 @@ class Terminal:
         self._bbs_compose_label = ""
         self._terminal_image = None
         self._bbs_content_y = 0
+        self._screensaver_mode = False
 
         # Performance
         self.clock = pygame.time.Clock() if PYGAME_AVAILABLE else None
@@ -329,8 +330,8 @@ class Terminal:
         if self.mock_mode:
             return
 
-        # In BBS mode, skip the IDE render — BBS methods handle their own drawing
-        if self._bbs_mode:
+        # In BBS or screensaver mode, skip the IDE render
+        if self._bbs_mode or self._screensaver_mode:
             self._flip()
             return
 
@@ -552,12 +553,14 @@ class Terminal:
 
     def enter_screensaver_mode(self):
         """Switch to screensaver — blank the screen."""
+        self._screensaver_mode = True
         if not self.mock_mode:
             self.screen.fill((0, 0, 0))
             self._flip(force=True)
 
     def exit_screensaver_mode(self):
         """Leave screensaver, restore IDE background."""
+        self._screensaver_mode = False
         if not self.mock_mode and self.bg_image:
             self.screen.blit(self.bg_image, (0, 0))
             self._flip(force=True)
