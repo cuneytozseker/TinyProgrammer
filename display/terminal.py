@@ -611,13 +611,19 @@ class Terminal:
         return int(385 * self.height / 480)
 
     def _load_terminal_assets(self):
-        """Load Terminal.png chrome for BBS mode."""
+        """Load Terminal.png chrome for BBS mode, scaled to display resolution."""
         if self.mock_mode:
             return
         term_path = os.path.join(ASSETS_DIR, "Terminal.png")
         if os.path.exists(term_path):
             self._terminal_image = pygame.image.load(term_path)
-            print(f"[Terminal] Loaded BBS chrome: {term_path}")
+            # Scale to fit current display (chrome is 775x423, designed for 800x480)
+            target_w = self.width - self._BBS_CHROME_X * 2
+            target_h = self.height - self._BBS_CHROME_Y - 4
+            if self._terminal_image.get_size() != (target_w, target_h):
+                self._terminal_image = pygame.transform.scale(
+                    self._terminal_image, (target_w, target_h))
+            print(f"[Terminal] Loaded BBS chrome: {term_path} (scaled to {target_w}x{target_h})")
         else:
             self._terminal_image = None
             print("[Terminal] Warning: Terminal.png not found")
