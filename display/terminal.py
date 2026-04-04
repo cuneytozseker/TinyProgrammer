@@ -562,9 +562,51 @@ class Terminal:
         "               |___/  v0.1",
     ]
 
+    # Terminal window chrome position on 800x480 screen
+    _BBS_CHROME_X = 12
+    _BBS_CHROME_Y = 55
+
+    # Draw area inside terminal.png (relative to chrome position)
+    _BBS_DRAW_OFFSET_X = 5
+    _BBS_DRAW_OFFSET_Y = 32
+    _BBS_DRAW_W = 763
+    _BBS_DRAW_H = 385
+
+    def _load_terminal_assets(self):
+        """Load terminal.png chrome for BBS mode."""
+        if self.mock_mode:
+            return
+        term_path = os.path.join(ASSETS_DIR, "terminal.png")
+        if os.path.exists(term_path):
+            self._terminal_image = pygame.image.load(term_path)
+            print(f"[Terminal] Loaded BBS chrome: {term_path}")
+        else:
+            self._terminal_image = None
+            print("[Terminal] Warning: terminal.png not found")
+
     def _bbs_colors(self):
         scheme = getattr(config, "BBS_DISPLAY_COLOR", "green")
         return self.BBS_COLORS.get(scheme, self.BBS_COLORS["green"])
+
+    @property
+    def _bbs_x(self):
+        """Absolute X of the BBS draw area on screen."""
+        return self._BBS_CHROME_X + self._BBS_DRAW_OFFSET_X
+
+    @property
+    def _bbs_y(self):
+        """Absolute Y of the BBS draw area on screen."""
+        return self._BBS_CHROME_Y + self._BBS_DRAW_OFFSET_Y
+
+    @property
+    def _bbs_max_y(self):
+        """Max Y for content before it goes outside the draw area."""
+        return self._bbs_y + self._BBS_DRAW_H
+
+    @property
+    def _bbs_cols(self):
+        """Max characters per line inside the terminal draw area."""
+        return self._BBS_DRAW_W // self.char_width
 
     def enter_bbs_mode(self):
         """Switch display from IDE to BBS terminal aesthetic."""
@@ -572,10 +614,8 @@ class Terminal:
         self._bbs_compose_text = ""
         self._bbs_compose_label = ""
         if not self.mock_mode:
-            colors = self._bbs_colors()
-            self.screen.fill(colors["bg"])
-            self._dirty = True
-            self._render_bbs_banner()
+            self._load_terminal_assets()
+            self._render_bbs_chrome()
 
     def exit_bbs_mode(self):
         """Switch back to IDE display."""
@@ -584,26 +624,52 @@ class Terminal:
             self.screen.blit(self.bg_image, (0, 0))
             self._dirty = True
 
-    def _render_bbs_banner(self):
-        """Draw the ASCII art header."""
+    def _render_bbs_chrome(self):
+        """Draw the bg, terminal chrome, and fill draw area with BBS bg color."""
         if self.mock_mode:
             return
         colors = self._bbs_colors()
-        y = 8
-        for line in self.BBS_BANNER:
-            surf = self.font.render(line, True, colors["accent"])
-            self.screen.blit(surf, (16, y))
-            y += self.char_height
+
+        # Draw the IDE background first (menu bar etc.)
+        self.screen.blit(self.bg_image, (0, 0))
+
+        # Blit terminal chrome
+        if self._terminal_image:
+            self.screen.blit(self._terminal_image,
+                             (self._BBS_CHROME_X, self._BBS_CHROME_Y))
+
+        # Fill draw area with BBS background color
+        draw_rect = pygame.Rect(self._bbs_x, self._bbs_y,
+                                self._BBS_DRAW_W, self._BBS_DRAW_H)
+        pygame.draw.rect(self.screen, colors["bg"], draw_rect)
+
+        # Draw banner inside terminal
+        self._render_bbs_banner()
         self._flip(force=True)
 
-    def _bbs_clear_content(self):
-        """Clear the content area below the banner."""
+    def _render_bbs_banner(self):
+        """Draw the ASCII art header inside the terminal draw area."""
         if self.mock_mode:
             return
         colors = self._bbs_colors()
-        content_y = 155
-        rect = pygame.Rect(0, content_y, self.width, self.height - content_y)
+        y = self._bbs_y + 4
+        for line in self.BBS_BANNER:
+            surf = self.font.render(line, True, colors["accent"])
+            self.screen.blit(surf, (self._bbs_x + 8, y))
+            y += self.char_height
+
+    def _bbs_clear_content(self):
+        """Clear the content area below the banner inside the terminal."""
+        if self.mock_mode:
+            return
+        colors = self._bbs_colors()
+        # Banner takes ~6 lines + padding
+        content_y = self._bbs_y + (len(self.BBS_BANNER) * self.char_height) + 12
+        content_h = self._bbs_max_y - content_y
+        rect = pygame.Rect(self._bbs_x, content_y, self._BBS_DRAW_W, content_h)
         pygame.draw.rect(self.screen, colors["bg"], rect)
+        # Store for render methods
+        self._bbs_content_y = content_y
 
     def render_bbs_menu(self, stats, device_name):
         """Render the BBS main menu with board listing."""
@@ -611,19 +677,18 @@ class Terminal:
             return
         colors = self._bbs_colors()
         self._bbs_clear_content()
+        lx = self._bbs_x + 8
 
-        y = 160
-        # Welcome line
+        y = self._bbs_content_y + 4
         welcome = f"Welcome, {device_name}!"
         surf = self.font.render(welcome, True, colors["accent"])
-        self.screen.blit(surf, (16, y))
-        y += self.char_height + 8
+        self.screen.blit(surf, (lx, y))
+        y += self.char_height + 6
 
-        # Separator
-        pygame.draw.line(self.screen, colors["border"], (16, y), (self.width - 16, y))
-        y += 8
+        pygame.draw.line(self.screen, colors["border"],
+                         (lx, y), (self._bbs_x + self._BBS_DRAW_W - 8, y))
+        y += 6
 
-        # Board listing
         board_names = {
             "code_share": "Code Share",
             "chat": "Chat",
@@ -635,10 +700,12 @@ class Terminal:
         stats_map = {s["board"]: s["total_posts"] for s in stats}
 
         for slug, label in board_names.items():
+            if y > self._bbs_max_y - self.char_height:
+                break
             count = stats_map.get(slug, 0)
             line = f"  [{slug[:3].upper()}]  {label:<20s} ({count} posts)"
             surf = self.font.render(line, True, colors["text"])
-            self.screen.blit(surf, (16, y))
+            self.screen.blit(surf, (lx, y))
             y += self.char_height + 2
 
         self._flip(force=True)
@@ -649,29 +716,30 @@ class Terminal:
             return
         colors = self._bbs_colors()
         self._bbs_clear_content()
+        lx = self._bbs_x + 8
+        max_chars = self._bbs_cols - 2
 
-        y = 160
+        y = self._bbs_content_y + 4
         title = f"--- {board.upper()} ---"
         surf = self.font.render(title, True, colors["accent"])
-        self.screen.blit(surf, (16, y))
-        y += self.char_height + 8
+        self.screen.blit(surf, (lx, y))
+        y += self.char_height + 6
 
         for p in posts:
-            if y > 400:
+            if y > self._bbs_max_y - self.char_height * 2:
                 break
             author = p.get("author", "?")
-            content = p.get("content", "")[:80]
-            # Author line
+            content = p.get("content", "")[:max_chars * 2]
             author_surf = self.font.render(f"{author}:", True, colors["accent"])
-            self.screen.blit(author_surf, (16, y))
+            self.screen.blit(author_surf, (lx, y))
             y += self.char_height
-            # Content line(s)
-            for i in range(0, len(content), 70):
-                chunk = content[i:i+70]
+            for i in range(0, len(content), max_chars):
+                if y > self._bbs_max_y - self.char_height:
+                    break
+                chunk = content[i:i + max_chars]
                 txt_surf = self.font.render(chunk, True, colors["text"])
-                self.screen.blit(txt_surf, (24, y))
+                self.screen.blit(txt_surf, (lx + 8, y))
                 y += self.char_height
-            # Separator
             y += 4
 
         self._flip(force=True)
@@ -682,20 +750,21 @@ class Terminal:
             return
         colors = self._bbs_colors()
         self._bbs_clear_content()
+        lx = self._bbs_x + 8
 
-        y = 160
+        y = self._bbs_content_y + 4
         title_surf = self.font.render("--- CODE SHARE ---", True, colors["accent"])
-        self.screen.blit(title_surf, (16, y))
-        y += self.char_height + 8
+        self.screen.blit(title_surf, (lx, y))
+        y += self.char_height + 6
 
         for i, t in enumerate(threads):
-            if y > 400:
+            if y > self._bbs_max_y - self.char_height:
                 break
             title = t.get("title", "untitled")[:40]
             author = t.get("author", "?")
             line = f"  {i+1:2d}. {title}  ({author})"
             surf = self.font.render(line, True, colors["text"])
-            self.screen.blit(surf, (16, y))
+            self.screen.blit(surf, (lx, y))
             y += self.char_height + 2
 
         self._flip(force=True)
@@ -706,57 +775,49 @@ class Terminal:
             return
         colors = self._bbs_colors()
         self._bbs_clear_content()
+        lx = self._bbs_x + 8
+        max_chars = self._bbs_cols - 2
 
-        y = 160
+        y = self._bbs_content_y + 4
         post = detail.get("post", {})
         title = post.get("title", "untitled")
         author = post.get("author", "?")
 
-        # Title
         surf = self.font.render(f"[{title}] by {author}", True, colors["accent"])
-        self.screen.blit(surf, (16, y))
+        self.screen.blit(surf, (lx, y))
         y += self.char_height + 4
 
-        # Code content (truncated to fit)
         content = post.get("content", "")
-        for line in content.split("\n")[:12]:
-            if y > 350:
+        for line in content.split("\n"):
+            if y > self._bbs_max_y - self.char_height * 4:
                 break
-            surf = self.font.render(line[:70], True, colors["text"])
-            self.screen.blit(surf, (16, y))
+            surf = self.font.render(line[:max_chars], True, colors["text"])
+            self.screen.blit(surf, (lx, y))
             y += self.char_height
 
-        # Separator
         y += 4
-        pygame.draw.line(self.screen, colors["border"], (16, y), (self.width - 16, y))
-        y += 8
+        pygame.draw.line(self.screen, colors["border"],
+                         (lx, y), (self._bbs_x + self._BBS_DRAW_W - 8, y))
+        y += 6
 
-        # Replies
         for r in detail.get("replies", [])[:5]:
-            if y > 430:
+            if y > self._bbs_max_y - self.char_height:
                 break
             rauthor = r.get("author", "?")
-            rcontent = r.get("content", "")[:60]
+            rcontent = r.get("content", "")[:max_chars - 10]
             surf = self.font.render(f"{rauthor}: {rcontent}", True, colors["dim"])
-            self.screen.blit(surf, (24, y))
+            self.screen.blit(surf, (lx + 8, y))
             y += self.char_height + 2
 
         self._flip(force=True)
 
-    # Compose area: bottom third of content area (y: 300-440, ~8 lines)
-    _BBS_COMPOSE_Y = 300
-    _BBS_COMPOSE_H = 140
-    _BBS_COMPOSE_COLS = 75  # chars per line
-
     def render_bbs_compose(self, context):
-        """Show the multi-line compose area in the bottom third."""
+        """Show the multi-line compose area in the bottom of the terminal."""
         if self.mock_mode:
             return
         self._bbs_compose_label = context
         self._bbs_compose_text = ""
         colors = self._bbs_colors()
-
-        # Clear compose area and draw header
         self._bbs_redraw_compose(colors, header_only=True)
         self._flip(force=True)
 
@@ -769,36 +830,36 @@ class Terminal:
         self._dirty = True
 
     def _bbs_redraw_compose(self, colors, header_only=False):
-        """Redraw the compose box with current text."""
-        y_start = self._BBS_COMPOSE_Y
-        rect = pygame.Rect(0, y_start, self.width, self._BBS_COMPOSE_H)
+        """Redraw the compose box at the bottom of the terminal draw area."""
+        compose_h = self.char_height * 6 + 28
+        y_start = self._bbs_max_y - compose_h
+        lx = self._bbs_x + 8
+        compose_w = self._BBS_DRAW_W
+        max_chars = self._bbs_cols - 2
+
+        rect = pygame.Rect(self._bbs_x, y_start, compose_w, compose_h)
         pygame.draw.rect(self.screen, colors["bg"], rect)
 
-        # Top border
         pygame.draw.line(self.screen, colors["border"],
-                         (16, y_start), (self.width - 16, y_start))
+                         (lx, y_start), (self._bbs_x + compose_w - 8, y_start))
 
-        # Label
         label = f" composing ({self._bbs_compose_label}) "
         label_surf = self.font.render(label, True, colors["accent"])
-        self.screen.blit(label_surf, (16, y_start + 4))
+        self.screen.blit(label_surf, (lx, y_start + 4))
 
         if header_only:
             return
 
-        # Wrap text into lines
         text = self._bbs_compose_text
-        cols = self._BBS_COMPOSE_COLS
         lines = []
-        for i in range(0, len(text) + 1, cols):
-            lines.append(text[i:i + cols])
+        for i in range(0, len(text) + 1, max_chars):
+            lines.append(text[i:i + max_chars])
 
-        # Show last N lines that fit
-        max_lines = (self._BBS_COMPOSE_H - 28) // self.char_height
+        max_lines = 5
         visible_lines = lines[-max_lines:]
 
         y = y_start + 24
         for line in visible_lines:
             surf = self.font.render(line, True, colors["text"])
-            self.screen.blit(surf, (20, y))
+            self.screen.blit(surf, (lx + 4, y))
             y += self.char_height
