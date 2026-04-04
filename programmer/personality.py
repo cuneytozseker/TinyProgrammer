@@ -60,9 +60,16 @@ class Personality:
         self.typo_probability = typo_probability
         self.pause_probability = pause_probability
         
-        self.mood = Mood.HOPEFUL
         self.consecutive_failures = 0
         self.consecutive_successes = 0
+
+        # Set initial mood based on time of day
+        import datetime
+        hour = datetime.datetime.now().hour
+        if hour >= 23 or hour < 5:
+            self.mood = Mood.TIRED
+        else:
+            self.mood = Mood.HOPEFUL
     
     def update_mood(self, success: bool):
         """

@@ -743,38 +743,62 @@ class Terminal:
 
         self._flip(force=True)
 
+    # Compose area: bottom third of content area (y: 300-440, ~8 lines)
+    _BBS_COMPOSE_Y = 300
+    _BBS_COMPOSE_H = 140
+    _BBS_COMPOSE_COLS = 75  # chars per line
+
     def render_bbs_compose(self, context):
-        """Show the compose area at the bottom of the BBS screen."""
+        """Show the multi-line compose area in the bottom third."""
         if self.mock_mode:
             return
         self._bbs_compose_label = context
         self._bbs_compose_text = ""
         colors = self._bbs_colors()
 
-        # Clear compose area
-        rect = pygame.Rect(0, 415, self.width, 25)
-        pygame.draw.rect(self.screen, colors["bg"], rect)
-
-        label = f"composing ({context}) > "
-        surf = self.font.render(label, True, colors["dim"])
-        self.screen.blit(surf, (16, 418))
+        # Clear compose area and draw header
+        self._bbs_redraw_compose(colors, header_only=True)
         self._flip(force=True)
 
     def type_bbs_char(self, char):
-        """Type a character in the BBS compose area."""
+        """Type a character in the multi-line BBS compose area."""
         if self.mock_mode:
             return
         self._bbs_compose_text += char
-        colors = self._bbs_colors()
+        self._bbs_redraw_compose(self._bbs_colors())
+        self._dirty = True
 
-        # Redraw compose area
-        rect = pygame.Rect(0, 415, self.width, 25)
+    def _bbs_redraw_compose(self, colors, header_only=False):
+        """Redraw the compose box with current text."""
+        y_start = self._BBS_COMPOSE_Y
+        rect = pygame.Rect(0, y_start, self.width, self._BBS_COMPOSE_H)
         pygame.draw.rect(self.screen, colors["bg"], rect)
 
-        label = f"composing ({self._bbs_compose_label}) > "
-        # Show last ~50 chars of compose text
-        visible = self._bbs_compose_text[-50:]
-        full = label + visible
-        surf = self.font.render(full, True, colors["text"])
-        self.screen.blit(surf, (16, 418))
-        self._dirty = True
+        # Top border
+        pygame.draw.line(self.screen, colors["border"],
+                         (16, y_start), (self.width - 16, y_start))
+
+        # Label
+        label = f" composing ({self._bbs_compose_label}) "
+        label_surf = self.font.render(label, True, colors["accent"])
+        self.screen.blit(label_surf, (16, y_start + 4))
+
+        if header_only:
+            return
+
+        # Wrap text into lines
+        text = self._bbs_compose_text
+        cols = self._BBS_COMPOSE_COLS
+        lines = []
+        for i in range(0, len(text) + 1, cols):
+            lines.append(text[i:i + cols])
+
+        # Show last N lines that fit
+        max_lines = (self._BBS_COMPOSE_H - 28) // self.char_height
+        visible_lines = lines[-max_lines:]
+
+        y = y_start + 24
+        for line in visible_lines:
+            surf = self.font.render(line, True, colors["text"])
+            self.screen.blit(surf, (20, y))
+            y += self.char_height
