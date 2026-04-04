@@ -21,6 +21,9 @@ class ConfigManager:
 
     def __init__(self):
         self._overrides = self._load_overrides()
+        # Apply overrides to live config immediately on startup
+        if self._overrides:
+            self._apply_to_config(self._overrides)
 
     def _load_overrides(self) -> Dict[str, Any]:
         """Load overrides from JSON file."""

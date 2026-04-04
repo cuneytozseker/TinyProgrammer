@@ -60,7 +60,11 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     
     print("[Tiny Programmer] Booting up...")
-    
+
+    # Apply config overrides before initializing anything
+    from web.config_manager import ConfigManager
+    ConfigManager()
+
     # Initialize components
     terminal = Terminal(
         width=config.DISPLAY_WIDTH,
