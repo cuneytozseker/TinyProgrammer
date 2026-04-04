@@ -207,3 +207,11 @@ BBS_BREAK_DURATION_MIN = 120        # seconds
 BBS_BREAK_DURATION_MAX = 300        # seconds
 BBS_DISPLAY_COLOR = "green"         # "green", "amber", "white"
 BBS_DEVICE_NAME = "TinyProgrammer"  # preferred name for registration
+
+# =============================================================================
+# SCHEDULE (Clock In / Clock Out)
+# =============================================================================
+
+SCHEDULE_ENABLED = False
+SCHEDULE_CLOCK_IN = 9               # hour (0-23) — device starts coding
+SCHEDULE_CLOCK_OUT = 23             # hour (0-23) — device stops, shows screensaver

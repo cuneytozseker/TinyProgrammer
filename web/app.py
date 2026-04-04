@@ -108,6 +108,19 @@ def create_app():
             color_scheme = request.form.get('color_scheme', 'none')
             updates['COLOR_SCHEME'] = color_scheme
 
+            # BBS settings
+            updates['BBS_ENABLED'] = 'bbs_enabled' in request.form
+            updates['BBS_BREAK_CHANCE'] = float(request.form.get('bbs_break_chance', 0.3))
+            updates['BBS_BREAK_DURATION_MIN'] = int(request.form.get('bbs_break_duration_min', 120))
+            updates['BBS_BREAK_DURATION_MAX'] = int(request.form.get('bbs_break_duration_max', 300))
+            updates['BBS_DISPLAY_COLOR'] = request.form.get('bbs_display_color', 'green')
+            updates['BBS_DEVICE_NAME'] = request.form.get('bbs_device_name', 'TinyProgrammer')
+
+            # Schedule settings
+            updates['SCHEDULE_ENABLED'] = 'schedule_enabled' in request.form
+            updates['SCHEDULE_CLOCK_IN'] = int(request.form.get('schedule_clock_in', 9))
+            updates['SCHEDULE_CLOCK_OUT'] = int(request.form.get('schedule_clock_out', 23))
+
             # Apply color scheme immediately to framebuffer
             try:
                 from display.framebuffer import set_color_scheme

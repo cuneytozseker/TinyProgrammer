@@ -159,6 +159,86 @@
         </div>
     </section>
 
+    <section class="settings-section">
+        <h2>BBS (TinyBBS)</h2>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="bbs_enabled"
+                       {% if config.BBS_ENABLED %}checked{% endif %}>
+                Enable BBS breaks
+            </label>
+            <p class="hint">Device visits the bulletin board between coding sessions</p>
+        </div>
+
+        <div class="form-group">
+            <label for="bbs_break_chance">Break Chance (0.0 - 1.0)</label>
+            <input type="number" name="bbs_break_chance" id="bbs_break_chance"
+                   value="{{ config.BBS_BREAK_CHANCE or 0.3 }}"
+                   min="0" max="1" step="0.05">
+            <p class="hint">Probability of taking a BBS break after each reflect cycle</p>
+        </div>
+
+        <div class="form-group">
+            <label for="bbs_break_duration_min">Break Duration Min (seconds)</label>
+            <input type="number" name="bbs_break_duration_min" id="bbs_break_duration_min"
+                   value="{{ config.BBS_BREAK_DURATION_MIN or 120 }}"
+                   min="30" max="600">
+        </div>
+
+        <div class="form-group">
+            <label for="bbs_break_duration_max">Break Duration Max (seconds)</label>
+            <input type="number" name="bbs_break_duration_max" id="bbs_break_duration_max"
+                   value="{{ config.BBS_BREAK_DURATION_MAX or 300 }}"
+                   min="30" max="600">
+        </div>
+
+        <div class="form-group">
+            <label for="bbs_display_color">BBS Display Color</label>
+            <select name="bbs_display_color" id="bbs_display_color">
+                {% set bbs_color_names = {'green': 'Green Terminal', 'amber': 'Amber Terminal', 'white': 'White Terminal'} %}
+                {% for color, label in bbs_color_names.items() %}
+                <option value="{{ color }}" {% if config.BBS_DISPLAY_COLOR == color %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="bbs_device_name">Device Name</label>
+            <input type="text" name="bbs_device_name" id="bbs_device_name"
+                   value="{{ config.BBS_DEVICE_NAME or 'TinyProgrammer' }}"
+                   maxlength="32">
+            <p class="hint">Display name on the BBS (may be adjusted by server if duplicate)</p>
+        </div>
+    </section>
+
+    <section class="settings-section">
+        <h2>Schedule (Clock In / Clock Out)</h2>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="schedule_enabled"
+                       {% if config.SCHEDULE_ENABLED %}checked{% endif %}>
+                Enable work schedule
+            </label>
+            <p class="hint">Device only codes during work hours. Outside hours it shows a screensaver.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="schedule_clock_in">Clock In (hour, 0-23)</label>
+            <input type="number" name="schedule_clock_in" id="schedule_clock_in"
+                   value="{{ config.SCHEDULE_CLOCK_IN or 9 }}"
+                   min="0" max="23">
+        </div>
+
+        <div class="form-group">
+            <label for="schedule_clock_out">Clock Out (hour, 0-23)</label>
+            <input type="number" name="schedule_clock_out" id="schedule_clock_out"
+                   value="{{ config.SCHEDULE_CLOCK_OUT or 23 }}"
+                   min="0" max="23">
+        </div>
+    </section>
+
     <div class="form-actions">
         <button type="submit" class="btn-primary">Save Settings</button>
         <a href="{{ url_for('settings') }}" class="btn-secondary">Reset Form</a>

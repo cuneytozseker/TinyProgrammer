@@ -85,6 +85,7 @@ class Brain:
         self.programs_written = 0
         self.fix_attempts = 0
         self._restart_requested = False
+        self._bbs_breaks_taken = 0
 
     def request_restart(self):
         """Request a restart - skip to next program cycle."""
@@ -94,7 +95,10 @@ class Brain:
     def get_status(self) -> dict:
         """Get current status for web UI."""
         stats = self.archive.get_stats()
-        return {
+        import datetime
+        hour = datetime.datetime.now().hour
+
+        status = {
             "state": self.state.name,
             "mood": self.personality.get_mood_status(),
             "programs_written": self.programs_written,
@@ -103,7 +107,29 @@ class Brain:
             "total_archived": stats.get("total_programs", 0),
             "success_rate": round(stats.get("successful", 0) / stats.get("total_programs", 1) * 100) if stats.get("total_programs", 0) > 0 else 0,
             "by_type": stats.get("by_type", {}),
+            # BBS
+            "bbs_enabled": config.BBS_ENABLED and self.bbs_client is not None,
+            "bbs_device_name": self.bbs_client.device_name if self.bbs_client else None,
+            "bbs_breaks_taken": getattr(self, "_bbs_breaks_taken", 0),
+            "bbs_break_chance": config.BBS_BREAK_CHANCE,
+            # Schedule
+            "schedule_enabled": getattr(config, "SCHEDULE_ENABLED", False),
+            "schedule_clock_in": getattr(config, "SCHEDULE_CLOCK_IN", 9),
+            "schedule_clock_out": getattr(config, "SCHEDULE_CLOCK_OUT", 23),
+            "is_clocked_in": self._is_clocked_in(hour),
         }
+        return status
+
+    def _is_clocked_in(self, hour: int) -> bool:
+        """Check if device is within work hours."""
+        if not getattr(config, "SCHEDULE_ENABLED", False):
+            return True
+        clock_in = getattr(config, "SCHEDULE_CLOCK_IN", 9)
+        clock_out = getattr(config, "SCHEDULE_CLOCK_OUT", 23)
+        if clock_in <= clock_out:
+            return clock_in <= hour < clock_out
+        else:
+            return hour >= clock_in or hour < clock_out
 
     def run(self):
         """
@@ -623,6 +649,7 @@ class Brain:
 
     def _do_bbs_break(self):
         """BBS break: device visits the bulletin board."""
+        self._bbs_breaks_taken += 1
         try:
             self.terminal.enter_bbs_mode()
             self.terminal.set_status("BBS BREAK", self.personality.get_mood_status())
