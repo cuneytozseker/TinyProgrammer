@@ -3,11 +3,32 @@ import os
 # Tiny Programmer Configuration
 
 # =============================================================================
-# DISPLAY (Waveshare 4inch HDMI LCD - 800x480)
+# DISPLAY — auto-scaled from 480x320 reference layout
 # =============================================================================
+# Set DISPLAY_PROFILE in .env or config_overrides.json:
+#   "pi4-hdmi"   → 800x480, 16pt font, 60fps (default)
+#   "pizero-spi" → 480x320, 12pt font, 30fps
 
-DISPLAY_WIDTH = 800
-DISPLAY_HEIGHT = 480
+DISPLAY_PROFILE = os.environ.get("DISPLAY_PROFILE", "pi4-hdmi")
+
+if DISPLAY_PROFILE == "pizero-spi":
+    DISPLAY_WIDTH = 480
+    DISPLAY_HEIGHT = 320
+    FONT_SIZE = 12
+    CHAR_WIDTH = 8
+    CHAR_HEIGHT = 16
+    TARGET_FPS = 30
+else:  # pi4-hdmi (default)
+    DISPLAY_WIDTH = 800
+    DISPLAY_HEIGHT = 480
+    FONT_SIZE = 16
+    CHAR_WIDTH = 10
+    CHAR_HEIGHT = 20
+    TARGET_FPS = 60
+
+# Scale factors from the 480x320 reference design
+_SX = DISPLAY_WIDTH / 480.0
+_SY = DISPLAY_HEIGHT / 320.0
 
 # Colors (retro Mac OS IDE aesthetic)
 COLOR_BG = (255, 255, 255)      # White background
@@ -21,55 +42,41 @@ COLOR_DIM = (128, 128, 128)     # Dimmed text for comments
 
 # Font settings (Space Mono from Google Fonts)
 FONT_NAME = "SpaceMono-Regular"
-FONT_SIZE = 16                  # Larger font for bigger display
-CHAR_WIDTH = 10                 # Will be calculated from font
-CHAR_HEIGHT = 20
 
-# Layout regions (pixel coordinates on 800x480 - scaled from 480x320)
-# Scale factors: 800/480 = 1.667 horizontal, 480/320 = 1.5 vertical
 # Global offset to align with background
-LAYOUT_OFFSET_X = 4             # Shift everything right
-LAYOUT_OFFSET_Y = 2             # Shift everything down
+LAYOUT_OFFSET_X = int(2 * _SX + 0.5)
+LAYOUT_OFFSET_Y = int(1 * _SY + 0.5)
 
-# Original 480x320 values scaled up:
-# Sidebar: file list (orig: x=5, y=63, w=90, h=210)
-SIDEBAR_X = 8 + LAYOUT_OFFSET_X                   # 5 * 1.667
-SIDEBAR_Y = 95 + LAYOUT_OFFSET_Y                  # 63 * 1.5
-SIDEBAR_W = 150                 # 90 * 1.667
-SIDEBAR_H = 315                 # 210 * 1.5
+# Layout regions — computed from 480x320 reference coordinates
+SIDEBAR_X = int(5 * _SX) + LAYOUT_OFFSET_X
+SIDEBAR_Y = int(63 * _SY) + LAYOUT_OFFSET_Y
+SIDEBAR_W = int(90 * _SX)
+SIDEBAR_H = int(210 * _SY)
 
-# Code area: where code is rendered (orig: x=130, y=63, w=320, h=210)
-CODE_AREA_X = 217 + LAYOUT_OFFSET_X               # 130 * 1.667
-CODE_AREA_Y = 95 + LAYOUT_OFFSET_Y                # 63 * 1.5
-CODE_AREA_W = 533               # 320 * 1.667
-CODE_AREA_H = 315               # 210 * 1.5
+CODE_AREA_X = int(130 * _SX) + LAYOUT_OFFSET_X
+CODE_AREA_Y = int(63 * _SY) + LAYOUT_OFFSET_Y
+CODE_AREA_W = int(320 * _SX)
+CODE_AREA_H = int(210 * _SY)
 
-# Line number column (orig: x=105)
-LINE_NUM_X = 175 + LAYOUT_OFFSET_X                # 105 * 1.667
-LINE_NUM_W = 42
+LINE_NUM_X = int(105 * _SX) + LAYOUT_OFFSET_X
+LINE_NUM_W = int(25 * _SX)
 
-# Status bar (orig: y=289)
-STATUS_BAR_Y = 434 + LAYOUT_OFFSET_Y              # 289 * 1.5
-STATUS_BAR_HEIGHT = 36          # 24 * 1.5
+STATUS_BAR_Y = int(289 * _SY) + LAYOUT_OFFSET_Y
+STATUS_BAR_HEIGHT = int(24 * _SY)
 
 # Display modes
-MODE_TERMINAL = "terminal"  # Code writing mode
-MODE_RUN = "run"            # Program execution mode
+MODE_TERMINAL = "terminal"
+MODE_RUN = "run"
 
-# Canvas popup window (Mac OS floating window for program output)
-# Original 480x320: x=29, y=35, chrome=422x242, draw_area=416x212
-# The canvas.png is 422x242, will be scaled to 703x363
-CANVAS_X = 48 + LAYOUT_OFFSET_X  # 29 * 1.667 (position on screen)
-CANVAS_Y = 53 + LAYOUT_OFFSET_Y  # 35 * 1.5
-CANVAS_W = 703               # 422 * 1.667 (full chrome size after scaling)
-CANVAS_H = 363               # 242 * 1.5
-CANVAS_DRAW_OFFSET_X = 5     # Offset within scaled chrome
-CANVAS_DRAW_OFFSET_Y = 28    # Adjusted to close gap with title bar
-CANVAS_DRAW_W = 693          # Draw area width (416 * 1.667)
-CANVAS_DRAW_H = 318          # Draw area height (212 * 1.5)
-
-# Framerate cap (HDMI can handle higher FPS)
-TARGET_FPS = 60
+# Canvas popup window — scaled from 480x320 reference
+CANVAS_X = int(29 * _SX) + LAYOUT_OFFSET_X
+CANVAS_Y = int(35 * _SY) + LAYOUT_OFFSET_Y
+CANVAS_W = int(422 * _SX)
+CANVAS_H = int(242 * _SY)
+CANVAS_DRAW_OFFSET_X = int(3 * _SX)
+CANVAS_DRAW_OFFSET_Y = int(19 * _SY)
+CANVAS_DRAW_W = int(416 * _SX)
+CANVAS_DRAW_H = int(212 * _SY)
 
 # =============================================================================
 # LLM

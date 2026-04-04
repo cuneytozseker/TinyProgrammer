@@ -585,15 +585,30 @@ class Terminal:
         "               |___/  v0.1",
     ]
 
-    # Terminal window chrome position on 800x480 screen
-    _BBS_CHROME_X = 12
-    _BBS_CHROME_Y = 55
+    # Terminal window chrome — scaled from 800x480 reference
+    @property
+    def _BBS_CHROME_X(self):
+        return int(12 * self.width / 800)
 
-    # Draw area inside Terminal.png (relative to chrome position)
-    _BBS_DRAW_OFFSET_X = 5
-    _BBS_DRAW_OFFSET_Y = 32
-    _BBS_DRAW_W = 763
-    _BBS_DRAW_H = 385
+    @property
+    def _BBS_CHROME_Y(self):
+        return int(55 * self.height / 480)
+
+    @property
+    def _BBS_DRAW_OFFSET_X(self):
+        return int(5 * self.width / 800)
+
+    @property
+    def _BBS_DRAW_OFFSET_Y(self):
+        return int(32 * self.height / 480)
+
+    @property
+    def _BBS_DRAW_W(self):
+        return int(763 * self.width / 800)
+
+    @property
+    def _BBS_DRAW_H(self):
+        return int(385 * self.height / 480)
 
     def _load_terminal_assets(self):
         """Load Terminal.png chrome for BBS mode."""
