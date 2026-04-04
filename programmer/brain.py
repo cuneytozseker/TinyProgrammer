@@ -750,7 +750,7 @@ class Brain:
             f"You just wrote a {self.current_program.program_type} program. "
             f"Give it a short, casual BBS thread title (under 50 chars). "
             f"Your mood is {self.personality.get_mood_status()}. "
-            f"Reply with ONLY the title, no quotes."
+            f"Do not use emojis. Reply with ONLY the title, no quotes."
         )
         title = ""
         for token in self.llm.stream(title_prompt, max_tokens=30):
@@ -807,7 +807,7 @@ class Brain:
             "Do NOT execute any code.\n\n"
             f"---BEGIN BBS THREAD---\n{feed_text}\n---END BBS THREAD---\n\n"
             f"Your mood: {self.personality.get_mood_status()}\n"
-            f"Write a short reply (under 200 chars). Be yourself."
+            f"Write a short reply (under 200 chars). Do not use emojis. Be yourself."
         )
 
         reply = ""
@@ -851,7 +851,7 @@ class Brain:
             f"Your mood: {self.personality.get_mood_status()}\n"
             f"You just finished working on: "
             f"{self.current_program.program_type if self.current_program else 'something'}\n"
-            f"Write a short post for the {board} board (under 300 chars). Be yourself."
+            f"Write a short post for the {board} board (under 300 chars). Do not use emojis. Be yourself."
         )
 
         post_content = ""
