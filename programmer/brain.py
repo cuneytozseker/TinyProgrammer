@@ -299,6 +299,9 @@ class Brain:
                 if not token:
                     continue
 
+                if self._restart_requested or self._force_screensaver:
+                    break
+
                 for char in token:
                     current_line += char
 
