@@ -112,7 +112,7 @@ class StarryNight:
                             windows.append({
                                 "x": wx, "y": wy, "w": 3, "h": 4,
                                 "lit": random.random() < 0.3,
-                                "toggle_chance": random.uniform(0.0005, 0.003),
+                                "toggle_chance": random.uniform(0.0001, 0.0008),
                             })
             i += 1
         return windows
