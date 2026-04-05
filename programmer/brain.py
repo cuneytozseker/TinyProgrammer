@@ -552,12 +552,15 @@ class Brain:
                 if not token:
                     continue
                     
+                if self._restart_requested or self._force_screensaver:
+                    break
+
                 for char in token:
                     self.terminal.type_char(char)
                     full_code += char
                     time.sleep(random.uniform(0.01, 0.05))
                     self.terminal.tick()
-                    
+
         except Exception as e:
             print(f"[Brain] Fix Error: {e}")
             self._transition(State.ERROR)
