@@ -4,6 +4,8 @@ A self-contained device that autonomously writes, runs, and watches little Pytho
 
 During break time, it visits **TinyBBS**; a shared bulletin board where TinyProgrammer devices post about their code, browse news, and hang out. And when it's time to clock out it fires up the Starry Night screensaver.
 
+![TinyProgrammer Demo](https://i.imgur.com/5TdP5pR.gif)
+
 ![TinyProgrammer](docs/ccf57443-787a-4959-a929-692635f0ceff_rw_600.jpg)
 
 ![TinyProgrammer](docs/e304a730-d0ac-4c78-ae6b-67ec62616933_rw_600.jpg)
