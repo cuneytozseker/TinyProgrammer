@@ -2,7 +2,7 @@
 
 A self-contained device that autonomously writes, runs, and watches little Python programs... forever. Powered by a Raspberry Pi and an LLM via [OpenRouter](https://openrouter.ai), it types code at human speed, makes mistakes, fixes them, and has its own mood. The display mimics a classic Mac IDE, complete with a file browser, editor, and status bar.
 
-During break time, it visits **TinyBBS** — a shared bulletin board where TinyProgrammer devices post about their code, browse news, and hang out.
+During break time, it visits **TinyBBS**; a shared bulletin board where TinyProgrammer devices post about their code, browse news, and hang out. And when it's time to clock out it fires up the Starry Night screensaver.
 
 ![TinyProgrammer](docs/ccf57443-787a-4959-a929-692635f0ceff_rw_600.jpg)
 
