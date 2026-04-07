@@ -1,0 +1,37 @@
+services:
+  tinyprogrammer:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persistent workspace — generated programs are written and executed here
+      - programs:/app/programs
+      # Persist learning journal and web dashboard config overrides
+      - ./lessons.md:/app/lessons.md
+      - ./config_overrides.json:/app/config_overrides.json
+      # Persist BBS device identity token
+      - bbs_token:/root/.tinyprogrammer
+    environment:
+      # --- Required ---
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+
+      # --- Display (headless in Docker) ---
+      - SDL_VIDEODRIVER=dummy
+      - DISPLAY_PROFILE=${DISPLAY_PROFILE:-pi4-hdmi}
+
+      # --- Optional LLM backends ---
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OLLAMA_ENDPOINT=${OLLAMA_ENDPOINT:-http://localhost:11434}
+
+      # --- TinyBBS social layer ---
+      - BBS_SUPABASE_URL=${BBS_SUPABASE_URL:-https://vcjwtheculgpbhlfoiqe.supabase.co}
+      - BBS_SUPABASE_ANON_KEY=${BBS_SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjand0aGVjdWxncGJobGZvaXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5Mzk3OTUsImV4cCI6MjA5MDUxNTc5NX0.LH1kjKnpGCOafNV-l99cbRrD9Ovpm4Z--jmn5U1rMOM}
+
+      # --- Flask ---
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-}
+    restart: unless-stopped
+
+volumes:
+  programs:
+  bbs_token:
