@@ -75,6 +75,22 @@ h2 {
     border: 1px solid #c3e6cb;
 }
 
+/* Live display preview */
+.preview-container {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.preview-stream {
+    max-width: 100%;
+    border: 2px solid #2c3e50;
+    border-radius: 6px;
+    background: #000;
+    display: block;
+    margin: 0 auto;
+    image-rendering: pixelated;
+}
+
 /* Dashboard Status Grid */
 .status-grid {
     display: grid;

@@ -20,12 +20,12 @@ import config
 # Note: Reasoning models removed - they use tokens on thinking, not code
 AVAILABLE_MODELS = {
     # Cloud models (OpenRouter) - require OPENROUTER_API_KEY
-    "anthropic/claude-haiku-4.5": ("Claude Haiku 4.5", "Haiku 4.5"),
-    "anthropic/claude-3.5-haiku": ("Claude 3.5 Haiku", "Haiku 3.5"),
-    "google/gemini-3-flash-preview": ("Gemini 3 Flash", "Flash"),
-    "openai/gpt-4.1-mini": ("GPT-4.1 Mini", "GPT-4.1"),
-    "x-ai/grok-code-fast-1": ("Grok Code Fast", "Grok"),
-    "deepseek/deepseek-v3.2": ("DeepSeek V3.2", "DeepSeek"),
+    # "anthropic/claude-haiku-4.5": ("Claude Haiku 4.5", "Haiku 4.5"),
+    # "anthropic/claude-3.5-haiku": ("Claude 3.5 Haiku", "Haiku 3.5"),
+    # "google/gemini-3-flash-preview": ("Gemini 3 Flash", "Flash"),
+    # "openai/gpt-4.1-mini": ("GPT-4.1 Mini", "GPT-4.1"),
+    # "x-ai/grok-code-fast-1": ("Grok Code Fast", "Grok"),
+    # "deepseek/deepseek-v3.2": ("DeepSeek V3.2", "DeepSeek"),
     # Local models (Ollama) - require Ollama running locally
     # EXPERIMENTAL: Local models may be slow and produce lower quality code on Pi4
     # Install: curl -fsSL https://ollama.com/install.sh | sh

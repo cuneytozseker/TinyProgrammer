@@ -2,7 +2,7 @@ services:
   tinyprogrammer:
     build: .
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
       # Persistent workspace — generated programs are written and executed here
       - programs:/app/programs
@@ -17,6 +17,8 @@ services:
 
       # --- Display (headless in Docker) ---
       - SDL_VIDEODRIVER=dummy
+      - SDL_AUDIODRIVER=dummy
+      - XDG_RUNTIME_DIR=/tmp
       - DISPLAY_PROFILE=${DISPLAY_PROFILE:-pi4-hdmi}
 
       # --- Optional LLM backends ---
