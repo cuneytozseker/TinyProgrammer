@@ -40,8 +40,7 @@ def create_app():
     @app.route('/')
     def dashboard():
         """Dashboard - show current status."""
-        import config
-        status = {"stream_enabled": config.WEB_STREAM_ENABLED}
+        status = {}
         if _brain:
             status = _brain.get_status()
         return render_template('dashboard.html', status=status)
