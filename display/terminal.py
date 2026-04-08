@@ -461,12 +461,13 @@ class Terminal:
             self._window.blit(self.screen, (0, 0))
             pygame.display.flip()
 
-        # Push frame to web stream (non-blocking best-effort)
-        try:
-            from .frame_stream import put_frame
-            put_frame(self.screen)
-        except Exception:
-            pass
+        # Push frame to web stream (only when streaming is enabled)
+        if config.WEB_STREAM_ENABLED:
+            try:
+                from .frame_stream import put_frame
+                put_frame(self.screen)
+            except Exception:
+                pass
 
     # =========================================================================
     # Canvas drawing commands (from running programs)

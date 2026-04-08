@@ -40,7 +40,8 @@ def create_app():
     @app.route('/')
     def dashboard():
         """Dashboard - show current status."""
-        status = {}
+        import config
+        status = {"stream_enabled": config.WEB_STREAM_ENABLED}
         if _brain:
             status = _brain.get_status()
         return render_template('dashboard.html', status=status)
@@ -78,7 +79,11 @@ def create_app():
 
     @app.route('/stream')
     def video_stream():
-        """MJPEG stream of the live display surface."""
+        """MJPEG stream of the live display surface (Docker/desktop only)."""
+        import config
+        if not config.WEB_STREAM_ENABLED:
+            return "Stream not enabled. Set WEB_STREAM_ENABLED=true to activate.", 404
+
         from display.frame_stream import get_frame
 
         def generate():
