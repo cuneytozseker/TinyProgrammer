@@ -119,6 +119,7 @@ class Brain:
             "schedule_clock_out": getattr(config, "SCHEDULE_CLOCK_OUT", 23),
             "is_clocked_in": self._is_clocked_in(hour),
             "force_screensaver": self._force_screensaver,
+            "stream_enabled": getattr(config, "WEB_STREAM_ENABLED", False),
         }
         return status
 

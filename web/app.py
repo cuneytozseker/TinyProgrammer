@@ -6,8 +6,9 @@ Runs in a background thread alongside the main programmer loop.
 """
 
 import os
+import time
 import threading
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, Response
 
 from .config_manager import ConfigManager
 
@@ -39,7 +40,8 @@ def create_app():
     @app.route('/')
     def dashboard():
         """Dashboard - show current status."""
-        status = {}
+        import config
+        status = {"stream_enabled": config.WEB_STREAM_ENABLED}
         if _brain:
             status = _brain.get_status()
         return render_template('dashboard.html', status=status)
@@ -74,6 +76,27 @@ def create_app():
             _brain._force_screensaver = False
             return jsonify({"success": True, "screensaver": "off"})
         return jsonify({"error": "Brain not initialized"})
+
+    @app.route('/stream')
+    def video_stream():
+        """MJPEG stream of the live display surface (Docker/desktop only)."""
+        import config
+        if not config.WEB_STREAM_ENABLED:
+            return "Stream not enabled. Set WEB_STREAM_ENABLED=true to activate.", 404
+
+        from display.frame_stream import get_frame
+
+        def generate():
+            while True:
+                frame = get_frame()
+                if frame:
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+                    )
+                time.sleep(0.05)  # ~20fps cap for the stream
+
+        return Response(generate(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
     @app.route('/settings', methods=['GET', 'POST'])
     def settings():

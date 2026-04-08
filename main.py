@@ -47,8 +47,46 @@ from archive.repository import Repository
 def signal_handler(sig, frame):
     """Handle Ctrl+C gracefully."""
     print("\n[Tiny Programmer] Shutting down...")
-    # TODO: Clean up display, save state
     sys.exit(0)
+
+
+def _fatal_config_error(terminal, *lines):
+    """
+    Show a configuration error on the terminal display and web stream,
+    then block forever so the container stays alive for inspection.
+    Starts the web server in degraded mode (no brain) so the MJPEG stream
+    and dashboard are still accessible.
+    """
+    msg = " | ".join(lines)
+    print(f"[ERROR] {msg}")
+
+    # Render the error on the display surface
+    try:
+        terminal.set_status("error", "config error")
+        terminal.clear()
+        terminal.disable_cursor()
+        terminal.type_string("== CONFIGURATION ERROR ==\n\n")
+        for line in lines:
+            terminal.type_string(line + "\n")
+        terminal.type_string("\nRestart the container after fixing your .env file.")
+        terminal._flip(force=True)
+    except Exception:
+        pass
+
+    # Start the web server so the MJPEG stream and dashboard are visible
+    try:
+        from web import start_web_server
+        start_web_server(None, host='0.0.0.0', port=int(os.environ.get('WEB_PORT', 5000)))
+    except Exception:
+        pass
+
+    # Keep the container alive — re-render every few seconds so the stream stays fresh
+    while True:
+        try:
+            terminal._flip(force=True)
+        except Exception:
+            pass
+        time.sleep(5)
 
 
 def main():
@@ -79,8 +117,9 @@ def main():
     # Initialize LLM with OpenRouter
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
     if not api_key:
-        print("[ERROR] OPENROUTER_API_KEY not set. Add it to .env file")
-        sys.exit(1)
+        _fatal_config_error(terminal, "OPENROUTER_API_KEY is not set.",
+                            "Add it to your .env file (or docker-compose.yml env).",
+                            "Get a free key at openrouter.ai")
 
     llm = LLMGenerator(
         api_key=api_key,

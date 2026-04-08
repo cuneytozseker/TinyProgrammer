@@ -5,6 +5,12 @@
 {% block content %}
 <h1>Dashboard</h1>
 
+{% if status.stream_enabled %}
+<div class="preview-container">
+    <img src="/stream" alt="Live display" class="preview-stream">
+</div>
+{% endif %}
+
 <div class="status-grid">
     <div class="status-card">
         <h3>Current State</h3>

@@ -33,7 +33,7 @@ The device has a mood system (hopeful, proud, frustrated, tired, playful...) tha
 
 After work hours, a **Starry Night screensaver** takes over, a city skyline with twinkling stars, inspired by the classic After Dark Mac screensaver.
 
-## Requirements
+## Requirements (Raspberry Pi)
 
 - **Raspberry Pi** (tested on Pi 4B and Pi Zero 2 W)
 - **Display** any framebuffer-compatible screen (HDMI or SPI TFT)
@@ -43,12 +43,12 @@ After work hours, a **Starry Night screensaver** takes over, a city skyline with
 
 ### Python dependencies
 
-| Package | Purpose | Install |
-|---|---|---|
-| `pygame` | Display rendering | `apt install python3-pygame` |
-| `requests` | HTTP client (LLM API, BBS) | `pip3 install requests` |
-| `Pillow` | Image handling | `apt install python3-pil` |
-| `flask` | Web dashboard | `pip3 install flask` |
+| Package         | Purpose                             | Install                      |
+| --------------- | ----------------------------------- | ---------------------------- |
+| `pygame`        | Display rendering                   | `apt install python3-pygame` |
+| `requests`      | HTTP client (LLM API, BBS)          | `pip3 install requests`      |
+| `Pillow`        | Image handling                      | `apt install python3-pil`    |
+| `flask`         | Web dashboard                       | `pip3 install flask`         |
 | `python-dotenv` | Environment file loading (optional) | `pip3 install python-dotenv` |
 
 SDL2 libraries are also needed for pygame:
@@ -61,17 +61,17 @@ sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
 
 TinyProgrammer should run on any Raspberry Pi with a display. Two tested configurations:
 
-| | Pi 4 (HDMI) | Pi Zero 2 W (SPI) |
-|---|---|---|
-| Board | Raspberry Pi 4B | Raspberry Pi Zero 2 W |
-| Display | Waveshare 4" HDMI LCD (800x480) | Waveshare 4" SPI TFT (480x320) |
-| Profile | `pi4-hdmi` | `pizero-spi` |
-| FPS | 60 | 30 |
-| Connection | HDMI, no driver needed | SPI, requires Waveshare LCD driver |
+|            | Pi 4 (HDMI)                     | Pi Zero 2 W (SPI)                  |
+| ---------- | ------------------------------- | ---------------------------------- |
+| Board      | Raspberry Pi 4B                 | Raspberry Pi Zero 2 W              |
+| Display    | Waveshare 4" HDMI LCD (800x480) | Waveshare 4" SPI TFT (480x320)     |
+| Profile    | `pi4-hdmi`                      | `pizero-spi`                       |
+| FPS        | 60                              | 30                                 |
+| Connection | HDMI, no driver needed          | SPI, requires Waveshare LCD driver |
 
 Other displays should work too, set `DISPLAY_WIDTH` and `DISPLAY_HEIGHT` in `config.py` and provide a matching background image (`display/assets/bg-WxH.png`). The layout auto-scales from a 480x320 reference design.
 
-## Installation
+## Installation (Raspberry Pi)
 
 ### 1. Install system dependencies
 
@@ -166,6 +166,105 @@ sudo systemctl restart tinyprogrammer    # restart
 tail -f /var/log/tinyprogrammer.log      # view logs
 ```
 
+## Running on desktop (Docker)
+
+TinyProgrammer runs headlessly inside Docker — no display hardware needed. The IDE renders offscreen, generated programs are written and executed inside an isolated volume, and the web dashboard is how you interact with it.
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Mac, Windows, or Linux)
+- An [OpenRouter API key](https://openrouter.ai)
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/cuneytozseker/TinyProgrammer.git
+cd TinyProgrammer
+```
+
+### 2. Configure `.env`
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and fill in your API key:
+
+```bash
+OPENROUTER_API_KEY=sk-or-v1-...
+```
+
+Everything else has sensible defaults. `DISPLAY_PROFILE` can stay as `pi4-hdmi` — it controls UI layout proportions and still works headlessly.
+
+### 3. Start the container
+
+```bash
+docker compose up --build
+```
+
+On first run this downloads the base image and builds the container — subsequent starts are instant.
+
+### 4. Open the dashboard
+
+Visit **http://localhost:5001** once the container is running. This is your window into what TinyProgrammer is doing: current state, mood, program history, model settings, timing controls, and more.
+
+You'll see log output in the terminal showing each phase (THINK → WRITE → RUN → ARCHIVE → REFLECT).
+
+### 5. Browse generated programs
+
+Generated programs are stored in a Docker named volume (`programs`). To copy them to your local machine:
+
+```bash
+docker compose cp tinyprogrammer:/app/programs ./programs-export
+```
+
+Or to browse them live without copying:
+
+```bash
+docker compose exec tinyprogrammer ls programs/
+```
+
+### Persistent data
+
+| What                       | Where                                  | Survives rebuilds?              |
+| -------------------------- | -------------------------------------- | ------------------------------- |
+| Generated programs         | `programs` named volume                | Yes                             |
+| BBS device identity        | `bbs_token` named volume               | Yes                             |
+| Learning journal           | `./lessons.md` (bind mount)            | Yes — lives in your repo folder |
+| Dashboard config overrides | `./config_overrides.json` (bind mount) | Yes — lives in your repo folder |
+
+Volumes survive `docker compose down`. To wipe everything and start fresh:
+
+```bash
+docker compose down -v
+```
+
+### Stopping and restarting
+
+```bash
+docker compose down        # stop
+docker compose up          # start again (no rebuild needed)
+docker compose up --build  # rebuild image (after code changes)
+```
+
+### Logs
+
+```bash
+docker compose logs -f
+```
+
+### Using a local Ollama model
+
+If you have [Ollama](https://ollama.com) running locally, point TinyProgrammer at it by adding to `.env`:
+
+```bash
+OLLAMA_ENDPOINT=http://host.docker.internal:11434
+```
+
+Then configure the model via the web dashboard.
+
+---
+
 ## Web dashboard
 
 Once running, access the dashboard at `http://<pi-ip>:5000` to:
@@ -182,16 +281,16 @@ Once running, access the dashboard at `http://<pi-ip>:5000` to:
 
 All settings are in `config.py` and can be overridden via the web dashboard (saved to `config_overrides.json`).
 
-| Setting | Default | Description |
-|---|---|---|
-| `DISPLAY_PROFILE` | `pi4-hdmi` | Display target (`pi4-hdmi` or `pizero-spi`) |
-| `BBS_ENABLED` | `True` | Enable BBS social breaks |
-| `BBS_BREAK_CHANCE` | `0.3` | Probability of BBS break after each coding cycle |
-| `BBS_DISPLAY_COLOR` | `green` | BBS terminal color (`green`, `amber`, `white`) |
-| `SCHEDULE_ENABLED` | `False` | Enable work schedule (screensaver after hours) |
-| `SCHEDULE_CLOCK_IN` | `9` | Hour to start coding (0-23) |
-| `SCHEDULE_CLOCK_OUT` | `23` | Hour to stop coding (0-23) |
-| `COLOR_SCHEME` | `none` | Display color overlay (`amber`, `green`, `night`, etc.) |
+| Setting              | Default    | Description                                             |
+| -------------------- | ---------- | ------------------------------------------------------- |
+| `DISPLAY_PROFILE`    | `pi4-hdmi` | Display target (`pi4-hdmi` or `pizero-spi`)             |
+| `BBS_ENABLED`        | `True`     | Enable BBS social breaks                                |
+| `BBS_BREAK_CHANCE`   | `0.3`      | Probability of BBS break after each coding cycle        |
+| `BBS_DISPLAY_COLOR`  | `green`    | BBS terminal color (`green`, `amber`, `white`)          |
+| `SCHEDULE_ENABLED`   | `False`    | Enable work schedule (screensaver after hours)          |
+| `SCHEDULE_CLOCK_IN`  | `9`        | Hour to start coding (0-23)                             |
+| `SCHEDULE_CLOCK_OUT` | `23`       | Hour to stop coding (0-23)                              |
+| `COLOR_SCHEME`       | `none`     | Display color overlay (`amber`, `green`, `night`, etc.) |
 
 ## Project structure
 
