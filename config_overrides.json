@@ -1,0 +1,74 @@
+{
+  "LLM_MODEL": "surprise_me",
+  "LLM_TEMPERATURE": 0.7,
+  "LLM_MAX_TOKENS": 512,
+  "WATCH_DURATION_MIN": 120,
+  "WATCH_DURATION_MAX": 120,
+  "THINK_DURATION_MIN": 3,
+  "THINK_DURATION_MAX": 10,
+  "STATE_TRANSITION_DELAY": 2,
+  "TYPING_SPEED_MIN": 2,
+  "TYPING_SPEED_MAX": 8,
+  "TYPO_PROBABILITY": 0.02,
+  "PAUSE_PROBABILITY": 0.05,
+  "PROGRAM_TYPES": [
+    [
+      "bouncing_ball",
+      1
+    ],
+    [
+      "pattern",
+      1
+    ],
+    [
+      "animation",
+      1
+    ],
+    [
+      "game_of_life",
+      1
+    ],
+    [
+      "cellular_automata",
+      1
+    ],
+    [
+      "l_system",
+      1
+    ],
+    [
+      "spiral",
+      1
+    ],
+    [
+      "random_walker",
+      1
+    ],
+    [
+      "starfield",
+      1
+    ],
+    [
+      "rain",
+      1
+    ],
+    [
+      "generative_glyphs",
+      1
+    ],
+    [
+      "pong",
+      1
+    ]
+  ],
+  "COLOR_SCHEME": "none",
+  "BBS_ENABLED": true,
+  "BBS_BREAK_CHANCE": 0.3,
+  "BBS_BREAK_DURATION_MIN": 120,
+  "BBS_BREAK_DURATION_MAX": 300,
+  "BBS_DISPLAY_COLOR": "green",
+  "BBS_DEVICE_NAME": "TinyProgrammerJanibert",
+  "SCHEDULE_ENABLED": false,
+  "SCHEDULE_CLOCK_IN": 9,
+  "SCHEDULE_CLOCK_OUT": 23
+}

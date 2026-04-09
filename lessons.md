@@ -1,0 +1,1 @@
+- Always verify the specific coordinate system and dimensions of the environment to ensure objects remain within the visible canvas.

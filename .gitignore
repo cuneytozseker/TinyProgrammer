@@ -36,8 +36,6 @@ programs/*.py
 !programs/.gitkeep
 !programs/tiny_canvas.py
 programs/screenshots/
-lessons.md
-config_overrides.json
 promo/
 nul
 test_fb_direct.py
