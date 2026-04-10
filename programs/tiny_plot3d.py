@@ -38,8 +38,9 @@ class Plot3D:
         self.elevation = 30.0  # degrees
         self.center_x = canvas.width / 2
         self.center_y = canvas.height / 2
-        # Leave ~15% margin around the plot
-        self.scale = min(canvas.width, canvas.height) * 0.28
+        # Scale is recalculated each frame based on actual ranges
+        self.scale = min(canvas.width, canvas.height) * 0.3
+        self.z_scale = 1.0  # auto-calculated each frame from actual z range
 
     # =========================================================================
     # Configuration
@@ -68,13 +69,16 @@ class Plot3D:
 
     def project(self, x, y, z):
         """3D -> 2D perspective projection with rotation around Z axis."""
-        # Rotate around Z
+        # Scale z to match xy visual range
+        zs = z * self.z_scale
+
+        # Rotate around Z (only x, y rotate — z stays vertical)
         a = math.radians(self.angle)
         cos_a = math.cos(a)
         sin_a = math.sin(a)
         rx = x * cos_a - y * sin_a
         ry = x * sin_a + y * cos_a
-        rz = z
+        rz = zs
 
         # Tilt: rotate around X axis by elevation
         e = math.radians(self.elevation)
@@ -84,17 +88,89 @@ class Plot3D:
         tz = ry * sin_e + rz * cos_e
 
         # Simple perspective: further points shrink slightly
-        # Camera is at z ~= 8, looking at origin
-        camera_dist = 8.0
+        camera_dist = 15.0
         persp = camera_dist / (camera_dist + tz + 0.001)
 
         sx = self.center_x + rx * self.scale * persp
         sy = self.center_y - ty * self.scale * persp
         return (sx, sy)
 
+    def _auto_scale(self, z_min, z_max):
+        """Auto-calculate xy scale and z_scale so everything fits on canvas.
+
+        xy scale: make the xy box fit within ~75% of canvas (min dimension)
+        z scale: scale z values so their visual range is ~60% of xy span
+        """
+        xy_span = max(
+            self.x_range[1] - self.x_range[0],
+            self.y_range[1] - self.y_range[0],
+        )
+        if xy_span < 0.001:
+            return
+
+        # Target visual z span = 50% of xy span
+        z_span = z_max - z_min
+        sin_e = math.sin(math.radians(self.elevation))
+        if sin_e < 0.01:
+            sin_e = 0.01
+        if z_span < 0.001:
+            self.z_scale = 1.0
+            z_visual = 0
+        else:
+            # z_scale such that z_span * z_scale * sin_e = xy_span * 0.5
+            self.z_scale = (xy_span * 0.5) / (z_span * sin_e)
+            z_visual = xy_span * 0.5  # in world units, for fit calc
+
+        # When rotated 45°, a square's diagonal projects to sqrt(2)/2 * span
+        # on each axis, so total span is sqrt(2) * original span.
+        # Worst case horizontal: xy_span * sqrt(2)/2 * 2 = xy_span * 1.414
+        cos_e = math.cos(math.radians(self.elevation))
+        # Horizontal worst case: diagonal of xy square
+        total_horiz = xy_span * 1.414
+        # Vertical worst case: diagonal of xy square * cos_e + z range
+        total_vert = xy_span * 1.414 * cos_e + z_visual
+
+        # Fit with margin
+        scale_horiz = (self.c.width * 0.85) / total_horiz
+        scale_vert = (self.c.height * 0.85) / total_vert
+        self.scale = min(scale_horiz, scale_vert)
+
     # =========================================================================
     # Drawing
     # =========================================================================
+
+    def _draw_bbox(self, z_min, z_max):
+        """Draw a 3D bounding box around the data region."""
+        colors = self.STYLES[self.style]
+        c_box = colors["axis"]
+        x0, x1 = self.x_range
+        y0, y1 = self.y_range
+        z0 = z_min
+        z1 = z_max
+
+        # 8 corners of the box
+        corners = {}
+        for name, (x, y, z) in {
+            "000": (x0, y0, z0), "100": (x1, y0, z0),
+            "010": (x0, y1, z0), "110": (x1, y1, z0),
+            "001": (x0, y0, z1), "101": (x1, y0, z1),
+            "011": (x0, y1, z1), "111": (x1, y1, z1),
+        }.items():
+            corners[name] = self.project(x, y, z)
+
+        # 12 edges
+        edges = [
+            # Bottom face
+            ("000", "100"), ("100", "110"), ("110", "010"), ("010", "000"),
+            # Top face
+            ("001", "101"), ("101", "111"), ("111", "011"), ("011", "001"),
+            # Vertical edges
+            ("000", "001"), ("100", "101"), ("110", "111"), ("010", "011"),
+        ]
+        for a, b in edges:
+            p1 = corners[a]
+            p2 = corners[b]
+            self.c.line(p1[0], p1[1], p2[0], p2[1], *c_box)
 
     def _draw_axes(self, z_min, z_max):
         """Draw X, Y, Z axes through origin with tick marks."""
@@ -102,11 +178,9 @@ class Plot3D:
         axis_color = colors["axis"]
 
         # Axis extents — match the data range
-        ax_range = (self.x_range[0] * 1.1, self.x_range[1] * 1.1)
-        ay_range = (self.y_range[0] * 1.1, self.y_range[1] * 1.1)
-        # Z axis extends a bit beyond the surface
-        z_ext = max(abs(z_min), abs(z_max), 1.0) * 1.2
-        az_range = (-z_ext, z_ext)
+        ax_range = self.x_range
+        ay_range = self.y_range
+        az_range = (z_min, z_max)
 
         # X axis
         p1 = self.project(ax_range[0], 0, 0)
@@ -123,8 +197,8 @@ class Plot3D:
         p2 = self.project(0, 0, az_range[1])
         self.c.line(p1[0], p1[1], p2[0], p2[1], *axis_color)
 
-        # Tick marks — small perpendicular segments every integer step
-        tick_size = 0.1
+        # Tick marks
+        tick_size = 0.15
         x_step = max(1, int((ax_range[1] - ax_range[0]) / 10))
         for x in range(int(ax_range[0]), int(ax_range[1]) + 1, x_step):
             if x == 0:
@@ -141,10 +215,12 @@ class Plot3D:
             p2 = self.project(tick_size, y, 0)
             self.c.line(p1[0], p1[1], p2[0], p2[1], *axis_color)
 
-        z_step = max(0.5, z_ext / 4)
-        z = -z_ext
-        while z <= z_ext + 0.01:
-            if abs(z) > 0.01:
+        # Z ticks
+        z_span = az_range[1] - az_range[0]
+        z_step = z_span / 4 if z_span > 0 else 0.5
+        z = az_range[0]
+        while z <= az_range[1] + 0.001:
+            if abs(z) > 0.001:
                 p1 = self.project(-tick_size, 0, z)
                 p2 = self.project(tick_size, 0, z)
                 self.c.line(p1[0], p1[1], p2[0], p2[1], *axis_color)
@@ -250,7 +326,14 @@ class Plot3D:
         while True:
             self.c.clear(*colors["bg"])
             z_values, z_min, z_max = self._compute_surface(func)
-            self._draw_axes(z_min, z_max)
+            # Pad z range slightly so the surface doesn't touch the bbox
+            z_pad = max(abs(z_min), abs(z_max), 0.5) * 0.1
+            z_min_p = z_min - z_pad
+            z_max_p = z_max + z_pad
+            self._auto_scale(z_min_p, z_max_p)
+
+            self._draw_bbox(z_min_p, z_max_p)
+            self._draw_axes(z_min_p, z_max_p)
             self._draw_surface(z_values, z_min, z_max)
 
             self.angle += self.rotation_speed
