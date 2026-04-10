@@ -24,7 +24,7 @@ class Plot3D:
     STYLES = {
         "mono_light": {"bg": (255, 255, 255), "fg": (0, 0, 0), "axis": (0, 0, 0)},
         "mono_dark":  {"bg": (0, 0, 0), "fg": (51, 255, 51), "axis": (80, 80, 80)},
-        "height":     {"bg": (0, 0, 0), "fg": None, "axis": (80, 80, 80)},
+        "height":     {"bg": (0, 0, 0), "fg": None, "axis": (80, 120, 80)},
     }
 
     def __init__(self, canvas):
@@ -32,7 +32,7 @@ class Plot3D:
         self.x_range = (-5.0, 5.0)
         self.y_range = (-5.0, 5.0)
         self.steps = 15
-        self.style = "mono_light"
+        self.style = "height"
         self.line_color = None  # override for fg; None uses style default
         self.rotation_speed = 1.5  # degrees per frame
         self.angle = 45.0
@@ -249,22 +249,26 @@ class Plot3D:
             z += z_step
 
     def _height_color(self, z, z_min, z_max):
-        """Map z to a color gradient (cool blue -> warm yellow)."""
+        """Map z to a green hue gradient (dark green -> bright green -> cyan-green)."""
         if z_max - z_min < 0.001:
             t = 0.5
         else:
             t = (z - z_min) / (z_max - z_min)
         t = max(0.0, min(1.0, t))
-        # Blue (low) -> cyan -> green -> yellow (high)
-        if t < 0.33:
-            k = t / 0.33
-            return (int(50 + k * 0), int(100 + k * 155), int(200 + k * 55))
-        elif t < 0.66:
-            k = (t - 0.33) / 0.33
-            return (int(50 + k * 150), 255, int(255 - k * 205))
+        # Low z: dark muted green (30, 100, 40)
+        # Mid z: bright phosphor green (51, 255, 51)
+        # High z: cyan-tinted green (120, 255, 180)
+        if t < 0.5:
+            k = t / 0.5
+            r = int(30 + k * 21)
+            g = int(100 + k * 155)
+            b = int(40 + k * 11)
         else:
-            k = (t - 0.66) / 0.34
-            return (int(200 + k * 55), int(255 - k * 50), int(50))
+            k = (t - 0.5) / 0.5
+            r = int(51 + k * 69)
+            g = 255
+            b = int(51 + k * 129)
+        return (r, g, b)
 
     def _compute_surface(self, func):
         """Evaluate func(x, y) over the grid. Returns (z_values, z_min, z_max)."""
