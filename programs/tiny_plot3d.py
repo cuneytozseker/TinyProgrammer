@@ -22,7 +22,7 @@ import math
 class Plot3D:
 
     STYLES = {
-        "mono_light": {"bg": (255, 255, 255), "fg": (0, 0, 0), "axis": (128, 128, 128)},
+        "mono_light": {"bg": (255, 255, 255), "fg": (0, 0, 0), "axis": (0, 0, 0)},
         "mono_dark":  {"bg": (0, 0, 0), "fg": (51, 255, 51), "axis": (80, 80, 80)},
         "height":     {"bg": (0, 0, 0), "fg": None, "axis": (80, 80, 80)},
     }
@@ -32,10 +32,10 @@ class Plot3D:
         self.x_range = (-5.0, 5.0)
         self.y_range = (-5.0, 5.0)
         self.steps = 15
-        self.style = "mono_dark"
+        self.style = "mono_light"
         self.rotation_speed = 1.5  # degrees per frame
         self.angle = 45.0
-        self.elevation = 30.0  # 0=side, 90=top-down
+        self.elevation = 15.0  # 0=side, 90=top-down
         self.center_x = canvas.width / 2
         self.center_y = canvas.height / 2
         # Scale is recalculated each frame based on actual ranges
