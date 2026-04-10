@@ -35,7 +35,7 @@ class Plot3D:
         self.style = "mono_dark"
         self.rotation_speed = 1.5  # degrees per frame
         self.angle = 45.0
-        self.elevation = 15.0  # degrees
+        self.elevation = -30.0  # degrees
         self.center_x = canvas.width / 2
         self.center_y = canvas.height / 2
         # Scale is recalculated each frame based on actual ranges
@@ -112,20 +112,19 @@ class Plot3D:
         z_span = z_max - z_min
         sin_e = math.sin(math.radians(self.elevation))
         cos_e = math.cos(math.radians(self.elevation))
-        if sin_e < 0.01:
-            sin_e = 0.01
+        abs_sin_e = max(abs(sin_e), 0.01)
         if z_span < 0.001:
             self.z_scale = 1.0
             z_span_scaled = 0
         else:
-            # z_scale such that z_span * z_scale * sin_e = xy_span * 0.45
-            self.z_scale = (xy_span * 0.45) / (z_span * sin_e)
+            # z_scale such that z_span * z_scale * |sin_e| = xy_span * 0.45
+            self.z_scale = (xy_span * 0.45) / (z_span * abs_sin_e)
             z_span_scaled = z_span * self.z_scale
 
         # Worst case extent is at angle=45 where xy rotates to diagonal
         # (sqrt(2) * span). Size for this to avoid clipping during rotation.
         total_horiz = xy_span * 1.414
-        total_vert = xy_span * 1.414 * cos_e + z_span_scaled * sin_e
+        total_vert = xy_span * 1.414 * abs(cos_e) + z_span_scaled * abs_sin_e
 
         scale_horiz = (self.c.width * 0.92) / total_horiz
         scale_vert = (self.c.height * 0.88) / total_vert
