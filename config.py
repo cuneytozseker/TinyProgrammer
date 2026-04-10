@@ -180,6 +180,7 @@ PROGRAM_TYPES = [
     ("rain", 1),
     ("generative_glyphs", 1),
     ("pong", 1),
+    ("wireframe_plot", 1),
 ]
 
 # Maximum lines of code to generate

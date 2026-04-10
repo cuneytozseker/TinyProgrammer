@@ -251,14 +251,21 @@ class LLMGenerator:
             print(f"[LLM] Error streaming from Ollama: {e}")
             raise
 
-    def get_header(self) -> str:
-        """Get the standard imports header."""
-        return "import time\nimport random\nimport math\nfrom tiny_canvas import Canvas\n\nc = Canvas()\n"
+    def get_header(self, program_type: str = "") -> str:
+        """Get the standard imports header. Extended for wireframe_plot."""
+        base = "import time\nimport random\nimport math\nfrom tiny_canvas import Canvas\n\nc = Canvas()\n"
+        if program_type == "wireframe_plot":
+            base += "from tiny_plot3d import Plot3D\n\np = Plot3D(c)\n"
+        return base
 
     def build_prompt(self, program_type: str, mood: str, lessons: str = "") -> str:
         """
         Build a prompt for generating a specific type of program.
         """
+        # Special case: wireframe_plot uses the Plot3D helper
+        if program_type == "wireframe_plot":
+            return self._build_wireframe_prompt(lessons)
+
         description = PROGRAM_DESCRIPTIONS.get(program_type, "does something interesting")
 
         # Add learned lessons if available
@@ -296,6 +303,38 @@ class LLMGenerator:
             "Output ONLY Python code. No markdown, no explanation.\n"
         )
 
+        return prompt
+
+    def _build_wireframe_prompt(self, lessons: str = "") -> str:
+        """Special prompt for wireframe_plot — uses the Plot3D helper."""
+        lessons_text = f"Remember: {lessons}\n\n" if lessons else ""
+
+        prompt = (
+            f"{lessons_text}"
+            "Write a short Python program that plots an animated 3D wireframe surface.\n\n"
+            "The canvas 'c' and Plot3D instance 'p' are ALREADY created. Just configure\n"
+            "p and call p.run(func) at the end.\n\n"
+            "Plot3D API (the only methods you need):\n"
+            "  p.set_range(x=(min,max), y=(min,max))    # default (-5, 5)\n"
+            "  p.set_grid(steps=20)                       # 10-30 recommended\n"
+            "  p.set_rotation_speed(1.5)                  # degrees per frame\n"
+            "  p.run(func)                                # func(x, y) -> z, starts loop\n\n"
+            "Write a surface function that's visually interesting. Not just sin(x+y).\n"
+            "Think: peaks, saddles, ripples, Gaussian bumps, spirals, interference patterns,\n"
+            "concentric waves, tilted planes with noise. Use math.sin, cos, exp, sqrt, etc.\n\n"
+            "RULES:\n"
+            "- NO imports (already done — math, Plot3D, Canvas are ready)\n"
+            "- Keep it under 15 lines\n"
+            "- End with p.run(func) — do NOT add a while loop\n"
+            "- Add a short comment above the function describing the shape\n\n"
+            "Example structure:\n"
+            "  # ripples from the origin\n"
+            "  p.set_range(x=(-4, 4), y=(-4, 4))\n"
+            "  def surface(x, y):\n"
+            "      return math.sin(math.sqrt(x*x + y*y))\n"
+            "  p.run(surface)\n\n"
+            "Output ONLY Python code. No markdown, no explanation.\n"
+        )
         return prompt
 
     def build_reflection_prompt(self, code: str, result: str) -> str:
@@ -347,4 +386,5 @@ PROGRAM_DESCRIPTIONS = {
     "rain": "simulates falling raindrops using lines",
     "generative_glyphs": "generates abstract procedural glyphs or symbols on a grid using basic shapes",
     "pong": "simulates a game of pong with a ball bouncing between two paddles that move on their own",
+    "wireframe_plot": "renders an animated 3D wireframe plot of a mathematical surface",
 }

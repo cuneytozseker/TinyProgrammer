@@ -35,6 +35,7 @@ venv/
 programs/*.py
 !programs/.gitkeep
 !programs/tiny_canvas.py
+!programs/tiny_plot3d.py
 programs/screenshots/
 lessons.md
 config_overrides.json

@@ -131,11 +131,11 @@ def create_app():
             updates['TYPO_PROBABILITY'] = float(request.form.get('typo_probability', 0.02))
             updates['PAUSE_PROBABILITY'] = float(request.form.get('pause_probability', 0.05))
 
-            # Program types (checkboxes)
+            # Program types (checkboxes) — iterate over all known types from config
+            import config as _cfg
+            all_types = [t for t, _ in _cfg.PROGRAM_TYPES]
             program_types = []
-            for ptype in ['bouncing_ball', 'pattern', 'animation', 'game_of_life',
-                          'cellular_automata', 'l_system', 'spiral', 'random_walker',
-                          'starfield', 'rain', 'generative_glyphs', 'pong']:
+            for ptype in all_types:
                 if request.form.get(f'ptype_{ptype}'):
                     weight = int(request.form.get(f'pweight_{ptype}', 1))
                     program_types.append((ptype, weight))
@@ -201,11 +201,11 @@ def create_app():
         if request.method == 'POST':
             updates = {}
 
-            # Program descriptions
+            # Program descriptions — iterate over all known types from config
+            import config as _cfg
+            all_types = [t for t, _ in _cfg.PROGRAM_TYPES]
             descriptions = {}
-            for ptype in ['bouncing_ball', 'pattern', 'animation', 'game_of_life',
-                          'cellular_automata', 'l_system', 'spiral', 'random_walker',
-                          'starfield', 'rain', 'generative_glyphs', 'pong']:
+            for ptype in all_types:
                 desc = request.form.get(f'desc_{ptype}', '').strip()
                 if desc:
                     descriptions[ptype] = desc
