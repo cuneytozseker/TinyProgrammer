@@ -60,8 +60,8 @@ STYLE_MODIFIERS = [
 COLOR_PALETTES = [
     "warm earth tones", "cool ocean", "neon on black", "pastel morning",
     "monochrome greens", "monochrome blues", "monochrome reds",
-    "sunset gradient", "sunrise gradient", "midnight purples",
-    "candy pop", "toxic sludge", "vintage print", "faded polaroid", "deep space",
+    "sunset gradient", "sunrise gradient",
+    "candy pop", "toxic sludge", "vintage print", "faded polaroid",
 ]
 
 INSPIRATION_SEEDS = {

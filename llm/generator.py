@@ -344,8 +344,6 @@ class LLMGenerator:
             f"- Canvas: {canvas_w}x{canvas_h} pixels\n"
             "- ALWAYS call c.sleep(0.033) at end of loop\n"
             "- Use simple shapes, avoid too many draw calls per frame\n"
-            "- Foreground colors MUST be clearly visible against the background\n"
-            "  (high contrast — the display is small, dim colors vanish)\n"
             "- Add short casual comments like a human thinking out loud\n"
             "  e.g. '# hmm let's try a spiral', '# this should bounce nicely'\n\n"
             "ONLY these methods exist on 'c':\n"
