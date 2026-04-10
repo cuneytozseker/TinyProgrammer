@@ -117,7 +117,7 @@ if [[ -n "$NEEDS_API_KEY" ]]; then
     echo "     nano $INSTALL_DIR/.env"
     echo "3. Set OPENROUTER_API_KEY=sk-or-v1-..."
     echo "4. Install the service:"
-    echo "     cd $INSTALL_DIR && sudo ./install-service.sh"
+    echo "     cd $INSTALL_DIR && chmod +x install-service.sh && sudo ./install-service.sh"
     echo ""
 else
     echo "Dashboard:  http://$(hostname -I | awk '{print $1}'):5000"
