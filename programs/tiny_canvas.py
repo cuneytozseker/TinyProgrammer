@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 
@@ -5,12 +6,13 @@ class Canvas:
     """
     A simple interface for drawing on the Tiny Programmer canvas.
     Outputs commands to stdout that the main process interprets.
-    Canvas size is 416x218 (inside the popup window).
+    Canvas dimensions come from TINY_CANVAS_W/H env vars set by the
+    runtime, falling back to the 480x320 reference size.
     """
 
-    def __init__(self, w=416, h=218):
-        self.width = w
-        self.height = h
+    def __init__(self, w=None, h=None):
+        self.width = w if w is not None else int(os.environ.get("TINY_CANVAS_W", 416))
+        self.height = h if h is not None else int(os.environ.get("TINY_CANVAS_H", 218))
         # Flush immediately so animation is smooth
         sys.stdout.reconfigure(line_buffering=True)
     

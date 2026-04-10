@@ -432,13 +432,19 @@ class Brain:
             f.write(code)
             
         try:
+            # Pass canvas dimensions via env so tiny_canvas matches the display
+            env = os.environ.copy()
+            env["TINY_CANVAS_W"] = str(config.CANVAS_DRAW_W)
+            env["TINY_CANVAS_H"] = str(config.CANVAS_DRAW_H)
+
             # Run with python -u (unbuffered) so we can see output immediately
             self.current_process = subprocess.Popen(
                 [sys.executable, "-u", filepath],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
-                bufsize=1 # Line buffered
+                bufsize=1,  # Line buffered
+                env=env,
             )
             
             self.current_program.success = True
