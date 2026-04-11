@@ -76,6 +76,34 @@ def create_app():
             return jsonify({"success": True, "screensaver": "off"})
         return jsonify({"error": "Brain not initialized"})
 
+    @app.route('/api/screenshot')
+    def api_screenshot():
+        """Return the current display surface as a PNG download."""
+        if not _brain or not hasattr(_brain, 'terminal'):
+            return jsonify({"error": "Brain not initialized"}), 503
+        try:
+            import io
+            import pygame
+            from datetime import datetime
+
+            surface = _brain.terminal.screen
+            if surface is None:
+                return jsonify({"error": "No display surface available"}), 503
+
+            buf = io.BytesIO()
+            pygame.image.save(surface, buf, "PNG")
+            buf.seek(0)
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"tinyprogrammer_{timestamp}.png"
+            return Response(
+                buf.getvalue(),
+                mimetype="image/png",
+                headers={"Content-Disposition": f"attachment; filename={filename}"},
+            )
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     @app.route('/stream')
     def video_stream():
         """MJPEG stream of the live display surface (Docker/desktop only)."""
