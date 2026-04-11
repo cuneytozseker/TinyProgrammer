@@ -43,6 +43,26 @@ SURPRISE_ME = "surprise_me"
 DEFAULT_MODEL = "surprise_me"
 
 
+def detect_ollama_models(endpoint=None):
+    """
+    Detect if Ollama is running and list locally available models.
+
+    Returns:
+        tuple: (available: bool, models: list[str]) where models are raw
+               model names like 'qwen2.5-coder:1.5b'
+    """
+    url = (endpoint or OLLAMA_ENDPOINT).rstrip("/") + "/api/tags"
+    try:
+        resp = requests.get(url, timeout=3)
+        if resp.status_code == 200:
+            data = resp.json()
+            models = [m["name"] for m in data.get("models", [])]
+            return (True, models)
+    except (requests.RequestException, ValueError):
+        pass
+    return (False, [])
+
+
 class LLMGenerator:
     """
     Interface to LLM for code generation via OpenRouter.
@@ -80,6 +100,11 @@ class LLMGenerator:
         elif model_name in AVAILABLE_MODELS:
             self.model_name = model_name
             print(f"[LLM] Switched to model: {AVAILABLE_MODELS[model_name][0]}")
+        elif model_name.startswith("ollama/"):
+            # Dynamic Ollama model not in AVAILABLE_MODELS — allow it
+            self.model_name = model_name
+            display = model_name.replace("ollama/", "")
+            print(f"[LLM] Switched to Ollama model: {display}")
         else:
             print(f"[LLM] Unknown model: {model_name}, keeping {self.model_name}")
 
@@ -104,6 +129,8 @@ class LLMGenerator:
         """Get the short display name for the current model."""
         if self.model_name in AVAILABLE_MODELS:
             return AVAILABLE_MODELS[self.model_name][1]
+        if self.model_name.startswith("ollama/"):
+            return self.model_name.replace("ollama/", "")
         return "?"
 
     def get_available_models(self) -> dict:
@@ -214,6 +241,7 @@ class LLMGenerator:
             "model": model,
             "prompt": prompt,
             "stream": True,
+            "think": False,
             "options": {
                 "num_predict": max_tokens,
                 "temperature": temperature,
@@ -226,7 +254,7 @@ class LLMGenerator:
         print(f"[LLM] Sending request to Ollama ({model})")
 
         try:
-            with requests.post(url, json=data, stream=True, timeout=(10, 30)) as response:
+            with requests.post(url, json=data, stream=True, timeout=(10, 120)) as response:
                 if response.status_code != 200:
                     raise Exception(f"Ollama error! (err: {response.status_code})")
 

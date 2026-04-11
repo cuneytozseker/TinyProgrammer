@@ -52,6 +52,13 @@ def create_app():
             return jsonify(_brain.get_status())
         return jsonify({"error": "Brain not initialized"})
 
+    @app.route('/api/ollama-models')
+    def api_ollama_models():
+        """Return detected Ollama models as JSON."""
+        from llm.generator import detect_ollama_models
+        available, models = detect_ollama_models()
+        return jsonify({"available": available, "models": models})
+
     @app.route('/api/restart', methods=['POST'])
     def api_restart():
         """Restart the program - skip to next cycle."""
