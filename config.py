@@ -11,7 +11,14 @@ import os
 
 DISPLAY_PROFILE = os.environ.get("DISPLAY_PROFILE", "pi4-hdmi")
 
-if DISPLAY_PROFILE == "pizero-spi":
+if DISPLAY_PROFILE == "adafruit28":
+    DISPLAY_WIDTH = 320
+    DISPLAY_HEIGHT = 240
+    FONT_SIZE = 8
+    CHAR_WIDTH = 6
+    CHAR_HEIGHT = 10
+    TARGET_FPS = 30
+elif DISPLAY_PROFILE == "pizero-spi":
     DISPLAY_WIDTH = 480
     DISPLAY_HEIGHT = 320
     FONT_SIZE = 12
@@ -83,7 +90,7 @@ CANVAS_DRAW_H = int(212 * _SY)
 # =============================================================================
 
 # Backend type: "ollama", "llamacpp", "gemini", or "anthropic"
-LLM_BACKEND = "anthropic"  # Claude Haiku for Pi Zero
+LLM_BACKEND = "ollama"
 LLM_MODEL = os.environ.get("LLM_MODEL", "")
 
 # --- Local backends (for Pi 4B with more RAM) ---
@@ -92,7 +99,7 @@ LLM_ENDPOINT = "http://localhost:8080/completion"
 
 # Ollama endpoint
 OLLAMA_ENDPOINT = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen2.5-coder:0.5b"
+OLLAMA_MODEL = "gemma3:1b"
 
 # Path to model for subprocess mode (llamacpp only)
 LLM_MODEL_PATH = os.path.join(os.path.expanduser("~"), "llama.cpp", "models", "smollm2-135m-instruct-q4_k_m.gguf")
@@ -109,7 +116,7 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"  # Haiku 4.5
 
 # Generation settings
-LLM_CONTEXT_SIZE = 2048
+LLM_CONTEXT_SIZE = 4096
 LLM_MAX_TOKENS = 512
 LLM_TEMPERATURE = 0.7
 LLM_STOP_TOKENS = ["```", "# END", "if __name__"]

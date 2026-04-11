@@ -116,7 +116,8 @@ def main():
     
     # Initialize LLM with OpenRouter
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
-    if not api_key:
+    _llm_model = getattr(config, "LLM_MODEL", "")
+    if not api_key and not _llm_model.startswith("ollama/"):
         _fatal_config_error(terminal, "OPENROUTER_API_KEY is not set.",
                             "Add it to your .env file (or docker-compose.yml env).",
                             "Get a free key at openrouter.ai")
