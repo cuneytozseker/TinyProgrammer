@@ -7,8 +7,8 @@ services:
       # Persistent workspace — generated programs are written and executed here
       - programs:/app/programs
       # Persist learning journal and web dashboard config overrides
-      - ./lessons.md:/app/lessons.md
-      - ./config_overrides.json:/app/config_overrides.json
+      - ./lessons.md:/app/lessons.md:z
+      - ./config_overrides.json:/app/config_overrides.json:z
       # Persist BBS device identity token
       - bbs_token:/root/.tinyprogrammer
     environment:
