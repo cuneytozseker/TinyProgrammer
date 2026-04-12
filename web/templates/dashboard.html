@@ -205,16 +205,13 @@ const QUOTES = {
 
 // ─── Avatar Expressions (8x8 grid, row-major) ───
 // Each expression is a Set of pixel indices that are "on"
-const EXPRESSIONS = {
-    hopeful:   new Set([9,14, 18,19,21,22, 26,27,29,30, 43,44, 50,53]),
-    focused:   new Set([9,14, 18,19,21,22, 26,27,29,30, 42,43,44]),
-    curious:   new Set([9, 18,19,21,22, 26,27,29,30, 43,44]),
-    proud:     new Set([26,27,29,30, 43,44,45]),
-    frustrated:new Set([10,13, 18,19,21,22, 26,27,29,30, 50,53, 58,59,60,61]),
-    tired:     new Set([26,27,29,30, 51,52]),
-    playful:   new Set([21,22, 27,29,30, 42,43,44,45, 50,55]),
-    determined:new Set([10,13, 18,19,21,22, 26,27,29,30, 42,44, 50,52,54]),
-};
+const AVATAR_EXPRESSIONS = {{ avatar_expressions | tojson }};
+const EXPRESSIONS = Object.fromEntries(
+    Object.entries(AVATAR_EXPRESSIONS).map(function(entry) {
+        return [entry[0], new Set(entry[1])];
+    })
+);
+const BLINK_PIXELS = {{ avatar_blink_pixels | tojson }};
 
 function setExpression(mood) {
     var pixels = EXPRESSIONS[mood] || EXPRESSIONS.curious;
@@ -231,9 +228,7 @@ function setExpression(mood) {
 }
 
 function blink() {
-    // All possible eye pixels (rows 2-3, cols 2-3 and 5-6)
-    var eyePixels = [18,19,21,22, 26,27,29,30];
-    eyePixels.forEach(function(i) {
+    BLINK_PIXELS.forEach(function(i) {
         var el = document.getElementById('px-' + i);
         if (el && el.classList.contains('on')) {
             el.classList.remove('on');
