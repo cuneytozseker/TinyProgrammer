@@ -9,6 +9,7 @@ import os
 import time
 import signal
 import sys
+import random
 
 # Load .env file BEFORE importing config (which reads env vars at import time)
 try:
@@ -38,6 +39,7 @@ import datetime
 import config
 from display.terminal import Terminal
 from display.screensaver import StarryNight
+from display.defrag import DefragSimulation
 from llm.generator import LLMGenerator
 from programmer.brain import Brain, State
 from programmer.personality import Personality, Mood
@@ -216,6 +218,22 @@ def main():
                 print("[Tiny Programmer] Off duty — screensaver mode")
                 terminal.enter_screensaver_mode()
                 while not is_work_time() and not brain._restart_requested:
+                    # 5% chance to trigger defrag easter egg per idle cycle
+                    if random.random() < config.DEFRAG_IDLE_CHANCE:
+                        defrag = DefragSimulation(config.DISPLAY_WIDTH, config.DISPLAY_HEIGHT)
+                        duration = random.uniform(config.DEFRAG_DURATION_MIN, config.DEFRAG_DURATION_MAX)
+                        defrag_start = time.time()
+                        print(f"[Tiny Programmer] Defrag mode! Running for {int(duration)}s")
+                        while (not is_work_time() and not brain._restart_requested
+                               and time.time() - defrag_start < duration
+                               and not defrag.finished):
+                            defrag.update()
+                            defrag.render(terminal.screen)
+                            terminal.flush()
+                            terminal.tick(15)
+                        # Return to screensaver after defrag
+                        screensaver = StarryNight(config.DISPLAY_WIDTH, config.DISPLAY_HEIGHT)
+                        continue
                     screensaver.update()
                     screensaver.render(terminal.screen)
                     terminal.flush()
