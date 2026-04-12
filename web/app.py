@@ -292,7 +292,8 @@ def create_app():
         if not _history:
             return jsonify([])
         limit = request.args.get('limit', 20, type=int)
-        return jsonify(_history.get_recent(limit))
+        offset = request.args.get('offset', 0, type=int)
+        return jsonify(_history.get_recent(limit, offset))
 
     @app.route('/api/history/stats')
     def api_history_stats():

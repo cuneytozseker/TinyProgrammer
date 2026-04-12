@@ -1071,12 +1071,13 @@ main {
     z-index: 9998;
     background: var(--vignette-overlay);
 }
-/* Hide CRT effects in light mode */
-[data-theme="light"] .crt-overlay,
-[data-theme="light"] .crt-vignette,
-:not([data-theme]) .crt-overlay,
-:not([data-theme]) .crt-vignette {
+/* Hide CRT effects by default; show only in dark theme on root element */
+.crt-overlay, .crt-vignette {
     display: none;
+}
+html[data-theme="dark"] .crt-overlay,
+html[data-theme="dark"] .crt-vignette {
+    display: block;
 }
 
 /* ── Footer ── */

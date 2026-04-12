@@ -64,10 +64,16 @@ class HistoryLogger:
             self._rotate()
             self._save()
 
-    def get_recent(self, n: int = 20) -> list:
-        """Return the last N events (all types), newest last."""
+    def get_recent(self, n: int = 20, offset: int = 0) -> list:
+        """Return the last N events (all types), newest last, with offset for pagination."""
         with self._lock:
-            return self._events[-n:]
+            # offset skips the N most recent events (for "load more")
+            total = len(self._events)
+            end = total - offset
+            start = max(0, end - n)
+            if end <= 0:
+                return []
+            return self._events[start:end]
 
     def get_stats(self) -> dict:
         """

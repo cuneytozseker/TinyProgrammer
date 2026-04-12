@@ -259,13 +259,13 @@ let lastMood = '{{ status.mood or "curious" }}'.toLowerCase();
 let lastState = '{{ status.state or "unknown" }}'.toLowerCase();
 
 const MOOD_COLORS = {
-    hopeful: '#f39c12',
+    hopeful: '#f1c40f',
     focused: '#3498db',
-    curious: '#f39c12',
+    curious: '#e67e22',
     proud: '#2ecc71',
     frustrated: '#e74c3c',
     tired: '#95a5a6',
-    playful: '#f39c12',
+    playful: '#e91e8c',
     determined: '#9b59b6',
 };
 
@@ -458,6 +458,9 @@ function loadMoreTimeline() {
                 timelineOffset += events.length;
                 var container = document.getElementById('activityTimeline');
                 container.insertAdjacentHTML('beforeend', renderTimelineEvents(events));
+            }
+            if (events.length < TIMELINE_PAGE) {
+                document.getElementById('timelineMore').style.display = 'none';
             }
         })
         .catch(function(){});
