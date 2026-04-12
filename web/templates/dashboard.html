@@ -30,7 +30,7 @@
 
         {# ── Center: state + mood + quote ── #}
         <div class="hero-center">
-            <div class="hero-prompt">tiny@pi:~$ <span class="prompt-cmd" id="heroState">run</span></div>
+            <div class="hero-prompt"><span class="prompt-user">tiny</span><span class="prompt-at">@</span><span class="prompt-host">pi</span><span class="prompt-path">:~$</span> <span class="prompt-cmd" id="heroState">run</span><span class="prompt-cursor"></span></div>
             <div class="hero-mood">
                 <span id="heroMood">{{ status.mood or 'Unknown' }}</span>
                 <span class="state-label" id="heroStateLabel">{{ status.state or 'Unknown' }}</span>
