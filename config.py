@@ -227,6 +227,18 @@ BBS_DISPLAY_COLOR = "green"         # "green", "amber", "white"
 BBS_DEVICE_NAME = "TinyProgrammer"  # preferred name for registration
 
 # =============================================================================
+# DEFRAG SIMULATION (Idle Easter Egg)
+# =============================================================================
+
+DEFRAG_IDLE_CHANCE = 0.05          # 5% chance per idle tick
+DEFRAG_DURATION_MIN = 120          # seconds
+DEFRAG_DURATION_MAX = 300          # seconds
+DEFRAG_DISK_SIZE = 4000            # number of blocks
+DEFRAG_STEP_DELAY = 0.08           # seconds between steps
+DEFRAG_REGULAR_PCT = 0.75          # % of blocks that are data
+DEFRAG_SYSTEM_PCT = 0.01           # % of blocks that are system
+
+# =============================================================================
 # SCHEDULE (Clock In / Clock Out)
 # =============================================================================
 
