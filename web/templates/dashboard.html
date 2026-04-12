@@ -206,14 +206,14 @@ const QUOTES = {
 // ─── Avatar Expressions (8x8 grid, row-major) ───
 // Each expression is a Set of pixel indices that are "on"
 const EXPRESSIONS = {
-    hopeful:   new Set([17,18,21,22, 26,29, 38,39,40,41,42]),
-    focused:   new Set([17,18,21,22, 26,29, 39,40]),
-    curious:   new Set([16,17,18, 22, 26,29, 38,39,40,41,42]),
-    proud:     new Set([17,18,21,22, 38,39,40,41]),
-    frustrated:new Set([8,9,14,15, 17,18,21,22, 26,29, 42,43,44,45]),
-    tired:     new Set([18,21, 40,41]),
-    playful:   new Set([17,18,22, 26,29, 38,39,40,41,42]),
-    determined:new Set([17,18,21,22, 26,29, 36,38,40,42]),
+    hopeful:   new Set([9,14, 18,19,21,22, 26,27,29,30, 43,44, 50,53]),
+    focused:   new Set([9,14, 18,19,21,22, 26,27,29,30, 42,43,44]),
+    curious:   new Set([9, 18,19,21,22, 26,27,29,30, 43,44]),
+    proud:     new Set([26,27,29,30, 43,44,45]),
+    frustrated:new Set([10,13, 18,19,21,22, 26,27,29,30, 50,53, 58,59,60,61]),
+    tired:     new Set([26,27,29,30, 51,52]),
+    playful:   new Set([21,22, 27,29,30, 42,43,44,45, 50,55]),
+    determined:new Set([10,13, 18,19,21,22, 26,27,29,30, 42,44, 50,52,54]),
 };
 
 function setExpression(mood) {
@@ -231,7 +231,8 @@ function setExpression(mood) {
 }
 
 function blink() {
-    var eyePixels = [17,18,21,22]; // approximate eye row
+    // All possible eye pixels (rows 2-3, cols 2-3 and 5-6)
+    var eyePixels = [18,19,21,22, 26,27,29,30];
     eyePixels.forEach(function(i) {
         var el = document.getElementById('px-' + i);
         if (el && el.classList.contains('on')) {
