@@ -73,12 +73,13 @@
     --ctrl-min-bg: #333;
     --ctrl-zoom-bg: #333;
     --error-glow: rgba(255, 80, 80, 0.5);
+    --scanline-color: rgba(51, 255, 51, 0.07);
     --scanline-overlay: repeating-linear-gradient(
         0deg,
         transparent,
         transparent 1px,
-        rgba(0,0,0,0.25) 1px,
-        rgba(0,0,0,0.25) 3px
+        rgba(0,0,0,0.35) 1px,
+        rgba(0,0,0,0.35) 2px
     );
     --vignette-overlay: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
     --input-bg: #1a1a1a;
@@ -97,6 +98,7 @@
     --avatar-glow: 0 0 8px rgba(255,176,0,0.3);
     --btn-text: #ffb000;
     --input-focus-border: #ffb000;
+    --scanline-color: rgba(255, 176, 0, 0.07);
 }
 [data-theme="dark"][data-phosphor="blue"] {
     --text-phosphor: #508cff;
@@ -106,6 +108,7 @@
     --avatar-glow: 0 0 8px rgba(80,140,255,0.3);
     --btn-text: #508cff;
     --input-focus-border: #508cff;
+    --scanline-color: rgba(80, 140, 255, 0.07);
 }
 [data-theme="dark"][data-phosphor="night"] {
     --text-phosphor: #ff5050;
@@ -115,6 +118,7 @@
     --avatar-glow: 0 0 8px rgba(255,80,80,0.3);
     --btn-text: #ff5050;
     --input-focus-border: #ff5050;
+    --scanline-color: rgba(255, 80, 80, 0.07);
 }
 
 /* ── Reset ── */
@@ -1061,7 +1065,15 @@ main {
     inset: 0;
     pointer-events: none;
     z-index: 9999;
-    background: var(--scanline-overlay);
+    background:
+        repeating-linear-gradient(
+            0deg,
+            var(--scanline-color),
+            var(--scanline-color) 1px,
+            transparent 1px,
+            transparent 3px
+        ),
+        var(--scanline-overlay);
     animation: crt-flicker 8s linear infinite;
 }
 .crt-vignette {

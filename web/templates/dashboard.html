@@ -345,9 +345,10 @@ function loadStatus() {
                 updateErrorState(state);
             }
 
-            // Dark theme phosphor color
-            if (data.color_scheme && document.documentElement.getAttribute('data-theme') === 'dark') {
+            // Dark theme phosphor color (persist for all pages)
+            if (data.color_scheme) {
                 document.documentElement.setAttribute('data-phosphor', data.color_scheme);
+                localStorage.setItem('tp-phosphor', data.color_scheme);
             }
 
             if (data.recent_history) updateTimeline(data.recent_history);

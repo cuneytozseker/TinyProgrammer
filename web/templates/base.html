@@ -9,10 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script>
-        // Apply theme before render to prevent flash
+        // Apply theme and phosphor before render to prevent flash
         (function() {
             var t = localStorage.getItem('tp-theme') || 'light';
             document.documentElement.setAttribute('data-theme', t);
+            var p = localStorage.getItem('tp-phosphor');
+            if (p) document.documentElement.setAttribute('data-phosphor', p);
         })();
     </script>
 </head>
