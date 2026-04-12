@@ -168,15 +168,16 @@
     <section class="settings-section">
         <h2>BBS (TinyBBS)</h2>
 
-        <div class="form-group">
-            <label>
-                <input type="checkbox" name="bbs_enabled"
+        <div class="form-group toggle-group">
+            <label class="toggle-label">
+                <input type="checkbox" name="bbs_enabled" id="bbs_enabled_toggle"
                        {% if config.BBS_ENABLED %}checked{% endif %}>
-                Enable BBS breaks
+                <span>Enable BBS breaks</span>
             </label>
             <p class="hint">Device visits the bulletin board between coding sessions</p>
         </div>
 
+        <div class="bbs-fields" id="bbs_fields">
         <div class="form-group">
             <label for="bbs_break_chance">Break Chance (0.0 - 1.0)</label>
             <input type="number" name="bbs_break_chance" id="bbs_break_chance"
@@ -216,20 +217,22 @@
                    maxlength="32">
             <p class="hint">Display name on the BBS (may be adjusted by server if duplicate)</p>
         </div>
+        </div>
     </section>
 
     <section class="settings-section">
         <h2>Schedule (Clock In / Clock Out)</h2>
 
-        <div class="form-group">
-            <label>
-                <input type="checkbox" name="schedule_enabled"
+        <div class="form-group toggle-group">
+            <label class="toggle-label">
+                <input type="checkbox" name="schedule_enabled" id="schedule_enabled_toggle"
                        {% if config.SCHEDULE_ENABLED %}checked{% endif %}>
-                Enable work schedule
+                <span>Enable work schedule</span>
             </label>
             <p class="hint">Device only codes during work hours. Outside hours it shows a screensaver.</p>
         </div>
 
+        <div class="schedule-fields" id="schedule_fields">
         <div class="form-group">
             <label for="schedule_clock_in">Clock In (hour, 0-23)</label>
             <input type="number" name="schedule_clock_in" id="schedule_clock_in"
@@ -242,6 +245,7 @@
             <input type="number" name="schedule_clock_out" id="schedule_clock_out"
                    value="{{ config.SCHEDULE_CLOCK_OUT or 23 }}"
                    min="0" max="23">
+        </div>
         </div>
     </section>
 
@@ -306,5 +310,23 @@
             textEl.textContent = 'Ollama not detected';
         });
 })();
+
+// Toggle field groups based on checkbox state
+function setupToggle(checkboxId, fieldsId) {
+    var cb = document.getElementById(checkboxId);
+    var fields = document.getElementById(fieldsId);
+    if (!cb || !fields) return;
+    function update() {
+        var inputs = fields.querySelectorAll('input, select, textarea');
+        for (var i = 0; i < inputs.length; i++) {
+            inputs[i].disabled = !cb.checked;
+        }
+        fields.style.opacity = cb.checked ? '1' : '0.5';
+    }
+    cb.addEventListener('change', update);
+    update();
+}
+setupToggle('bbs_enabled_toggle', 'bbs_fields');
+setupToggle('schedule_enabled_toggle', 'schedule_fields');
 </script>
 {% endblock %}

@@ -548,6 +548,14 @@ class Brain:
         time.sleep(1)
         self.terminal.type_string(f"// trying to fix it (attempt {self.fix_attempts})...\n")
         time.sleep(1)
+
+        # Log fix attempt to history
+        if self.history:
+            self.history.log("fix_attempt", {
+                "attempt": self.fix_attempts,
+                "prog_type": self.current_program.program_type if self.current_program else None,
+                "error": self.current_program.error_message,
+            })
         
         prompt = self.llm.build_fix_prompt(self.current_program.code, self.current_program.error_message)
         

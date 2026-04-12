@@ -282,6 +282,24 @@ h2 {
 }
 
 /* Buttons */
+.toggle-label {
+    display: flex !important;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+}
+
+.toggle-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: #3498db;
+    cursor: pointer;
+}
+
 .form-actions {
     margin-top: 1.5rem;
     display: flex;

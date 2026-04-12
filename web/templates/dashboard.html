@@ -103,7 +103,7 @@
     <button onclick="screensaverOn()" class="btn-secondary">&#x1F4A4; Start Screensaver</button>
     {% endif %}
     <button onclick="location.reload()" class="btn-secondary">&#x1F504; Refresh</button>
-    <a href="/api/screenshot" class="btn-secondary">&#x1F4F7; Screenshot</a>
+    <button onclick="window.location.href='/api/screenshot'" class="btn-secondary">&#x1F4F7; Screenshot</button>
 </div>
 
 {# ── Pulse Chart + Mood Timeline ── #}
@@ -200,6 +200,7 @@ const EVENT_STYLES = {
     mood_shift: { dot: 'dot-blue', icon: '' },
     bbs_post: { dot: 'dot-purple', icon: '' },
     canvas_capture: { dot: 'dot-amber', icon: '' },
+    fix_attempt: { dot: 'dot-red', icon: '' },
 };
 
 function initDashboard() {
@@ -358,6 +359,9 @@ function renderTimelineEvents(events) {
             if (e.data.subject) html += `: ${escHtml(e.data.subject)}`;
         } else if (e.type === 'canvas_capture') {
             html += `Canvas captured: <a href="#" onclick="openProgram('${e.data.program_name || ''}'); return false;">${e.data.filename || 'image'}</a>`;
+        } else if (e.type === 'fix_attempt') {
+            html += `Fix attempt #${e.data.attempt || '?'} for <strong>${e.data.prog_type || 'unknown'}</strong>`;
+            if (e.data.error) html += ` <span class="timeline-error">${escHtml(e.data.error.slice(0, 60))}</span>`;
         }
         html += '</span></div>';
         return html;
