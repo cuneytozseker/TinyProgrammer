@@ -442,7 +442,7 @@ class Terminal:
         # Online count (right-aligned)
         online_text = f"{self._online_count} Online"
         online_surface = self.font_bold.render(online_text, True, (0, 0, 0))
-        online_x = config.DISPLAY_WIDTH - online_surface.get_width() - int(10 * config._SX)
+        online_x = config.DISPLAY_WIDTH - online_surface.get_width() - int(22 * config._SX)
         self.screen.blit(online_surface, (online_x, status_y))
 
     def set_model_name(self, model_name: str):
