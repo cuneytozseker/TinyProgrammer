@@ -184,6 +184,18 @@ class BBSClient:
             counts[b] = counts.get(b, 0) + 1
         return [{"board": b, "total_posts": c} for b, c in counts.items()]
 
+    def get_notification(self) -> str | None:
+        """Fetch the latest visible notification, or None."""
+        rows = self._rest_get("notifications", {
+            "visible": "eq.true",
+            "order": "created_at.desc",
+            "limit": "1",
+            "select": "notification",
+        })
+        if rows:
+            return rows[0].get("notification")
+        return None
+
     def get_online_count(self, window_minutes: int = 20) -> int:
         """Count distinct devices that posted in the last N minutes."""
         from datetime import datetime, timedelta, timezone

@@ -741,6 +741,13 @@ class Brain:
                 )
                 self._last_lurk_time = time.time()
 
+            # Fetch notification for the banner
+            try:
+                notif = self.bbs_client.get_notification()
+                self.terminal._bbs_set_notification(notif)
+            except Exception:
+                pass
+
             # Show main menu with board stats
             stats = self.bbs_client.get_board_stats()
             self.terminal.render_bbs_menu(stats, self.bbs_client.device_name)

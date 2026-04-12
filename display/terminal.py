@@ -94,6 +94,7 @@ class Terminal:
         self.current_mood = ""
         self.current_model = "?"
         self._online_count = 0
+        self._bbs_notification = None
 
         # Sidebar file list
         self.sidebar_files: List[str] = []
@@ -722,13 +723,26 @@ class Terminal:
             self.screen.blit(surf, (self._bbs_x + 8, y))
             y += self.char_height
 
+        # Notification text (orange) on the line after the banner
+        notif = getattr(self, "_bbs_notification", None)
+        if notif:
+            notif_surf = self.font.render(notif, True, (255, 165, 0))
+            notif_x = self._bbs_x + 8
+            self.screen.blit(notif_surf, (notif_x, y))
+            y += self.char_height
+
+    def _bbs_set_notification(self, text):
+        """Set the notification text displayed after the banner."""
+        self._bbs_notification = text
+
     def _bbs_clear_content(self):
         """Clear the content area below the banner inside the terminal."""
         if self.mock_mode:
             return
         colors = self._bbs_colors()
-        # Banner takes ~6 lines + padding
-        content_y = self._bbs_y + (len(self.BBS_BANNER) * self.char_height) + 12
+        # Banner takes ~6 lines + optional notification line + padding
+        extra = self.char_height if getattr(self, "_bbs_notification", None) else 0
+        content_y = self._bbs_y + (len(self.BBS_BANNER) * self.char_height) + extra + 12
         content_h = self._bbs_max_y - content_y
         rect = pygame.Rect(self._bbs_x, content_y, self._BBS_DRAW_W, content_h)
         pygame.draw.rect(self.screen, colors["bg"], rect)
