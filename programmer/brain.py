@@ -125,6 +125,8 @@ class Brain:
             "system_time": now.strftime("%H:%M"),
             "force_screensaver": self._force_screensaver,
             "stream_enabled": getattr(config, "WEB_STREAM_ENABLED", False),
+            "model_short_name": self.llm.get_short_name() if self.llm else "?",
+            "color_scheme": getattr(config, "COLOR_SCHEME", "none"),
         }
         return status
 

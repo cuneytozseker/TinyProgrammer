@@ -3,8 +3,19 @@
 {% block title %}Prompt Editor - TinyProgrammer{% endblock %}
 
 {% block content %}
-<h1>Prompt Editor</h1>
-<p>Customize the descriptions used to generate each program type.</p>
+
+<div class="mac-window">
+    <div class="mac-titlebar">
+        <div class="mac-controls">
+            <div class="mac-ctrl mac-ctrl-close">×</div>
+            <div class="mac-ctrl mac-ctrl-min">–</div>
+            <div class="mac-ctrl mac-ctrl-zoom">+</div>
+        </div>
+        <span class="mac-title">Prompt Editor</span>
+    </div>
+    <div class="mac-body">
+
+<p class="hint">Customize the descriptions used to generate each program type.</p>
 
 <form method="POST" action="{{ url_for('prompt_editor') }}">
 
@@ -57,8 +68,11 @@
     </section>
 
     <div class="form-actions">
-        <button type="submit" class="btn-primary">Save Prompts</button>
-        <a href="{{ url_for('prompt_editor') }}" class="btn-secondary">Reset Form</a>
+        <button type="submit" class="mac-btn">Save Prompts</button>
+        <a href="{{ url_for('prompt_editor') }}" class="mac-btn" style="text-decoration:none;">Reset Form</a>
     </div>
 </form>
+
+    </div>
+</div>
 {% endblock %}

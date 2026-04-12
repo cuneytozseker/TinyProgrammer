@@ -3,7 +3,6 @@
 {% block title %}Dashboard - TinyProgrammer{% endblock %}
 
 {% block content %}
-<h1>Dashboard</h1>
 
 {% if status.stream_enabled %}
 <div class="preview-container">
@@ -11,151 +10,164 @@
 </div>
 {% endif %}
 
-<div class="status-grid">
-    <div class="status-card">
-        <h3>Current State</h3>
-        <div class="status-value state-{{ status.state|lower if status.state else 'unknown' }}">
-            {{ status.state or 'Unknown' }}
+{# ── Hero Window ── #}
+<div class="mac-window">
+    <div class="mac-titlebar">
+        <div class="mac-controls">
+            <div class="mac-ctrl mac-ctrl-close">×</div>
+            <div class="mac-ctrl mac-ctrl-min">–</div>
+            <div class="mac-ctrl mac-ctrl-zoom">+</div>
+        </div>
+        <span class="mac-title">TinyProgrammer</span>
+    </div>
+    <div class="hero-body">
+        {# ── Avatar ── #}
+        <div class="avatar-container" id="avatar">
+            {% for i in range(64) %}
+            <div class="px" id="px-{{ i }}"></div>
+            {% endfor %}
+        </div>
+
+        {# ── Center: state + mood + quote ── #}
+        <div class="hero-center">
+            <div class="hero-prompt">tiny@pi:~$ <span class="prompt-cmd" id="heroState">run</span></div>
+            <div class="hero-mood">
+                <span id="heroMood">{{ status.mood or 'Unknown' }}</span>
+                <span class="state-label" id="heroStateLabel">{{ status.state or 'Unknown' }}</span>
+            </div>
+            <div class="hero-quote" id="heroQuote"></div>
+        </div>
+
+        {# ── Right: schedule, BBS, model ── #}
+        <div class="hero-right" id="heroRight">
+            {% if status.schedule_enabled %}
+            <div class="info-line">
+                <span class="info-label">Schedule:</span>
+                <span class="info-value">{{ 'Clocked In' if status.is_clocked_in else 'Clocked Out' }}</span>
+            </div>
+            <div class="info-line">
+                <span class="info-label">Hours:</span>
+                <span class="info-value">{{ status.schedule_clock_in }}:00–{{ status.schedule_clock_out }}:00</span>
+            </div>
+            <div class="info-line">
+                <span class="info-label">Time:</span>
+                <span class="info-value" id="heroTime">{{ status.system_time }}</span>
+            </div>
+            {% endif %}
+            {% if status.bbs_enabled %}
+            <div class="info-line">
+                <span class="info-label">BBS:</span>
+                <span class="info-value">{{ status.bbs_device_name or 'Not registered' }}</span>
+            </div>
+            {% endif %}
+            <div class="info-line">
+                <span class="info-label">Model:</span>
+                <span class="info-value" id="heroModel">{{ status.model_short_name or '?' }}</span>
+            </div>
         </div>
     </div>
-
-    <div class="status-card">
-        <h3>Mood</h3>
-        <div class="status-value">
-            {{ status.mood or 'Unknown' }}
-        </div>
+    <div class="mac-statusbar" id="heroStatusbar">
+        Who: {{ status.model_short_name or '?' }} | STATUS: {{ status.state or 'Unknown' }} | Mood: {{ status.mood or 'Unknown' }} | running {{ status.current_program_type or 'none' }}.py
     </div>
+</div>
 
-    <div class="status-card">
-        <h3>Programs Written</h3>
-        <div class="status-value">
-            {{ status.programs_written or 0 }}
+{# ── Statistics Window ── #}
+<div class="mac-window">
+    <div class="mac-titlebar">
+        <div class="mac-controls">
+            <div class="mac-ctrl mac-ctrl-close">×</div>
+            <div class="mac-ctrl mac-ctrl-min">–</div>
+            <div class="mac-ctrl mac-ctrl-zoom">+</div>
         </div>
+        <span class="mac-title">Statistics</span>
     </div>
-
-    <div class="status-card">
-        <h3>Success Rate</h3>
-        <div class="status-value">
-            {{ status.success_rate or 0 }}%
+    <div class="stats-row">
+        <div class="stat-col">
+            <div class="stat-label">Programs Written</div>
+            <div class="stat-value" id="statWritten">{{ status.programs_written or 0 }}</div>
         </div>
-    </div>
-
-    <div class="status-card">
-        <h3>Total Archived</h3>
-        <div class="status-value">
-            {{ status.total_archived or 0 }}
+        <div class="stat-col">
+            <div class="stat-label">Success Rate</div>
+            <div class="stat-value" id="statRate">{{ status.success_rate or 0 }}%</div>
         </div>
-    </div>
-
-    <div class="status-card">
-        <h3>Current Program</h3>
-        <div class="status-value">
-            {{ status.current_program_type or 'None' }}
+        <div class="stat-col">
+            <div class="stat-label">Total Archived</div>
+            <div class="stat-value" id="statArchived">{{ status.total_archived or 0 }}</div>
         </div>
     </div>
 </div>
 
-{% if status.bbs_enabled %}
-<h2>BBS Status</h2>
-<div class="status-grid">
-    <div class="status-card">
-        <h3>Device Name</h3>
-        <div class="status-value">{{ status.bbs_device_name or 'Not registered' }}</div>
-    </div>
-    <div class="status-card">
-        <h3>BBS Breaks Taken</h3>
-        <div class="status-value">{{ status.bbs_breaks_taken or 0 }}</div>
-    </div>
-    <div class="status-card">
-        <h3>Break Chance</h3>
-        <div class="status-value">{{ (status.bbs_break_chance * 100)|int }}%</div>
-    </div>
-</div>
-{% endif %}
-
-{% if status.schedule_enabled %}
-<h2>Schedule</h2>
-<div class="status-grid">
-    <div class="status-card">
-        <h3>Status</h3>
-        <div class="status-value">{{ 'Clocked In' if status.is_clocked_in else 'Clocked Out' }}</div>
-    </div>
-    <div class="status-card">
-        <h3>Work Hours</h3>
-        <div class="status-value">{{ status.schedule_clock_in }}:00 - {{ status.schedule_clock_out }}:00</div>
-    </div>
-    <div class="status-card">
-        <h3>System Time
-            <span class="info-bubble" tabindex="0" aria-label="Timezone hint">i
-                <span class="info-tooltip">If this doesn't match your local time, the schedule will fire at the wrong hour. Fix it on the Pi with: <code>sudo raspi-config</code> &rarr; Localisation Options &rarr; Timezone (or <code>sudo timedatectl set-timezone Region/City</code>).</span>
-            </span>
-        </h3>
-        <div class="status-value">{{ status.system_time }}</div>
-    </div>
-</div>
-{% endif %}
-
+{# ── Action Buttons ── #}
 <div class="actions">
-    <button onclick="restartProgram()" class="btn-primary">&#x23ED; Skip to Next</button>
+    <button onclick="restartProgram()" class="mac-btn">Skip to Next</button>
     {% if status.force_screensaver %}
-    <button onclick="screensaverOff()" class="btn-primary">&#x2600;&#xFE0F; Wake Up</button>
+    <button onclick="screensaverOff()" class="mac-btn">Wake Up</button>
     {% else %}
-    <button onclick="screensaverOn()" class="btn-secondary">&#x1F4A4; Start Screensaver</button>
+    <button onclick="screensaverOn()" class="mac-btn">Screensaver</button>
     {% endif %}
-    <button onclick="location.reload()" class="btn-secondary">&#x1F504; Refresh</button>
-    <button onclick="window.location.href='/api/screenshot'" class="btn-secondary">&#x1F4F7; Screenshot</button>
+    <button onclick="location.reload()" class="mac-btn">Refresh</button>
+    <button onclick="window.location.href='/api/screenshot'" class="mac-btn">Screenshot</button>
 </div>
 
-{# ── Pulse Chart + Mood Timeline ── #}
-<h2>Activity</h2>
-<div class="charts-row">
-    <div class="chart-container pulse-container">
-        <h3>Success/Failure Pulse</h3>
-        <canvas id="pulseChart"></canvas>
+{# ── Activity Window ── #}
+<div class="mac-window">
+    <div class="mac-titlebar">
+        <div class="mac-controls">
+            <div class="mac-ctrl mac-ctrl-close">×</div>
+            <div class="mac-ctrl mac-ctrl-min">–</div>
+            <div class="mac-ctrl mac-ctrl-zoom">+</div>
+        </div>
+        <span class="mac-title">Activity</span>
     </div>
-    <div class="chart-container mood-container">
-        <h3>Mood Timeline</h3>
-        <div id="moodTimeline" class="mood-strip"></div>
-        <div class="mood-legend" id="moodLegend"></div>
+    <div class="mac-body">
+        <div class="charts-row">
+            <div class="chart-container pulse-container">
+                <h3>Success/Failure Pulse</h3>
+                <canvas id="pulseChart"></canvas>
+            </div>
+            <div class="chart-container mood-container">
+                <h3>Mood Timeline</h3>
+                <div id="moodTimeline" class="mood-strip"></div>
+                <div class="mood-legend" id="moodLegend"></div>
+            </div>
+        </div>
+
+        <h3 style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary);margin-bottom:4px;">Recent Activity</h3>
+        <div class="timeline" id="activityTimeline">
+            <p class="timeline-empty">Loading activity...</p>
+        </div>
+        <div class="timeline-more" id="timelineMore" style="display:none;">
+            <a href="#" onclick="loadMoreTimeline(); return false;">Show more</a>
+        </div>
+
+        <h3 style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary);margin:8px 0 4px;">Canvas Gallery</h3>
+        <div class="canvas-gallery" id="canvasGallery">
+            <p class="timeline-empty">Loading gallery...</p>
+        </div>
+        <div class="timeline-more" id="galleryMore" style="display:none;">
+            <a href="#" id="galleryMoreLink" href="#">View all canvases</a>
+        </div>
+
+        {% if status.by_type %}
+        <h3 style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary);margin:8px 0 4px;">Programs by Type</h3>
+        <div class="type-stats">
+            {% for ptype, count in status.by_type.items() %}
+            <div class="type-stat">
+                <span class="type-name">{{ ptype }}</span>
+                <span class="type-count">{{ count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 </div>
-
-{# ── Activity Timeline ── #}
-<h2>Recent Activity</h2>
-<div class="timeline" id="activityTimeline">
-    <p class="timeline-empty">Loading activity...</p>
-</div>
-<div class="timeline-more" id="timelineMore" style="display:none;">
-    <a href="#" onclick="loadMoreTimeline(); return false;">Show more</a>
-</div>
-
-{# ── Canvas Gallery ── #}
-<h2>Canvas Gallery</h2>
-<div class="canvas-gallery" id="canvasGallery">
-    <p class="timeline-empty">Loading gallery...</p>
-</div>
-<div class="timeline-more" id="galleryMore" style="display:none;">
-    <a href="#" id="galleryMoreLink" href="#">View all canvases</a>
-</div>
-
-{% if status.by_type %}
-<h2>Programs by Type</h2>
-<div class="type-stats">
-    {% for ptype, count in status.by_type.items() %}
-    <div class="type-stat">
-        <span class="type-name">{{ ptype }}</span>
-        <span class="type-count">{{ count }}</span>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
 
 {# ── Program Detail Modal ── #}
 <div class="modal-backdrop" id="programModal" style="display:none;" onclick="closeModal(event)">
     <div class="modal-card" onclick="event.stopPropagation();">
         <div class="modal-header">
             <span class="modal-title" id="modalTitle">Program</span>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <button class="modal-close" onclick="closeModal()">×</button>
         </div>
         <div class="modal-meta" id="modalMeta"></div>
         <div class="modal-section" id="modalThought" style="display:none;">
@@ -179,10 +191,71 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// ─── Personality Quotes ───
+const QUOTES = {
+    hopeful: ["Something good is about to happen...", "I can feel it — this one's going to work."],
+    focused: ["Concentrating...", "Every pixel matters."],
+    curious: ["What happens if I change this...?", "I wonder what that API does."],
+    proud: ["That was a good one.", "Not bad, if I say so myself."],
+    frustrated: ["This error doesn't make any sense...", "Why won't you just work?!"],
+    tired: ["Maybe just one more program...", "My fans are spinning pretty loud."],
+    playful: ["Let me try something weird with the pixels...", "What could go wrong?"],
+    determined: ["I'm going to fix this.", "Third time's the charm."],
+};
+
+// ─── Avatar Expressions (8x8 grid, row-major) ───
+// Each expression is a Set of pixel indices that are "on"
+const EXPRESSIONS = {
+    hopeful:   new Set([17,18,21,22, 26,29, 38,39,40,41,42]),
+    focused:   new Set([17,18,21,22, 26,29, 39,40]),
+    curious:   new Set([16,17,18, 22, 26,29, 38,39,40,41,42]),
+    proud:     new Set([17,18,21,22, 38,39,40,41]),
+    frustrated:new Set([8,9,14,15, 17,18,21,22, 26,29, 42,43,44,45]),
+    tired:     new Set([18,21, 40,41]),
+    playful:   new Set([17,18,22, 26,29, 38,39,40,41,42]),
+    determined:new Set([17,18,21,22, 26,29, 36,38,40,42]),
+};
+
+function setExpression(mood) {
+    var pixels = EXPRESSIONS[mood] || EXPRESSIONS.curious;
+    for (var i = 0; i < 64; i++) {
+        var el = document.getElementById('px-' + i);
+        if (el) {
+            if (pixels.has(i)) {
+                el.classList.add('on');
+            } else {
+                el.classList.remove('on');
+            }
+        }
+    }
+}
+
+function blink() {
+    var eyePixels = [17,18,21,22]; // approximate eye row
+    eyePixels.forEach(function(i) {
+        var el = document.getElementById('px-' + i);
+        if (el && el.classList.contains('on')) {
+            el.classList.remove('on');
+        }
+    });
+    setTimeout(function() {
+        var currentMood = (document.getElementById('heroMood') || {}).textContent || 'curious';
+        setExpression(currentMood.toLowerCase());
+    }, 150);
+    scheduleBlink();
+}
+
+function scheduleBlink() {
+    var delay = 3000 + Math.random() * 2000;
+    setTimeout(blink, delay);
+}
+
 // ─── Polling ───
 let timelineOffset = 0;
 const TIMELINE_PAGE = 20;
 let pulseChart = null;
+let lastMood = '{{ status.mood or "curious" }}'.toLowerCase();
+let lastState = '{{ status.state or "unknown" }}'.toLowerCase();
 
 const MOOD_COLORS = {
     hopeful: '#f39c12',
@@ -196,14 +269,18 @@ const MOOD_COLORS = {
 };
 
 const EVENT_STYLES = {
-    program_result: { dot: 'dot-green', icon: '' },
-    mood_shift: { dot: 'dot-blue', icon: '' },
-    bbs_post: { dot: 'dot-purple', icon: '' },
-    canvas_capture: { dot: 'dot-amber', icon: '' },
-    fix_attempt: { dot: 'dot-red', icon: '' },
+    program_result: { dot: 'dot-green' },
+    mood_shift: { dot: 'dot-blue' },
+    bbs_post: { dot: 'dot-purple' },
+    canvas_capture: { dot: 'dot-amber' },
+    fix_attempt: { dot: 'dot-red' },
 };
 
 function initDashboard() {
+    setExpression(lastMood);
+    scheduleBlink();
+    updateQuote(lastMood);
+    updateErrorState(lastState);
     loadStatus();
     loadTimeline();
     loadGallery();
@@ -212,15 +289,71 @@ function initDashboard() {
     setInterval(loadStatus, 5000);
 }
 
+function updateQuote(mood) {
+    var quotes = QUOTES[mood] || QUOTES.curious;
+    var quote = quotes[Math.floor(Math.random() * quotes.length)];
+    document.getElementById('heroQuote').textContent = '"' + quote + '"';
+}
+
+function updateErrorState(state) {
+    var avatar = document.getElementById('avatar');
+    var label = document.getElementById('heroStateLabel');
+    var isError = state === 'fix' || state === 'error';
+    if (isError) {
+        avatar.classList.add('error');
+        label.classList.add('error-state', 'blinking');
+    } else {
+        avatar.classList.remove('error');
+        label.classList.remove('error-state', 'blinking');
+    }
+}
+
 function loadStatus() {
     fetch('/api/status')
         .then(r => r.json())
         .then(data => {
+            // Update hero
+            var mood = (data.mood || 'curious').toLowerCase();
+            var state = (data.state || 'unknown').toLowerCase();
+
+            document.getElementById('heroState').textContent = state;
+            document.getElementById('heroStateLabel').textContent = data.state || 'Unknown';
+            document.getElementById('heroMood').textContent = data.mood || 'Unknown';
+            if (data.model_short_name) document.getElementById('heroModel').textContent = data.model_short_name;
+
+            // Status bar
+            document.getElementById('heroStatusbar').textContent =
+                'Who: ' + (data.model_short_name || '?') +
+                ' | STATUS: ' + (data.state || 'Unknown') +
+                ' | Mood: ' + (data.mood || 'Unknown') +
+                ' | running ' + (data.current_program_type || 'none') + '.py';
+
+            // Stats
+            document.getElementById('statWritten').textContent = data.programs_written || 0;
+            document.getElementById('statRate').textContent = (data.success_rate || 0) + '%';
+            document.getElementById('statArchived').textContent = data.total_archived || 0;
+
+            // Mood change
+            if (mood !== lastMood) {
+                lastMood = mood;
+                setExpression(mood);
+                updateQuote(mood);
+            }
+            if (state !== lastState) {
+                lastState = state;
+                updateErrorState(state);
+            }
+
+            // Dark theme phosphor color
+            if (data.color_scheme && document.documentElement.getAttribute('data-theme') === 'dark') {
+                document.documentElement.setAttribute('data-phosphor', data.color_scheme);
+            }
+
             if (data.recent_history) updateTimeline(data.recent_history);
             if (data.stats) updatePulseChart(data.stats.pulse || []);
             if (data.moods) renderMoodTimeline(data.moods);
         })
-        .catch(() => {});
+        .catch(function(){});
 }
 
 // ─── Pulse Chart ───
@@ -228,17 +361,17 @@ function loadPulseChart() {
     fetch('/api/history/stats')
         .then(r => r.json())
         .then(data => updatePulseChart(data.pulse || []))
-        .catch(() => {});
+        .catch(function(){});
 }
 
 function updatePulseChart(pulse) {
     if (!pulse.length) return;
-    const ctx = document.getElementById('pulseChart').getContext('2d');
-    const labels = pulse.map((p, i) => {
-        const d = new Date(p.ts);
+    var ctx = document.getElementById('pulseChart').getContext('2d');
+    var labels = pulse.map(function(p) {
+        var d = new Date(p.ts);
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     });
-    const values = pulse.map(p => p.success ? 1 : 0);
+    var values = pulse.map(function(p) { return p.success ? 1 : 0; });
 
     if (pulseChart) {
         pulseChart.data.labels = labels;
@@ -250,7 +383,7 @@ function updatePulseChart(pulse) {
     pulseChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels,
+            labels: labels,
             datasets: [{
                 data: values,
                 borderColor: '#2ecc71',
@@ -267,13 +400,13 @@ function updatePulseChart(pulse) {
             maintainAspectRatio: false,
             plugins: { legend: { display: false }, tooltip: {
                 callbacks: {
-                    label: ctx => ctx.raw === 1 ? 'Success' : 'Failure',
-                    title: ctx => ctx[0].label,
+                    label: function(ctx) { return ctx.raw === 1 ? 'Success' : 'Failure'; },
+                    title: function(ctx) { return ctx[0].label; },
                 }
             }},
             scales: {
                 x: { display: true, ticks: { maxTicksLimit: 6, color: '#888', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                y: { display: true, min: -0.2, max: 1.2, ticks: { callback: v => v === 1 ? 'OK' : v === 0 ? 'FAIL' : '', color: '#888', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                y: { display: true, min: -0.2, max: 1.2, ticks: { callback: function(v) { return v === 1 ? 'OK' : v === 0 ? 'FAIL' : ''; }, color: '#888', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.08)' } },
             },
             animation: false,
         },
@@ -285,83 +418,84 @@ function loadMoodTimeline() {
     fetch('/api/history/moods?limit=50')
         .then(r => r.json())
         .then(renderMoodTimeline)
-        .catch(() => {});
+        .catch(function(){});
 }
 
 function renderMoodTimeline(moods) {
-    const strip = document.getElementById('moodTimeline');
+    var strip = document.getElementById('moodTimeline');
     if (!moods || !moods.length) { strip.innerHTML = '<p class="timeline-empty">No mood data yet</p>'; return; }
-    strip.innerHTML = moods.map(m => {
-        const to = m.data.to;
-        const color = MOOD_COLORS[to] || '#999';
-        const from = m.data.from;
-        return `<div class="mood-bar" style="background:${color}" title="${from} → ${to}"></div>`;
+    strip.innerHTML = moods.map(function(m) {
+        var to = m.data.to;
+        var color = MOOD_COLORS[to] || '#999';
+        var from = m.data.from;
+        return '<div class="mood-bar" style="background:' + color + '" title="' + from + ' → ' + to + '"></div>';
     }).join('');
 
-    // Legend
-    const legend = document.getElementById('moodLegend');
-    const used = new Set(moods.map(m => m.data.to));
-    legend.innerHTML = [...used].map(m => `<span class="mood-legend-item"><span class="mood-legend-dot" style="background:${MOOD_COLORS[m]||'#999'}"></span>${m}</span>`).join('');
+    var legend = document.getElementById('moodLegend');
+    var used = new Set(moods.map(function(m) { return m.data.to; }));
+    legend.innerHTML = Array.from(used).map(function(m) {
+        return '<span class="mood-legend-item"><span class="mood-legend-dot" style="background:' + (MOOD_COLORS[m]||'#999') + '"></span>' + m + '</span>';
+    }).join('');
 }
 
 // ─── Activity Timeline ───
 function loadTimeline() {
     fetch('/api/history?limit=' + TIMELINE_PAGE)
         .then(r => r.json())
-        .then(events => {
+        .then(function(events) {
             timelineOffset = events.length;
             updateTimeline(events);
         })
-        .catch(() => {});
+        .catch(function(){});
 }
 
 function loadMoreTimeline() {
     fetch('/api/history?limit=' + TIMELINE_PAGE + '&offset=' + timelineOffset)
         .then(r => r.json())
-        .then(events => {
+        .then(function(events) {
             if (events.length) {
                 timelineOffset += events.length;
-                const container = document.getElementById('activityTimeline');
+                var container = document.getElementById('activityTimeline');
                 container.insertAdjacentHTML('beforeend', renderTimelineEvents(events));
             }
         })
-        .catch(() => {});
+        .catch(function(){});
 }
 
 function updateTimeline(events) {
     if (!events || !events.length) return;
-    const container = document.getElementById('activityTimeline');
+    var container = document.getElementById('activityTimeline');
     container.innerHTML = renderTimelineEvents(events);
     document.getElementById('timelineMore').style.display = events.length >= TIMELINE_PAGE ? '' : 'none';
 }
 
 function renderTimelineEvents(events) {
-    return events.map(e => {
-        const style = EVENT_STYLES[e.type] || { dot: 'dot-blue' };
-        const d = new Date(e.ts);
-        const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        let html = `<div class="timeline-event">
-            <span class="timeline-dot ${style.dot}"></span>
-            <span class="timeline-time">${time}</span>
-            <span class="timeline-desc">`;
+    return events.map(function(e) {
+        var style = EVENT_STYLES[e.type] || { dot: 'dot-blue' };
+        var d = new Date(e.ts);
+        var time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        var html = '<div class="timeline-event">' +
+            '<span class="timeline-dot ' + style.dot + '"></span>' +
+            '<span class="timeline-time">' + time + '</span>' +
+            '<span class="timeline-desc">';
 
         if (e.type === 'program_result') {
-            const badge = e.data.success ? '<span class="badge badge-success">OK</span>' : '<span class="badge badge-fail">FAIL</span>';
-            const name = e.data.name || 'unknown';
-            html += `${badge} <a href="#" onclick="openProgram('${name}'); return false;">${name}</a>`;
-            if (e.data.prog_type) html += ` <span class="timeline-type">${e.data.prog_type}</span>`;
-            if (e.data.run_time) html += ` <span class="timeline-meta">${e.data.run_time.toFixed(1)}s</span>`;
-            if (!e.data.success && e.data.error) html += ` <span class="timeline-error">${escHtml(e.data.error.slice(0, 80))}</span>`;
+            var badge = e.data.success ? '<span class="badge badge-success">OK</span>' : '<span class="badge badge-fail">FAIL</span>';
+            var name = e.data.name || 'unknown';
+            html += badge + ' <a href="#" onclick="openProgram(\'' + escAttr(name) + '\'); return false;">' + name + '</a>';
+            if (e.data.prog_type) html += ' <span class="timeline-type">' + e.data.prog_type + '</span>';
+            if (e.data.run_time) html += ' <span class="timeline-meta">' + e.data.run_time.toFixed(1) + 's</span>';
+            if (!e.data.success && e.data.error) html += ' <span class="timeline-error">' + escHtml(e.data.error.slice(0, 80)) + '</span>';
         } else if (e.type === 'mood_shift') {
-            html += `Mood shifted: ${e.data.from} → <strong>${e.data.to}</strong>`;
+            html += 'Mood shifted: ' + e.data.from + ' → <strong>' + e.data.to + '</strong>';
         } else if (e.type === 'bbs_post') {
-            html += `BBS post on <strong>${e.data.board}</strong>`;
-            if (e.data.subject) html += `: ${escHtml(e.data.subject)}`;
+            html += 'BBS post on <strong>' + e.data.board + '</strong>';
+            if (e.data.subject) html += ': ' + escHtml(e.data.subject);
         } else if (e.type === 'canvas_capture') {
-            html += `Canvas captured: <a href="#" onclick="openProgram('${e.data.program_name || ''}'); return false;">${e.data.filename || 'image'}</a>`;
+            html += 'Canvas captured: <a href="#" onclick="openProgram(\'' + escAttr(e.data.program_name || '') + '\'); return false;">' + (e.data.filename || 'image') + '</a>';
         } else if (e.type === 'fix_attempt') {
-            html += `Fix attempt #${e.data.attempt || '?'} for <strong>${e.data.prog_type || 'unknown'}</strong>`;
-            if (e.data.error) html += ` <span class="timeline-error">${escHtml(e.data.error.slice(0, 60))}</span>`;
+            html += 'Fix attempt #' + (e.data.attempt || '?') + ' for <strong>' + (e.data.prog_type || 'unknown') + '</strong>';
+            if (e.data.error) html += ' <span class="timeline-error">' + escHtml(e.data.error.slice(0, 60)) + '</span>';
         }
         html += '</span></div>';
         return html;
@@ -373,23 +507,23 @@ function loadGallery() {
     fetch('/api/canvas')
         .then(r => r.json())
         .then(renderGallery)
-        .catch(() => {});
+        .catch(function(){});
 }
 
 function renderGallery(items) {
-    const gallery = document.getElementById('canvasGallery');
+    var gallery = document.getElementById('canvasGallery');
     if (!items || !items.length) { gallery.innerHTML = '<p class="timeline-empty">No canvas captures yet</p>'; return; }
 
-    gallery.innerHTML = items.map(item => `
-        <div class="canvas-thumb" onclick="openProgram('${escAttr(item.program_name)}')">
-            <img src="${item.url}" alt="${escAttr(item.filename)}" loading="lazy">
-            <span class="canvas-label">${item.prog_type || item.filename.replace('.png','')}</span>
-        </div>
-    `).join('');
+    gallery.innerHTML = items.map(function(item) {
+        return '<div class="canvas-thumb" onclick="openProgram(\'' + escAttr(item.program_name) + '\')">' +
+            '<img src="' + item.url + '" alt="' + escAttr(item.filename) + '" loading="lazy">' +
+            '<span class="canvas-label">' + (item.prog_type || item.filename.replace('.png','')) + '</span>' +
+        '</div>';
+    }).join('');
 
-    const more = document.getElementById('galleryMore');
+    var more = document.getElementById('galleryMore');
     if (items.length >= 5) {
-        document.getElementById('galleryMoreLink').textContent = `View all ${items.length} canvases`;
+        document.getElementById('galleryMoreLink').textContent = 'View all ' + items.length + ' canvases';
         more.style.display = '';
     } else {
         more.style.display = 'none';
@@ -402,20 +536,19 @@ function openProgram(name) {
     fetch('/api/program/' + encodeURIComponent(name))
         .then(r => r.json())
         .then(renderModal)
-        .catch(() => alert('Failed to load program'));
+        .catch(function() { alert('Failed to load program'); });
 }
 
 function renderModal(data) {
     document.getElementById('modalTitle').textContent = data.name || 'Unknown';
 
-    // Meta
-    const meta = data.metadata || {};
-    const stats = data.run_stats || {};
-    let metaHtml = '';
-    if (meta.program_type) metaHtml += `<span class="modal-meta-item"><strong>Type:</strong> ${meta.program_type}</span>`;
-    if (meta.mood) metaHtml += `<span class="modal-meta-item"><strong>Mood:</strong> ${meta.mood}</span>`;
-    if (meta.created_at) metaHtml += `<span class="modal-meta-item"><strong>Created:</strong> ${new Date(meta.created_at).toLocaleString()}</span>`;
-    if (stats.run_time) metaHtml += `<span class="modal-meta-item"><strong>Run time:</strong> ${stats.run_time}s</span>`;
+    var meta = data.metadata || {};
+    var stats = data.run_stats || {};
+    var metaHtml = '';
+    if (meta.program_type) metaHtml += '<span class="modal-meta-item"><strong>Type:</strong> ' + meta.program_type + '</span>';
+    if (meta.mood) metaHtml += '<span class="modal-meta-item"><strong>Mood:</strong> ' + meta.mood + '</span>';
+    if (meta.created_at) metaHtml += '<span class="modal-meta-item"><strong>Created:</strong> ' + new Date(meta.created_at).toLocaleString() + '</span>';
+    if (stats.run_time) metaHtml += '<span class="modal-meta-item"><strong>Run time:</strong> ' + stats.run_time + 's</span>';
     if (meta.success !== undefined) {
         metaHtml += meta.success
             ? '<span class="badge badge-success">Success</span>'
@@ -423,9 +556,8 @@ function renderModal(data) {
     }
     document.getElementById('modalMeta').innerHTML = metaHtml;
 
-    // Thought
-    const thoughtEl = document.getElementById('modalThought');
-    const thoughtContent = document.getElementById('modalThoughtContent');
+    var thoughtEl = document.getElementById('modalThought');
+    var thoughtContent = document.getElementById('modalThoughtContent');
     if (meta.thought_process) {
         thoughtContent.textContent = meta.thought_process;
         thoughtEl.style.display = '';
@@ -433,11 +565,9 @@ function renderModal(data) {
         thoughtEl.style.display = 'none';
     }
 
-    // Code
     document.getElementById('modalCode').textContent = data.code || '// No code available';
 
-    // Output
-    const outputSection = document.getElementById('modalOutputSection');
+    var outputSection = document.getElementById('modalOutputSection');
     if (stats.error) {
         document.getElementById('modalOutput').textContent = stats.error;
         outputSection.style.display = '';
@@ -445,8 +575,7 @@ function renderModal(data) {
         outputSection.style.display = 'none';
     }
 
-    // Canvas
-    const canvasSection = document.getElementById('modalCanvasSection');
+    var canvasSection = document.getElementById('modalCanvasSection');
     if (data.has_canvas && data.canvas_url) {
         document.getElementById('modalCanvasImg').src = data.canvas_url;
         canvasSection.style.display = '';
@@ -463,37 +592,37 @@ function closeModal(e) {
 }
 
 // ─── Utility ───
-function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function escAttr(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
 // ─── Actions ───
 function restartProgram() {
     fetch('/api/restart', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
             if (data.success) {
                 alert('Restart requested! Starting new program...');
-                setTimeout(() => location.reload(), 1000);
+                setTimeout(function() { location.reload(); }, 1000);
             } else {
                 alert('Error: ' + data.error);
             }
         })
-        .catch(err => alert('Error: ' + err));
+        .catch(function(err) { alert('Error: ' + err); });
 }
 function screensaverOn() {
     fetch('/api/screensaver/on', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => { if (data.success) setTimeout(() => location.reload(), 2000); })
-        .catch(err => alert('Error: ' + err));
+        .then(function(response) { return response.json(); })
+        .then(function(data) { if (data.success) setTimeout(function() { location.reload(); }, 2000); })
+        .catch(function(err) { alert('Error: ' + err); });
 }
 function screensaverOff() {
     fetch('/api/screensaver/off', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => { if (data.success) setTimeout(() => location.reload(), 2000); })
-        .catch(err => alert('Error: ' + err));
+        .then(function(response) { return response.json(); })
+        .then(function(data) { if (data.success) setTimeout(function() { location.reload(); }, 2000); })
+        .catch(function(err) { alert('Error: ' + err); });
 }
 
 document.addEventListener('DOMContentLoaded', initDashboard);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
 </script>
 {% endblock %}

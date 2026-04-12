@@ -4,17 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}TinyProgrammer{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        // Apply theme before render to prevent flash
+        (function() {
+            var t = localStorage.getItem('tp-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
 </head>
 <body>
-    <nav>
-        <div class="nav-brand">TinyProgrammer</div>
-        <div class="nav-links">
-            <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
-            <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="active"{% endif %}>Settings</a>
-            <a href="{{ url_for('prompt_editor') }}" {% if request.endpoint == 'prompt_editor' %}class="active"{% endif %}>Prompts</a>
+    <div class="menubar">
+        <div class="menubar-left">
+            <span class="menubar-logo">◪</span>
+            <span class="menubar-item">File</span>
+            <span class="menubar-item">Edit</span>
+            <span class="menubar-item">View</span>
         </div>
-    </nav>
+        <div class="menubar-right">
+            <span class="menubar-nav">
+                <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+                <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="active"{% endif %}>Settings</a>
+                <a href="{{ url_for('prompt_editor') }}" {% if request.endpoint == 'prompt_editor' %}class="active"{% endif %}>Prompts</a>
+            </span>
+            <button class="theme-toggle" onclick="toggleTheme()">◑</button>
+        </div>
+    </div>
+
+    <div class="crt-overlay"></div>
+    <div class="crt-vignette"></div>
 
     <main>
         {% if message %}
@@ -25,7 +46,17 @@
     </main>
 
     <footer>
-        <p>TinyProgrammer v0.1 - <a href="#" onclick="location.reload()">Refresh</a></p>
+        <p>TinyProgrammer v0.1 — <a href="#" onclick="location.reload()">Refresh</a></p>
     </footer>
+
+    <script>
+        function toggleTheme() {
+            var html = document.documentElement;
+            var current = html.getAttribute('data-theme') || 'light';
+            var next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('tp-theme', next);
+        }
+    </script>
 </body>
 </html>
