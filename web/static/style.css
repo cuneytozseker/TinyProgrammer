@@ -503,12 +503,12 @@ main {
     margin-bottom: 6px;
 }
 .pulse-container {
-    background: #1a1a2e;
+    background: #f0f0f0;
     padding: 8px;
     height: 180px;
     border: 1px solid var(--border-window);
 }
-.pulse-container h3 { color: #ccc; }
+.pulse-container h3 { color: #555; }
 .pulse-container canvas {
     width: 100% !important;
     height: 140px !important;
@@ -516,6 +516,7 @@ main {
 [data-theme="dark"] .pulse-container {
     background: #0a0a0a;
 }
+[data-theme="dark"] .pulse-container h3 { color: #ccc; }
 .mood-container {
     padding: 0;
     min-height: 180px;

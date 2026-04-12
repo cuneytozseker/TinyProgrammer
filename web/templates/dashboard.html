@@ -206,7 +206,7 @@ const QUOTES = {
 // ─── Avatar Expressions (8x8 grid, row-major) ───
 // Each expression is a Set of pixel indices that are "on"
 const EXPRESSIONS = {
-    hopeful:   new Set([9,14, 18,19,21,22, 26,27,29,30, 43,44, 50,53]),
+    hopeful:   new Set([9,14, 18,19,21,22, 26,27,29,30, 42,45, 51,52]),
     focused:   new Set([9,14, 18,19,21,22, 26,27,29,30, 42,43,44]),
     curious:   new Set([9, 18,19,21,22, 26,27,29,30, 43,44]),
     proud:     new Set([26,27,29,30, 43,44,45]),
@@ -366,6 +366,17 @@ function loadPulseChart() {
         .catch(function(){});
 }
 
+function pulseThemeColors() {
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+        line: dark ? '#2ecc71' : '#27ae60',
+        fill: dark ? 'rgba(46, 204, 113, 0.15)' : 'rgba(39, 174, 96, 0.12)',
+        tick: dark ? '#888' : '#666',
+        grid: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
+        gridY: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    };
+}
+
 function updatePulseChart(pulse) {
     if (!pulse.length) return;
     var ctx = document.getElementById('pulseChart').getContext('2d');
@@ -374,10 +385,17 @@ function updatePulseChart(pulse) {
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     });
     var values = pulse.map(function(p) { return p.success ? 1 : 0; });
+    var tc = pulseThemeColors();
 
     if (pulseChart) {
         pulseChart.data.labels = labels;
         pulseChart.data.datasets[0].data = values;
+        pulseChart.data.datasets[0].borderColor = tc.line;
+        pulseChart.data.datasets[0].backgroundColor = tc.fill;
+        pulseChart.options.scales.x.ticks.color = tc.tick;
+        pulseChart.options.scales.x.grid.color = tc.grid;
+        pulseChart.options.scales.y.ticks.color = tc.tick;
+        pulseChart.options.scales.y.grid.color = tc.gridY;
         pulseChart.update('none');
         return;
     }
@@ -388,13 +406,13 @@ function updatePulseChart(pulse) {
             labels: labels,
             datasets: [{
                 data: values,
-                borderColor: '#2ecc71',
+                borderColor: tc.line,
                 borderWidth: 2,
                 pointRadius: 0,
                 pointHoverRadius: 4,
                 tension: 0.3,
                 fill: true,
-                backgroundColor: 'rgba(46, 204, 113, 0.15)',
+                backgroundColor: tc.fill,
             }],
         },
         options: {
@@ -407,8 +425,8 @@ function updatePulseChart(pulse) {
                 }
             }},
             scales: {
-                x: { display: true, ticks: { maxTicksLimit: 6, color: '#888', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                y: { display: true, min: -0.2, max: 1.2, ticks: { callback: function(v) { return v === 1 ? 'OK' : v === 0 ? 'FAIL' : ''; }, color: '#888', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                x: { display: true, ticks: { maxTicksLimit: 6, color: tc.tick, font: { size: 10 } }, grid: { color: tc.grid } },
+                y: { display: true, min: -0.2, max: 1.2, ticks: { callback: function(v) { return v === 1 ? 'OK' : v === 0 ? 'FAIL' : ''; }, color: tc.tick, stepSize: 1 }, grid: { color: tc.gridY } },
             },
             animation: false,
         },

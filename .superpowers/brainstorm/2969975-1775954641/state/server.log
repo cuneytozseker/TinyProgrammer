@@ -1,7 +1,0 @@
-{"type":"server-started","port":62413,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:62413","screen_dir":"/home/warlock/Documents/Coding/TinyProgrammer/.superpowers/brainstorm/2969975-1775954641/content","state_dir":"/home/warlock/Documents/Coding/TinyProgrammer/.superpowers/brainstorm/2969975-1775954641/state"}
-{"type":"screen-added","file":"/home/warlock/Documents/Coding/TinyProgrammer/.superpowers/brainstorm/2969975-1775954641/content/dashboard-layout.html"}
-{"type":"screen-added","file":"/home/warlock/Documents/Coding/TinyProgrammer/.superpowers/brainstorm/2969975-1775954641/content/pulse-chart.html"}
-{"type":"screen-added","file":"/home/warlock/Documents/Coding/TinyProgrammer/.superpowers/brainstorm/2969975-1775954641/content/waiting.html"}
-{"type":"screen-added","file":"/home/warlock/Documents/Coding/TinyProgrammer/.superpowers/brainstorm/2969975-1775954641/content/program-detail-modal.html"}
-{"type":"screen-added","file":"/home/warlock/Documents/Coding/TinyProgrammer/.superpowers/brainstorm/2969975-1775954641/content/waiting-2.html"}
-{"type":"server-stopped","reason":"idle timeout"}
