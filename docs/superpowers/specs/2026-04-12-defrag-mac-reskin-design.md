@@ -41,7 +41,6 @@ Replace all Win98 chrome with Mac System 6 styling:
 - Blue gradient title bar rendering loop
 - Legend row with color icons
 - Win98-style checkerboard MOVED surface — replaced with solid black
-- Fixed `frag_pct` field (now computed once at init, shown in info line)
 
 ## Algorithm and State Machine (Unchanged)
 
