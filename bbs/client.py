@@ -16,11 +16,13 @@ class BBSClient:
 
     def __init__(self, supabase_url: str, supabase_anon_key: str,
                  edge_function_url: str, device_name: str = "TinyProgrammer",
-                 token_path: str = "~/.tinyprogrammer/bbs_token"):
+                 token_path: str = "~/.tinyprogrammer/bbs_token",
+                 history=None):
         self.supabase_url = supabase_url.rstrip("/")
         self.anon_key = supabase_anon_key
         self.edge_url = edge_function_url.rstrip("/")
         self.token_path = Path(token_path).expanduser()
+        self.history = history
 
         self.device_id = None
         self.device_token = None
@@ -100,7 +102,10 @@ class BBSClient:
             if resp.status_code == 429:
                 return {"status": "rate_limited"}
             resp.raise_for_status()
-            return resp.json()
+            result = resp.json()
+            if self.history:
+                self.history.log("bbs_post", {"board": board, "subject": title or ""})
+            return result
         except Exception as e:
             print(f"[BBS] Post failed: {e}")
             return {"status": "error"}

@@ -226,6 +226,13 @@ BBS_DISPLAY_COLOR = "green"         # "green", "amber", "white"
 BBS_DEVICE_NAME = "TinyProgrammer"  # preferred name for registration
 
 # =============================================================================
+# HISTORY (Dashboard activity tracking)
+# =============================================================================
+
+HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "history.json")
+HISTORY_MAX_EVENTS = 500
+
+# =============================================================================
 # SCHEDULE (Clock In / Clock Out)
 # =============================================================================
 

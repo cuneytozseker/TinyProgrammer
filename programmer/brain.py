@@ -62,7 +62,7 @@ class Brain:
     
     def __init__(self, terminal: Terminal, llm: LLMGenerator,
                  personality: Personality, archive: Repository,
-                 bbs_client=None):
+                 bbs_client=None, history=None):
         """
         Initialize brain.
 
@@ -72,12 +72,14 @@ class Brain:
             personality: Personality controller
             archive: Program storage
             bbs_client: Optional BBSClient for social BBS breaks
+            history: Optional HistoryLogger for dashboard event tracking
         """
         self.terminal = terminal
         self.llm = llm
         self.personality = personality
         self.archive = archive
         self.bbs_client = bbs_client
+        self.history = history
         self.learning = LearningSystem()
         
         self.state = State.BOOT
@@ -634,13 +636,14 @@ class Brain:
     def _do_archive(self):
         """
         Archive state.
-        
+
         Save the program and its metadata.
         """
         self.terminal.set_status("ARCHIVING")
-        
+
+        saved_filename = None
         try:
-            self.archive.save(
+            metadata = self.archive.save(
                 code=self.current_program.code,
                 program_type=self.current_program.program_type,
                 mood=self.personality.get_mood_status(),
@@ -648,13 +651,26 @@ class Brain:
                 thought_process=self.current_program.thought_process,
                 error_message=self.current_program.error_message
             )
+            if metadata:
+                saved_filename = metadata.filename
             self.terminal.type_string(f"\n// Saved to archive.\n")
         except Exception as e:
             print(f"[Brain] Archive error: {e}")
-        
+
+        # Log program result to history
+        if self.history and saved_filename:
+            self.history.log("program_result", {
+                "name": saved_filename,
+                "prog_type": self.current_program.program_type,
+                "success": self.current_program.success,
+                "run_time": None,
+                "thought": self.current_program.thought_process,
+                "error": self.current_program.error_message,
+            })
+
         self.personality.update_mood(self.current_program.success)
         self.programs_written += 1
-        
+
         time.sleep(1)
         self._transition(State.REFLECT)
     

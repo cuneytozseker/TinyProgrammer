@@ -42,6 +42,7 @@ from llm.generator import LLMGenerator
 from programmer.brain import Brain, State
 from programmer.personality import Personality, Mood
 from archive.repository import Repository
+from web.history import HistoryLogger
 
 
 def signal_handler(sig, frame):
@@ -76,7 +77,7 @@ def _fatal_config_error(terminal, *lines):
     # Start the web server so the MJPEG stream and dashboard are visible
     try:
         from web import start_web_server
-        start_web_server(None, host='0.0.0.0', port=int(os.environ.get('WEB_PORT', 5000)))
+        start_web_server(None, history=None, host='0.0.0.0', port=int(os.environ.get('WEB_PORT', 5000)))
     except Exception:
         pass
 
@@ -132,13 +133,22 @@ def main():
         typo_probability=config.TYPO_PROBABILITY,
         pause_probability=config.PAUSE_PROBABILITY
     )
-    
+
     archive = Repository(
         local_path=config.ARCHIVE_PATH,
         github_enabled=config.GITHUB_ENABLED,
         github_repo=config.GITHUB_REPO
     )
-    
+
+    # Initialize history logger for dashboard event tracking
+    history = HistoryLogger(
+        filepath=getattr(config, 'HISTORY_FILE', 'history.json'),
+        max_events=getattr(config, 'HISTORY_MAX_EVENTS', 500),
+    )
+
+    # Wire history into personality (mood shifts)
+    personality.history = history
+
     # Initialize BBS client (optional social layer)
     bbs_client = None
     if getattr(config, 'BBS_ENABLED', False):
@@ -149,6 +159,7 @@ def main():
                 supabase_anon_key=config.BBS_SUPABASE_ANON_KEY,
                 edge_function_url=config.BBS_EDGE_FUNCTION_URL,
                 device_name=config.BBS_DEVICE_NAME,
+                history=history,
             )
             print(f"[BBS] Registered as: {bbs_client.device_name}")
         except Exception as e:
@@ -162,6 +173,7 @@ def main():
         personality=personality,
         archive=archive,
         bbs_client=bbs_client,
+        history=history,
     )
     
     print("[Tiny Programmer] All systems ready.")
@@ -180,6 +192,7 @@ def main():
             from web import start_web_server
             start_web_server(
                 brain,
+                history=history,
                 host=getattr(config, 'WEB_HOST', '0.0.0.0'),
                 port=getattr(config, 'WEB_PORT', 5000)
             )

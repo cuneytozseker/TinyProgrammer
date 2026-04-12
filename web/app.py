@@ -8,18 +8,21 @@ Runs in a background thread alongside the main programmer loop.
 import os
 import time
 import threading
-from flask import Flask, render_template, request, redirect, url_for, jsonify, Response
+from flask import Flask, render_template, request, redirect, url_for, jsonify, Response, send_from_directory
 
 from .config_manager import ConfigManager
 
 # Global reference to brain (set by main.py)
 _brain = None
+# Global reference to history logger (set by main.py)
+_history = None
 
 
-def set_brain(brain):
-    """Set the brain instance for status access."""
-    global _brain
+def set_brain(brain, history=None):
+    """Set the brain instance and history logger for status access."""
+    global _brain, _history
     _brain = brain
+    _history = history
 
 
 def create_app():
@@ -47,9 +50,14 @@ def create_app():
 
     @app.route('/api/status')
     def api_status():
-        """JSON API for status (for future use)."""
+        """JSON API for status with history data."""
         if _brain:
-            return jsonify(_brain.get_status())
+            status = _brain.get_status()
+            if _history:
+                status["recent_history"] = _history.get_recent(10)
+                status["stats"] = _history.get_stats()
+                status["moods"] = _history.get_moods(50)
+            return jsonify(status)
         return jsonify({"error": "Brain not initialized"})
 
     @app.route('/api/restart', methods=['POST'])
@@ -239,12 +247,121 @@ def create_app():
                              config=current,
                              message=message)
 
+    # =========================================================================
+    # History & Gallery API
+    # =========================================================================
+
+    @app.route('/api/history')
+    def api_history():
+        """Recent history events for the activity timeline."""
+        if not _history:
+            return jsonify([])
+        limit = request.args.get('limit', 20, type=int)
+        return jsonify(_history.get_recent(limit))
+
+    @app.route('/api/history/stats')
+    def api_history_stats():
+        """Aggregated success/fail stats for the pulse chart."""
+        if not _history:
+            return jsonify({"total_programs": 0, "success": 0, "failed": 0, "by_type": {}, "pulse": []})
+        return jsonify(_history.get_stats())
+
+    @app.route('/api/history/moods')
+    def api_history_moods():
+        """Recent mood shift events for the mood timeline."""
+        if not _history:
+            return jsonify([])
+        limit = request.args.get('limit', 50, type=int)
+        return jsonify(_history.get_moods(limit))
+
+    @app.route('/api/canvas')
+    def api_canvas():
+        """List saved canvas images with metadata."""
+        import config
+        canvas_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'canvas')
+        results = []
+        if os.path.isdir(canvas_dir):
+            for fname in sorted(os.listdir(canvas_dir)):
+                if fname.endswith('.png'):
+                    # Look up metadata from history
+                    meta = {}
+                    if _history:
+                        for evt in reversed(_history.get_recent(200)):
+                            if evt["type"] == "canvas_capture" and evt["data"].get("filename") == fname:
+                                meta = evt["data"]
+                                break
+                    results.append({
+                        "filename": fname,
+                        "url": f"/canvas/{fname}",
+                        "prog_type": meta.get("prog_type", ""),
+                        "program_name": meta.get("program_name", fname.replace(".png", ".py")),
+                    })
+        return jsonify(results)
+
+    @app.route('/canvas/<path:filename>')
+    def serve_canvas(filename):
+        """Serve canvas PNG files."""
+        canvas_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'canvas')
+        return send_from_directory(canvas_dir, filename)
+
+    @app.route('/api/program/<name>')
+    def api_program_detail(name):
+        """Full program details for the detail modal."""
+        if not _brain:
+            return jsonify({"error": "Brain not initialized"})
+
+        # Read code from archive
+        import config
+        programs_dir = os.path.join(config.ARCHIVE_PATH, "programs")
+        code_path = os.path.join(programs_dir, name)
+        code = ""
+        if os.path.exists(code_path):
+            with open(code_path, 'r') as f:
+                code = f.read()
+
+        # Get metadata from archive index
+        metadata = {}
+        if _brain and hasattr(_brain, 'archive'):
+            for p in _brain.archive.index:
+                if p.filename == name:
+                    metadata = {
+                        "program_type": p.program_type,
+                        "created_at": p.created_at,
+                        "mood": p.mood,
+                        "success": p.success,
+                        "thought_process": p.thought_process,
+                        "error_message": p.error_message,
+                        "lines_of_code": p.lines_of_code,
+                    }
+                    break
+
+        # Get run-time stats from history
+        run_stats = {}
+        if _history:
+            for evt in reversed(_history.get_recent(200)):
+                if evt["type"] == "program_result" and evt["data"].get("name") == name:
+                    run_stats = evt["data"]
+                    break
+
+        # Check for canvas image
+        canvas_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'canvas', name.replace('.py', '.png'))
+        has_canvas = os.path.exists(canvas_path)
+
+        return jsonify({
+            "name": name,
+            "code": code,
+            "metadata": metadata,
+            "run_stats": run_stats,
+            "has_canvas": has_canvas,
+            "canvas_url": f"/canvas/{name.replace('.py', '.png')}" if has_canvas else None,
+        })
+
     return app
 
 
-def start_web_server(brain, host='0.0.0.0', port=5000):
+def start_web_server(brain, history=None, host='0.0.0.0', port=5000):
     """Start the web server in a background thread."""
-    set_brain(brain)
+    set_brain(brain, history)
     app = create_app()
 
     # Disable Flask's reloader and debug in production

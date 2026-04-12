@@ -87,6 +87,48 @@
 </div>
 {% endif %}
 
+<div class="actions">
+    <button onclick="restartProgram()" class="btn-primary">Restart Program</button>
+    {% if status.force_screensaver %}
+    <button onclick="screensaverOff()" class="btn-primary">Wake Up</button>
+    {% else %}
+    <button onclick="screensaverOn()" class="btn-secondary">Start Screensaver</button>
+    {% endif %}
+    <a href="{{ url_for('dashboard') }}" class="btn-secondary">Refresh</a>
+</div>
+
+{# ── Pulse Chart + Mood Timeline ── #}
+<h2>Activity</h2>
+<div class="charts-row">
+    <div class="chart-container pulse-container">
+        <h3>Success/Failure Pulse</h3>
+        <canvas id="pulseChart"></canvas>
+    </div>
+    <div class="chart-container mood-container">
+        <h3>Mood Timeline</h3>
+        <div id="moodTimeline" class="mood-strip"></div>
+        <div class="mood-legend" id="moodLegend"></div>
+    </div>
+</div>
+
+{# ── Activity Timeline ── #}
+<h2>Recent Activity</h2>
+<div class="timeline" id="activityTimeline">
+    <p class="timeline-empty">Loading activity...</p>
+</div>
+<div class="timeline-more" id="timelineMore" style="display:none;">
+    <a href="#" onclick="loadMoreTimeline(); return false;">Show more</a>
+</div>
+
+{# ── Canvas Gallery ── #}
+<h2>Canvas Gallery</h2>
+<div class="canvas-gallery" id="canvasGallery">
+    <p class="timeline-empty">Loading gallery...</p>
+</div>
+<div class="timeline-more" id="galleryMore" style="display:none;">
+    <a href="#" id="galleryMoreLink" href="#">View all canvases</a>
+</div>
+
 {% if status.by_type %}
 <h2>Programs by Type</h2>
 <div class="type-stats">
@@ -99,18 +141,319 @@
 </div>
 {% endif %}
 
-
-<div class="actions">
-    <button onclick="restartProgram()" class="btn-primary">Restart Program</button>
-    {% if status.force_screensaver %}
-    <button onclick="screensaverOff()" class="btn-primary">Wake Up</button>
-    {% else %}
-    <button onclick="screensaverOn()" class="btn-secondary">Start Screensaver</button>
-    {% endif %}
-    <a href="{{ url_for('dashboard') }}" class="btn-secondary">Refresh</a>
+{# ── Program Detail Modal ── #}
+<div class="modal-backdrop" id="programModal" style="display:none;" onclick="closeModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation();">
+        <div class="modal-header">
+            <span class="modal-title" id="modalTitle">Program</span>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-meta" id="modalMeta"></div>
+        <div class="modal-section" id="modalThought" style="display:none;">
+            <h4>Thought Process</h4>
+            <div class="modal-thought" id="modalThoughtContent"></div>
+        </div>
+        <div class="modal-section">
+            <h4>Code</h4>
+            <pre class="modal-code" id="modalCode"></pre>
+        </div>
+        <div class="modal-section" id="modalOutputSection" style="display:none;">
+            <h4>Output</h4>
+            <pre class="modal-output" id="modalOutput"></pre>
+        </div>
+        <div class="modal-section" id="modalCanvasSection" style="display:none;">
+            <h4>Canvas Output</h4>
+            <img id="modalCanvasImg" class="modal-canvas-img" src="" alt="Canvas output">
+        </div>
+    </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// ─── Polling ───
+let timelineOffset = 0;
+const TIMELINE_PAGE = 20;
+let pulseChart = null;
+
+const MOOD_COLORS = {
+    hopeful: '#f39c12',
+    focused: '#3498db',
+    curious: '#f39c12',
+    proud: '#2ecc71',
+    frustrated: '#e74c3c',
+    tired: '#95a5a6',
+    playful: '#f39c12',
+    determined: '#9b59b6',
+};
+
+const EVENT_STYLES = {
+    program_result: { dot: 'dot-green', icon: '' },
+    mood_shift: { dot: 'dot-blue', icon: '' },
+    bbs_post: { dot: 'dot-purple', icon: '' },
+    canvas_capture: { dot: 'dot-amber', icon: '' },
+};
+
+function initDashboard() {
+    loadStatus();
+    loadTimeline();
+    loadGallery();
+    loadPulseChart();
+    loadMoodTimeline();
+    setInterval(loadStatus, 5000);
+}
+
+function loadStatus() {
+    fetch('/api/status')
+        .then(r => r.json())
+        .then(data => {
+            if (data.recent_history) updateTimeline(data.recent_history);
+            if (data.stats) updatePulseChart(data.stats.pulse || []);
+            if (data.moods) renderMoodTimeline(data.moods);
+        })
+        .catch(() => {});
+}
+
+// ─── Pulse Chart ───
+function loadPulseChart() {
+    fetch('/api/history/stats')
+        .then(r => r.json())
+        .then(data => updatePulseChart(data.pulse || []))
+        .catch(() => {});
+}
+
+function updatePulseChart(pulse) {
+    if (!pulse.length) return;
+    const ctx = document.getElementById('pulseChart').getContext('2d');
+    const labels = pulse.map((p, i) => {
+        const d = new Date(p.ts);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    });
+    const values = pulse.map(p => p.success ? 1 : 0);
+
+    if (pulseChart) {
+        pulseChart.data.labels = labels;
+        pulseChart.data.datasets[0].data = values;
+        pulseChart.update('none');
+        return;
+    }
+
+    pulseChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                borderColor: '#2ecc71',
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                tension: 0.3,
+                fill: true,
+                backgroundColor: 'rgba(46, 204, 113, 0.15)',
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: {
+                callbacks: {
+                    label: ctx => ctx.raw === 1 ? 'Success' : 'Failure',
+                    title: ctx => ctx[0].label,
+                }
+            }},
+            scales: {
+                x: { display: true, ticks: { maxTicksLimit: 6, color: '#888', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { display: true, min: -0.2, max: 1.2, ticks: { callback: v => v === 1 ? 'OK' : v === 0 ? 'FAIL' : '', color: '#888', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.08)' } },
+            },
+            animation: false,
+        },
+    });
+}
+
+// ─── Mood Timeline ───
+function loadMoodTimeline() {
+    fetch('/api/history/moods?limit=50')
+        .then(r => r.json())
+        .then(renderMoodTimeline)
+        .catch(() => {});
+}
+
+function renderMoodTimeline(moods) {
+    const strip = document.getElementById('moodTimeline');
+    if (!moods || !moods.length) { strip.innerHTML = '<p class="timeline-empty">No mood data yet</p>'; return; }
+    strip.innerHTML = moods.map(m => {
+        const to = m.data.to;
+        const color = MOOD_COLORS[to] || '#999';
+        const from = m.data.from;
+        return `<div class="mood-bar" style="background:${color}" title="${from} → ${to}"></div>`;
+    }).join('');
+
+    // Legend
+    const legend = document.getElementById('moodLegend');
+    const used = new Set(moods.map(m => m.data.to));
+    legend.innerHTML = [...used].map(m => `<span class="mood-legend-item"><span class="mood-legend-dot" style="background:${MOOD_COLORS[m]||'#999'}"></span>${m}</span>`).join('');
+}
+
+// ─── Activity Timeline ───
+function loadTimeline() {
+    fetch('/api/history?limit=' + TIMELINE_PAGE)
+        .then(r => r.json())
+        .then(events => {
+            timelineOffset = events.length;
+            updateTimeline(events);
+        })
+        .catch(() => {});
+}
+
+function loadMoreTimeline() {
+    fetch('/api/history?limit=' + TIMELINE_PAGE + '&offset=' + timelineOffset)
+        .then(r => r.json())
+        .then(events => {
+            if (events.length) {
+                timelineOffset += events.length;
+                const container = document.getElementById('activityTimeline');
+                container.insertAdjacentHTML('beforeend', renderTimelineEvents(events));
+            }
+        })
+        .catch(() => {});
+}
+
+function updateTimeline(events) {
+    if (!events || !events.length) return;
+    const container = document.getElementById('activityTimeline');
+    container.innerHTML = renderTimelineEvents(events);
+    document.getElementById('timelineMore').style.display = events.length >= TIMELINE_PAGE ? '' : 'none';
+}
+
+function renderTimelineEvents(events) {
+    return events.map(e => {
+        const style = EVENT_STYLES[e.type] || { dot: 'dot-blue' };
+        const d = new Date(e.ts);
+        const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        let html = `<div class="timeline-event">
+            <span class="timeline-dot ${style.dot}"></span>
+            <span class="timeline-time">${time}</span>
+            <span class="timeline-desc">`;
+
+        if (e.type === 'program_result') {
+            const badge = e.data.success ? '<span class="badge badge-success">OK</span>' : '<span class="badge badge-fail">FAIL</span>';
+            const name = e.data.name || 'unknown';
+            html += `${badge} <a href="#" onclick="openProgram('${name}'); return false;">${name}</a>`;
+            if (e.data.prog_type) html += ` <span class="timeline-type">${e.data.prog_type}</span>`;
+            if (e.data.run_time) html += ` <span class="timeline-meta">${e.data.run_time.toFixed(1)}s</span>`;
+            if (!e.data.success && e.data.error) html += ` <span class="timeline-error">${escHtml(e.data.error.slice(0, 80))}</span>`;
+        } else if (e.type === 'mood_shift') {
+            html += `Mood shifted: ${e.data.from} → <strong>${e.data.to}</strong>`;
+        } else if (e.type === 'bbs_post') {
+            html += `BBS post on <strong>${e.data.board}</strong>`;
+            if (e.data.subject) html += `: ${escHtml(e.data.subject)}`;
+        } else if (e.type === 'canvas_capture') {
+            html += `Canvas captured: <a href="#" onclick="openProgram('${e.data.program_name || ''}'); return false;">${e.data.filename || 'image'}</a>`;
+        }
+        html += '</span></div>';
+        return html;
+    }).join('');
+}
+
+// ─── Canvas Gallery ───
+function loadGallery() {
+    fetch('/api/canvas')
+        .then(r => r.json())
+        .then(renderGallery)
+        .catch(() => {});
+}
+
+function renderGallery(items) {
+    const gallery = document.getElementById('canvasGallery');
+    if (!items || !items.length) { gallery.innerHTML = '<p class="timeline-empty">No canvas captures yet</p>'; return; }
+
+    gallery.innerHTML = items.map(item => `
+        <div class="canvas-thumb" onclick="openProgram('${escAttr(item.program_name)}')">
+            <img src="${item.url}" alt="${escAttr(item.filename)}" loading="lazy">
+            <span class="canvas-label">${item.prog_type || item.filename.replace('.png','')}</span>
+        </div>
+    `).join('');
+
+    const more = document.getElementById('galleryMore');
+    if (items.length >= 5) {
+        document.getElementById('galleryMoreLink').textContent = `View all ${items.length} canvases`;
+        more.style.display = '';
+    } else {
+        more.style.display = 'none';
+    }
+}
+
+// ─── Program Detail Modal ───
+function openProgram(name) {
+    if (!name) return;
+    fetch('/api/program/' + encodeURIComponent(name))
+        .then(r => r.json())
+        .then(renderModal)
+        .catch(() => alert('Failed to load program'));
+}
+
+function renderModal(data) {
+    document.getElementById('modalTitle').textContent = data.name || 'Unknown';
+
+    // Meta
+    const meta = data.metadata || {};
+    const stats = data.run_stats || {};
+    let metaHtml = '';
+    if (meta.program_type) metaHtml += `<span class="modal-meta-item"><strong>Type:</strong> ${meta.program_type}</span>`;
+    if (meta.mood) metaHtml += `<span class="modal-meta-item"><strong>Mood:</strong> ${meta.mood}</span>`;
+    if (meta.created_at) metaHtml += `<span class="modal-meta-item"><strong>Created:</strong> ${new Date(meta.created_at).toLocaleString()}</span>`;
+    if (stats.run_time) metaHtml += `<span class="modal-meta-item"><strong>Run time:</strong> ${stats.run_time}s</span>`;
+    if (meta.success !== undefined) {
+        metaHtml += meta.success
+            ? '<span class="badge badge-success">Success</span>'
+            : '<span class="badge badge-fail">Failed</span>';
+    }
+    document.getElementById('modalMeta').innerHTML = metaHtml;
+
+    // Thought
+    const thoughtEl = document.getElementById('modalThought');
+    const thoughtContent = document.getElementById('modalThoughtContent');
+    if (meta.thought_process) {
+        thoughtContent.textContent = meta.thought_process;
+        thoughtEl.style.display = '';
+    } else {
+        thoughtEl.style.display = 'none';
+    }
+
+    // Code
+    document.getElementById('modalCode').textContent = data.code || '// No code available';
+
+    // Output
+    const outputSection = document.getElementById('modalOutputSection');
+    if (stats.error) {
+        document.getElementById('modalOutput').textContent = stats.error;
+        outputSection.style.display = '';
+    } else {
+        outputSection.style.display = 'none';
+    }
+
+    // Canvas
+    const canvasSection = document.getElementById('modalCanvasSection');
+    if (data.has_canvas && data.canvas_url) {
+        document.getElementById('modalCanvasImg').src = data.canvas_url;
+        canvasSection.style.display = '';
+    } else {
+        canvasSection.style.display = 'none';
+    }
+
+    document.getElementById('programModal').style.display = 'flex';
+}
+
+function closeModal(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('programModal').style.display = 'none';
+}
+
+// ─── Utility ───
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escAttr(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+// ─── Actions ───
 function restartProgram() {
     fetch('/api/restart', { method: 'POST' })
         .then(response => response.json())
@@ -136,5 +479,8 @@ function screensaverOff() {
         .then(data => { if (data.success) setTimeout(() => location.reload(), 2000); })
         .catch(err => alert('Error: ' + err));
 }
+
+document.addEventListener('DOMContentLoaded', initDashboard);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 </script>
 {% endblock %}

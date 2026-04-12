@@ -47,19 +47,22 @@ class Personality:
     """
     
     def __init__(self, typing_speed_range: Tuple[float, float],
-                 typo_probability: float, pause_probability: float):
+                 typo_probability: float, pause_probability: float,
+                 history=None):
         """
         Initialize personality.
-        
+
         Args:
             typing_speed_range: (min, max) characters per second
             typo_probability: Chance of making a typo (0.0 - 1.0)
             pause_probability: Chance of pausing mid-line (0.0 - 1.0)
+            history: Optional HistoryLogger for mood shift tracking
         """
         self.speed_min, self.speed_max = typing_speed_range
         self.typo_probability = typo_probability
         self.pause_probability = pause_probability
-        
+        self.history = history
+
         self.consecutive_failures = 0
         self.consecutive_successes = 0
 
@@ -88,9 +91,13 @@ class Personality:
         import datetime
         hour = datetime.datetime.now().hour
 
+        old_mood = self.mood
+
         # Late night → TIRED
         if hour >= 23 or hour < 5:
             self.mood = Mood.TIRED
+            if old_mood != Mood.TIRED and self.history:
+                self.history.log("mood_shift", {"from": old_mood.value, "to": Mood.TIRED.value})
             return
 
         # Success streaks
@@ -109,6 +116,10 @@ class Personality:
             self.mood = random.choice([Mood.FRUSTRATED, Mood.HOPEFUL])
         else:
             self.mood = random.choice([Mood.HOPEFUL, Mood.CURIOUS])
+
+        # Log mood shift if it changed
+        if self.mood != old_mood and self.history:
+            self.history.log("mood_shift", {"from": old_mood.value, "to": self.mood.value})
     
     def get_typing_delay(self) -> float:
         """
