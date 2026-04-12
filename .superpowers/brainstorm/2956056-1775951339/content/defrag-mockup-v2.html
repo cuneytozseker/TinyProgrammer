@@ -1,0 +1,74 @@
+<h2>Defrag Simulation — Dense Grid</h2>
+<p class="subtitle">More blocks — closer to the real Win98 defrag density</p>
+
+<div class="mockup">
+  <div class="mockup-header">Preview: Dense Block Grid (40x10)</div>
+  <div class="mockup-body" style="background:#000; padding:10px; font-family: 'Courier New', monospace;">
+
+    <!-- Title bar -->
+    <div style="background:#000080; color:#fff; padding:3px 6px; font-size:11px; display:flex; justify-content:space-between; margin-bottom:6px;">
+      <span>Disk Defragmenter - [C:]</span>
+      <span>_ □ X</span>
+    </div>
+
+    <!-- Drive info -->
+    <div style="color:#c0c0c0; font-size:10px; margin-bottom:4px;">
+      Drive C: &nbsp; 847 MB &nbsp; 23% fragmented
+    </div>
+
+    <!-- Dense block grid 40x10 -->
+    <div id="grid" style="display:grid; grid-template-columns:repeat(40,1fr); gap:1px; margin-bottom:8px; padding:3px; background:#2a2a2a; border:1px solid #808080;"></div>
+
+    <!-- Legend -->
+    <div style="display:flex; gap:14px; font-size:9px; color:#c0c0c0; margin-bottom:6px;">
+      <span><span style="display:inline-block;width:8px;height:8px;background:#0000aa;vertical-align:middle;"></span> Optimized</span>
+      <span><span style="display:inline-block;width:8px;height:8px;background:#ff0000;vertical-align:middle;"></span> Fragmented</span>
+      <span><span style="display:inline-block;width:8px;height:8px;background:#00ff00;vertical-align:middle;"></span> Moving</span>
+      <span><span style="display:inline-block;width:8px;height:8px;background:#ffff00;vertical-align:middle;"></span> Reading</span>
+      <span><span style="display:inline-block;width:8px;height:8px;background:#ffffff;vertical-align:middle;"></span> Free</span>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="margin-bottom:5px;">
+      <div style="color:#c0c0c0; font-size:10px; margin-bottom:2px;">Consolidating clusters... 47%</div>
+      <div style="background:#808080; height:14px; border:1px solid #404040;">
+        <div style="background:#000080; height:100%; width:47%;"></div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div style="background:#808080; color:#000; padding:2px 6px; font-size:9px; display:flex; justify-content:space-between;">
+      <span>Elapsed: 01:23</span>
+      <span>Clusters: 43,521 / 92,157</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// Generate a realistic-looking defrag grid
+const grid = document.getElementById('grid');
+const COLS = 40;
+const ROWS = 10;
+// Distribution: ~60% optimized, ~10% fragmented, ~25% free, ~2% moving, ~3% reading
+for (let i = 0; i < COLS * ROWS; i++) {
+  const block = document.createElement('div');
+  block.style.cssText = 'aspect-ratio:1;';
+  const r = Math.random();
+  const col = i % COLS;
+  const row = Math.floor(i / COLS);
+  // More free space toward the end (bottom-right)
+  const endBias = (col / COLS + row / ROWS) / 2;
+  if (r < 0.02) {
+    block.style.background = '#00ff00'; // moving
+  } else if (r < 0.05) {
+    block.style.background = '#ffff00'; // reading
+  } else if (r < 0.15) {
+    block.style.background = '#ff0000'; // fragmented
+  } else if (r - endBias * 0.3 < 0.6) {
+    block.style.background = '#0000aa'; // optimized
+  } else {
+    block.style.background = '#ffffff'; // free
+  }
+  grid.appendChild(block);
+}
+</script>

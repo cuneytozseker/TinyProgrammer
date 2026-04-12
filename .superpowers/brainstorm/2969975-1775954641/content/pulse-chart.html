@@ -1,0 +1,86 @@
+<h2>Success Rate: Pulse Line Graph</h2>
+<p class="subtitle">Updated chart section — heartbeat-style line instead of bars</p>
+
+<div class="mockup">
+  <div class="mockup-header">Preview: Chart Row</div>
+  <div class="mockup-body" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; background: #f5f6fa; padding: 16px;">
+
+    <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #ddd;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div>
+          <div style="font-size: 10px; text-transform: uppercase; color: #7f8c8d; margin-bottom: 6px;">Success Rate Over Time</div>
+          <div style="background: #0a0e17; border: 1px solid #1a2332; border-radius: 4px; padding: 10px; height: 90px; position: relative; overflow: hidden;">
+            <!-- Grid lines -->
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+              <div style="position: absolute; top: 25%; left: 0; right: 0; border-top: 1px solid #1a2332;"></div>
+              <div style="position: absolute; top: 50%; left: 0; right: 0; border-top: 1px solid #1a2332;"></div>
+              <div style="position: absolute; top: 75%; left: 0; right: 0; border-top: 1px solid #1a2332;"></div>
+            </div>
+            <!-- 100% / 50% / 0% labels -->
+            <div style="position: absolute; top: 2px; right: 4px; font-size: 7px; color: #3a4a5c;">100%</div>
+            <div style="position: absolute; top: 47%; right: 4px; font-size: 7px; color: #3a4a5c;">50%</div>
+            <div style="position: absolute; bottom: 2px; right: 4px; font-size: 7px; color: #3a4a5c;">0%</div>
+
+            <!-- Pulse line SVG -->
+            <svg viewBox="0 0 300 70" preserveAspectRatio="none" style="position: absolute; top: 5px; left: 0; width: 100%; height: calc(100% - 10px);">
+              <defs>
+                <linearGradient id="pulseGlow" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#00ff88" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#00ff88" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <!-- Fill area under line -->
+              <path d="M0,35 L15,30 L30,20 L45,25 L60,15 L75,10 L90,18 L105,45 L120,50 L135,40 L150,15 L165,10 L180,12 L195,35 L210,55 L225,45 L240,20 L255,12 L270,15 L285,18 L300,22 L300,70 L0,70 Z" fill="url(#pulseGlow)"/>
+              <!-- Main pulse line -->
+              <polyline points="0,35 15,30 30,20 45,25 60,15 75,10 90,18 105,45 120,50 135,40 150,15 165,10 180,12 195,35 210,55 225,45 240,20 255,12 270,15 285,18 300,22" fill="none" stroke="#00ff88" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+              <!-- Bright dot at latest point -->
+              <circle cx="300" cy="22" r="3" fill="#00ff88" opacity="0.9"/>
+              <circle cx="300" cy="22" r="6" fill="#00ff88" opacity="0.2"/>
+            </svg>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 8px; color: #95a5a6; margin-top: 3px;">
+            <span>12h ago</span><span>now</span>
+          </div>
+          <div style="display: flex; gap: 10px; font-size: 8px; margin-top: 4px;">
+            <span style="color: #00ff88;">● success</span>
+            <span style="color: #ff4444;">● failure</span>
+            <span style="color: #7f8c8d;">each point = 1 program</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size: 10px; text-transform: uppercase; color: #7f8c8d; margin-bottom: 6px;">Mood Timeline</div>
+          <div style="background: #fafafa; border: 1px solid #eee; border-radius: 4px; padding: 8px; height: 90px; display: flex; align-items: center;">
+            <div style="display: flex; gap: 2px; width: 100%; align-items: flex-end; height: 65px;">
+              <div style="flex: 1; background: #f39c12; height: 50%; border-radius: 2px;" title="hopeful"></div>
+              <div style="flex: 1; background: #3498db; height: 70%; border-radius: 2px;" title="focused"></div>
+              <div style="flex: 1; background: #3498db; height: 90%; border-radius: 2px;" title="focused"></div>
+              <div style="flex: 1; background: #2ecc71; height: 85%; border-radius: 2px;" title="proud"></div>
+              <div style="flex: 1; background: #f39c12; height: 60%; border-radius: 2px;" title="curious"></div>
+              <div style="flex: 1; background: #e74c3c; height: 30%; border-radius: 2px;" title="frustrated"></div>
+              <div style="flex: 1; background: #e74c3c; height: 25%; border-radius: 2px;" title="frustrated"></div>
+              <div style="flex: 1; background: #9b59b6; height: 55%; border-radius: 2px;" title="determined"></div>
+              <div style="flex: 1; background: #2ecc71; height: 80%; border-radius: 2px;" title="proud"></div>
+              <div style="flex: 1; background: #3498db; height: 75%; border-radius: 2px;" title="focused"></div>
+              <div style="flex: 1; background: #f39c12; height: 65%; border-radius: 2px;" title="playful"></div>
+              <div style="flex: 1; background: #2ecc71; height: 85%; border-radius: 2px;" title="proud"></div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px; font-size: 8px; margin-top: 4px; flex-wrap: wrap;">
+            <span style="color: #f39c12;">● hopeful</span>
+            <span style="color: #3498db;">● focused</span>
+            <span style="color: #2ecc71;">● proud</span>
+            <span style="color: #e74c3c;">● frustrated</span>
+            <span style="color: #9b59b6;">● determined</span>
+            <span style="color: #f39c12;">● playful</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div style="margin-top: 12px; padding: 10px; background: #f0f7ff; border-radius: 6px; font-size: 11px;">
+  The success chart now uses a <strong>dark background with a green glowing pulse line</strong> — each point represents one program. High points = success, low points = failure. The glow fill underneath fades out, giving it that heartbeat/monitor feel. A bright dot marks the latest result.
+</div>

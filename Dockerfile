@@ -19,9 +19,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN chmod +x entrypoint.sh
+
 # Generated programs are written and run here
 VOLUME ["/app/programs"]
 
 EXPOSE 5000
 
-CMD ["python", "main.py"]
+ENTRYPOINT ["./entrypoint.sh"]

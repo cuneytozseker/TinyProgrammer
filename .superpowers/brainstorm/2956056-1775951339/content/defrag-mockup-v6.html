@@ -1,0 +1,91 @@
+<h2>Defrag Simulation — Authentic Win98 Colors</h2>
+<p class="subtitle">Exact colors from the Win98 defrag renderer, 7x9 aspect ratio blocks</p>
+
+<div class="mockup">
+  <div class="mockup-header">Preview: Authentic Win98 Defrag (48x10 grid)</div>
+  <div class="mockup-body" style="background:#c0c0c0; padding:8px; font-family: 'Courier New', monospace;">
+
+    <!-- Title bar -->
+    <div style="background:#000080; color:#fff; padding:2px 5px; font-size:10px; display:flex; justify-content:space-between; margin-bottom:4px;">
+      <span>Disk Defragmenter - [C:]</span>
+      <span>_ □ X</span>
+    </div>
+
+    <!-- Drive info -->
+    <div style="color:#000; font-size:9px; margin-bottom:3px; background:#fff; padding:2px 4px;">
+      Drive C: &nbsp; 847 MB &nbsp; 23% fragmented
+    </div>
+
+    <!-- Block grid 48x10 with 7x9 aspect ratio blocks -->
+    <div id="grid" style="display:grid; grid-template-columns:repeat(48,1fr); gap:1px; margin-bottom:6px; padding:2px; background:#808080; border:2px inset #c0c0c0;"></div>
+
+    <!-- Legend -->
+    <div style="display:flex; gap:8px; font-size:8px; color:#000; margin-bottom:4px; background:#fff; padding:2px 4px; flex-wrap:wrap;">
+      <span><span style="display:inline-block;width:7px;height:9px;background:#00ffff;border:1px solid #000;vertical-align:middle;"></span> Data</span>
+      <span><span style="display:inline-block;width:7px;height:9px;background:#0000ff;border:1px solid #000;vertical-align:middle;"></span> Optimized</span>
+      <span><span style="display:inline-block;width:7px;height:9px;background:#00ff00;border:1px solid #000;vertical-align:middle;"></span> Reading</span>
+      <span><span style="display:inline-block;width:7px;height:9px;background:#ff0000;border:1px solid #000;vertical-align:middle;"></span> Fragment</span>
+      <span><span style="display:inline-block;width:7px;height:9px;background:#fff;border:1px solid #000;vertical-align:middle;"></span> Empty</span>
+      <span><span style="display:inline-block;width:7px;height:9px;background:#fff;border:1px solid #000;position:relative;vertical-align:middle;overflow:hidden;"><span style="position:absolute;right:0;top:0;width:4px;height:4px;background:#ff0000;"></span></span> System</span>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="margin-bottom:4px; background:#fff; padding:2px 4px;">
+      <div style="color:#000; font-size:9px; margin-bottom:1px;">Consolidating clusters... 47%</div>
+      <div style="background:#808080; height:14px; border:2px inset #c0c0c0;">
+        <div style="background:#000080; height:100%; width:47%;"></div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div style="background:#c0c0c0; color:#000; padding:2px 5px; font-size:8px; display:flex; justify-content:space-between; border-top:1px solid #808080;">
+      <span>Elapsed: 01:23</span>
+      <span>Clusters: 43,521 / 92,157</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const grid = document.getElementById('grid');
+const COLS = 48;
+const ROWS = 10;
+
+// Authentic Win98 defrag colors
+const COLORS = {
+  empty:    '#ffffff',
+  moved:    '#0000ff',  // blue with cyan checkerboard (simplified here)
+  regular:  '#00ffff',  // cyan
+  system:   '#ffffff',  // white with red corner
+  selected: '#00ff00',  // green
+  partial:  '#ff0000',  // red
+};
+
+for (let i = 0; i < COLS * ROWS; i++) {
+  const block = document.createElement('div');
+  // 7:9 aspect ratio like the real thing
+  block.style.cssText = 'aspect-ratio:7/9;border:1px solid #000;';
+  const r = Math.random();
+  const col = i % COLS;
+  const row = Math.floor(i / COLS);
+  const endBias = (col / COLS + row / ROWS) / 2;
+
+  if (r < 0.01) {
+    // system block - white with red corner
+    block.style.background = '#ffffff';
+    const corner = document.createElement('div');
+    corner.style.cssText = 'float:right;width:40%;height:40%;background:#ff0000;';
+    block.appendChild(corner);
+  } else if (r < 0.02) {
+    block.style.background = COLORS.selected;
+  } else if (r < 0.04) {
+    block.style.background = COLORS.partial;
+  } else if (r < 0.12) {
+    block.style.background = COLORS.moved;
+  } else if (r - endBias * 0.25 < 0.6) {
+    block.style.background = COLORS.regular;
+  } else {
+    block.style.background = COLORS.empty;
+  }
+  grid.appendChild(block);
+}
+</script>

@@ -1,0 +1,71 @@
+<h2>Defrag Simulation — Dense Grid with Edges</h2>
+<p class="subtitle">64x16 = 1,024 blocks with 1px edges</p>
+
+<div class="mockup">
+  <div class="mockup-header">Preview: Dense Block Grid with Edges (64x16)</div>
+  <div class="mockup-body" style="background:#000; padding:8px; font-family: 'Courier New', monospace;">
+
+    <!-- Title bar -->
+    <div style="background:#000080; color:#fff; padding:2px 5px; font-size:10px; display:flex; justify-content:space-between; margin-bottom:4px;">
+      <span>Disk Defragmenter - [C:]</span>
+      <span>_ □ X</span>
+    </div>
+
+    <!-- Drive info -->
+    <div style="color:#c0c0c0; font-size:9px; margin-bottom:3px;">
+      Drive C: &nbsp; 847 MB &nbsp; 23% fragmented
+    </div>
+
+    <!-- Dense block grid 64x16 with edges -->
+    <div id="grid" style="display:grid; grid-template-columns:repeat(64,1fr); gap:1px; margin-bottom:6px; padding:2px; background:#2a2a2a; border:1px solid #808080;"></div>
+
+    <!-- Legend -->
+    <div style="display:flex; gap:10px; font-size:8px; color:#c0c0c0; margin-bottom:4px;">
+      <span><span style="display:inline-block;width:7px;height:7px;background:#0000aa;vertical-align:middle;"></span> Optimized</span>
+      <span><span style="display:inline-block;width:7px;height:7px;background:#ff0000;vertical-align:middle;"></span> Fragmented</span>
+      <span><span style="display:inline-block;width:7px;height:7px;background:#00ff00;vertical-align:middle;"></span> Moving</span>
+      <span><span style="display:inline-block;width:7px;height:7px;background:#ffff00;vertical-align:middle;"></span> Reading</span>
+      <span><span style="display:inline-block;width:7px;height:7px;background:#ffffff;vertical-align:middle;"></span> Free</span>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="margin-bottom:4px;">
+      <div style="color:#c0c0c0; font-size:9px; margin-bottom:1px;">Consolidating clusters... 47%</div>
+      <div style="background:#808080; height:12px; border:1px solid #404040;">
+        <div style="background:#000080; height:100%; width:47%;"></div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div style="background:#808080; color:#000; padding:1px 5px; font-size:8px; display:flex; justify-content:space-between;">
+      <span>Elapsed: 01:23</span>
+      <span>Clusters: 43,521 / 92,157</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const grid = document.getElementById('grid');
+const COLS = 64;
+const ROWS = 16;
+for (let i = 0; i < COLS * ROWS; i++) {
+  const block = document.createElement('div');
+  block.style.cssText = 'aspect-ratio:1;';
+  const r = Math.random();
+  const col = i % COLS;
+  const row = Math.floor(i / COLS);
+  const endBias = (col / COLS + row / ROWS) / 2;
+  if (r < 0.015) {
+    block.style.background = '#00ff00';
+  } else if (r < 0.04) {
+    block.style.background = '#ffff00';
+  } else if (r < 0.14) {
+    block.style.background = '#ff0000';
+  } else if (r - endBias * 0.3 < 0.58) {
+    block.style.background = '#0000aa';
+  } else {
+    block.style.background = '#ffffff';
+  }
+  grid.appendChild(block);
+}
+</script>

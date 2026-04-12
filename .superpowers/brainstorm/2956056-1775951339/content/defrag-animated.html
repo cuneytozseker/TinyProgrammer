@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #c0c0c0; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; padding: 10px; }
+h2 { color: #333; font-size: 14px; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 11px; margin-bottom: 8px; }
+
+/* Win98 window chrome */
+.win98-window {
+  background: #c0c0c0;
+  border: 2px outset #dfdfdf;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px grey, inset 2px 2px #dfdfdf;
+  width: 100%;
+  max-width: 640px;
+}
+.title-bar {
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  padding: 2px 4px;
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+.title-buttons { display: flex; gap: 2px; }
+.title-btn {
+  background: #c0c0c0;
+  border: 1px outset #dfdfdf;
+  font-size: 9px;
+  width: 16px; height: 14px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+}
+.title-btn:active { border-style: inset; }
+.body-area { padding: 6px; }
+.info-bar {
+  background: #fff;
+  border: 1px inset #808080;
+  padding: 2px 4px;
+  font-size: 9px;
+  color: #000;
+  margin-bottom: 4px;
+}
+canvas {
+  display: block;
+  image-rendering: pixelated;
+  border: 1px inset #808080;
+  background: #fff;
+  width: 100%;
+}
+.legend {
+  display: flex; gap: 8px; font-size: 8px; color: #000;
+  margin: 4px 0; background: #fff; padding: 2px 4px;
+  border: 1px inset #808080; flex-wrap: wrap;
+}
+.legend-item { display: flex; align-items: center; gap: 2px; }
+.legend-block { width: 10px; height: 12px; border: 1px solid #000; }
+.progress-area { background: #fff; padding: 3px 4px; border: 1px inset #808080; margin-top: 4px; }
+.progress-label { font-size: 9px; color: #000; margin-bottom: 2px; }
+.progress-bar-bg {
+  background: #808080; height: 14px;
+  border: 2px inset #c0c0c0;
+}
+.progress-bar-fill { background: #000080; height: 100%; transition: width 0.3s; }
+.status-bar {
+  background: #c0c0c0; border-top: 1px solid #808080;
+  padding: 2px 4px; font-size: 8px; color: #000;
+  display: flex; justify-content: space-between;
+}
+.controls { margin-top: 8px; display: flex; gap: 8px; align-items: center; }
+.controls button {
+  background: #c0c0c0; border: 2px outset #dfdfdf; padding: 3px 12px;
+  font-family: inherit; font-size: 10px; cursor: pointer;
+}
+.controls button:active { border-style: inset; }
+.controls span { font-size: 10px; color: #333; }
+</style>
+</head>
+<body>
+
+<div class="win98-window">
+  <div class="title-bar">
+    <span>Disk Defragmenter - [C:]</span>
+    <div class="title-buttons">
+      <div class="title-btn">_</div>
+      <div class="title-btn">□</div>
+      <div class="title-btn">X</div>
+    </div>
+  </div>
+  <div class="body-area">
+    <div class="info-bar" id="info-bar">Drive C: 847 MB 23% fragmented</div>
+    <canvas id="defrag-canvas"></canvas>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-block" style="background:#00ffff;"></div>Data</div>
+      <div class="legend-item"><div class="legend-block" style="background:#0000ff;"></div>Optimized</div>
+      <div class="legend-item"><div class="legend-block" style="background:#00ff00;"></div>Reading</div>
+      <div class="legend-item"><div class="legend-block" style="background:#ff0000;"></div>Fragment</div>
+      <div class="legend-item"><div class="legend-block" style="background:#fff;"></div>Empty</div>
+      <div class="legend-item"><div class="legend-block" style="background:#fff;position:relative;"><div style="position:absolute;right:0;top:0;width:50%;height:50%;background:#ff0000;"></div></div>System</div>
+    </div>
+    <div class="progress-area">
+      <div class="progress-label" id="progress-label">Starting defragmentation...</div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+  <div class="status-bar">
+    <span id="elapsed">Elapsed: 00:00</span>
+    <span id="clusters">Clusters: 0 / 0</span>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="start-btn" onclick="toggleRun()">Pause</button>
+  <button onclick="restart()">Restart</button>
+  <span id="status-text">Running...</span>
+</div>
+
+<script>
+// --- Block Types ---
+const EMPTY = 0, REGULAR = 1, SYSTEM = 2, MOVED = 3, SELECTED = 4, PARTIAL = 5;
+
+// --- Config ---
+const DISK_SIZE = 4000;
+const REGULAR_PCT = 0.75;
+const SYSTEM_PCT = 0.01;
+const BLOCK_W = 7, BLOCK_H = 9;
+const BLOCK_SPACE = 1;
+const STEP_DELAY = 80;
+
+// --- PRNG (simple LCG) ---
+class Rng {
+  constructor(seed) { this.s = seed | 0 || 1; }
+  next() { this.s = (this.s * 1664525 + 1013904223) & 0x7fffffff; return this.s / 0x7fffffff; }
+  randint(a, b) { return a + Math.floor(this.next() * (b - a + 1)); }
+}
+
+// --- Disk ---
+class Disk {
+  constructor(size, regPct, sysPct, seed) {
+    this.blocks = new Uint8Array(size);
+    this.rng = new Rng(seed);
+    this.blocks.fill(REGULAR);
+
+    // Place system blocks in small clusters
+    const sysCount = Math.floor(size * sysPct);
+    let placed = 0;
+    while (placed < sysCount) {
+      const pos = this.rng.randint(0, size - 1);
+      const len = this.rng.randint(1, 3);
+      for (let i = 0; i < len && placed < sysCount; i++) {
+        const p = Math.min(pos + i, size - 1);
+        if (this.blocks[p] === REGULAR) { this.blocks[p] = SYSTEM; placed++; }
+      }
+    }
+
+    // Place empty blocks in varied clusters
+    const emptyCount = Math.floor(size * (1 - regPct));
+    placed = 0;
+    const sizeProbs = [];
+    for (let i = 0; i < 100; i++) sizeProbs.push(i < 50 ? 1 : i < 65 ? 2 : i < 75 ? 3 : i < 80 ? 4 : 5 + (i - 80));
+    while (placed < emptyCount) {
+      const pos = this.rng.randint(0, size - 1);
+      const len = sizeProbs[this.rng.randint(0, 99)];
+      for (let i = 0; i < len && placed < emptyCount; i++) {
+        const p = Math.min(pos + i, size - 1);
+        if (this.blocks[p] === REGULAR) { this.blocks[p] = EMPTY; placed++; }
+      }
+    }
+  }
+
+  countType(t) { let c = 0; for (let i = 0; i < this.blocks.length; i++) if (this.blocks[i] === t) c++; return c; }
+}
+
+// --- Defrag Algorithm ---
+class Defrag {
+  constructor(disk) {
+    this.disk = disk;
+    this.rng = new Rng(0x12);
+    this.maxBlocks = 25;
+    this.roffset = 0;
+    this.woffset = 0;
+    this.toMove = [];
+    this.state = 'file';
+    this.nextFileLen = 1;
+    this.nextBlockLen = 1;
+    this.isPartial = false;
+    this.isBigBlock = false;
+    this.stepsTotal = 0;
+  }
+
+  finished() { return this.state === 'finished'; }
+
+  step() {
+    this.stepsTotal++;
+    switch (this.state) {
+      case 'finished': return;
+      case 'file':
+        if (!this._initBlocks()) { this.state = 'finished'; return; }
+        this.state = 'blocks';
+        // fall through
+      case 'blocks':
+        this._processBatch();
+        if (!this.isPartial || this.toMove.length >= this.nextFileLen) this.state = 'move';
+        break;
+      case 'move':
+        if (this.toMove.length === 0 && this._checkDone()) { this.state = 'finished'; return; }
+        this._moveBatch();
+        this.state = 'file';
+        break;
+    }
+  }
+
+  _initBlocks() {
+    const b = this.disk.blocks;
+    let r = this.woffset, w = this.woffset;
+    this.toMove = [];
+    while (r < b.length && b[r] !== EMPTY) { b[r] = MOVED; r++; }
+    w = r;
+    let maxLen = 0;
+    while (r < b.length && b[r] === EMPTY) { r++; maxLen++; }
+    // detect big block
+    { let r2 = r, ml = maxLen;
+      while (ml < 500 && r2 < b.length && (b[r2] === EMPTY || b[r2] === SYSTEM)) { r2++; ml++; }
+      this.isBigBlock = ml >= 500;
+    }
+    if (r >= b.length) { this.roffset = r; this.woffset = w; return false; }
+    this.nextFileLen = Math.min(maxLen, this.rng.randint(1, this.maxBlocks));
+    this.roffset = r; this.woffset = w;
+    return true;
+  }
+
+  _processBatch() {
+    const b = this.disk.blocks;
+    this.nextBlockLen = Math.min(this.nextFileLen, this.rng.randint(2, this.maxBlocks));
+    this.isPartial = this.nextBlockLen !== this.nextFileLen;
+    let pos = this.roffset, picked = 0;
+    if (this.isBigBlock || (this.nextBlockLen < 5 && this.rng.randint(0, 100) < 50) || this.rng.randint(0, this.maxBlocks) < this.nextFileLen) {
+      pos += this.rng.randint(1, 1024);
+      if (this.isBigBlock) pos = this.rng.randint(this.roffset, b.length);
+    }
+    while (picked < this.nextBlockLen) {
+      if (pos >= b.length) break;
+      if (b[pos] === REGULAR) {
+        this.toMove.push(pos);
+        if (this.isPartial) { b[pos] = EMPTY; b[this.woffset + picked] = PARTIAL; }
+        else { b[pos] = SELECTED; }
+        picked++;
+      }
+      pos++;
+    }
+  }
+
+  _moveBatch() {
+    const b = this.disk.blocks;
+    for (let i = 0; i < this.toMove.length; i++) {
+      b[this.toMove[i]] = EMPTY;
+      b[this.woffset++] = MOVED;
+    }
+  }
+
+  _checkDone() {
+    const b = this.disk.blocks;
+    let pos = 0;
+    while ((this.roffset + pos) < b.length && (b[this.roffset + pos] === EMPTY || b[this.roffset + pos] === SYSTEM)) pos++;
+    return (this.roffset + pos) >= b.length;
+  }
+
+  progress() { return Math.min(1, this.woffset / this.disk.blocks.length); }
+}
+
+// --- Renderer ---
+class Renderer {
+  constructor(canvas, disk) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.ctx.imageSmoothingEnabled = false;
+    this.disk = disk;
+    this.viewOffset = 0;
+  }
+
+  resize() {
+    const cw = 626;
+    const bh = BLOCK_H + BLOCK_SPACE;
+    const bw = BLOCK_W + BLOCK_SPACE;
+    const cols = Math.floor(cw / bw);
+    const rows = 12;
+    this.canvas.width = cols * bw;
+    this.canvas.height = rows * bh;
+    this.cols = cols;
+    this.rows = rows;
+  }
+
+  centerView(currentOffset) {
+    const visible = Math.floor(0.5 * this.rows) * this.cols;
+    if (currentOffset - this.viewOffset > visible) {
+      this.viewOffset += Math.min(12 * this.cols, Math.floor(0.25 * this.rows) * this.cols);
+    } else if (currentOffset < this.viewOffset) {
+      this.viewOffset = currentOffset - currentOffset % this.cols;
+    }
+  }
+
+  drawBlock(x, y, type) {
+    const bw = BLOCK_W, bh = BLOCK_H;
+    // Fill
+    switch (type) {
+      case EMPTY: this.ctx.fillStyle = '#ffffff'; break;
+      case MOVED:
+        // Checkerboard blue/cyan
+        for (let j = 0; j < bh; j++) {
+          for (let i = 0; i < bw; i++) {
+            this.ctx.fillStyle = (i + j) & 1 ? '#00ffff' : '#0000ff';
+            this.ctx.fillRect(x + i, y + j, 1, 1);
+          }
+        }
+        // Border
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(x + 0.5, y + 0.5, bw - 1, bh - 1);
+        return;
+      case REGULAR: this.ctx.fillStyle = '#00ffff'; break;
+      case SYSTEM:
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(x, y, bw, bh);
+        this.ctx.fillStyle = '#ff0000';
+        this.ctx.fillRect(x + Math.floor(bw / 2), y, Math.floor(bw / 2), Math.floor(bh / 2));
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(x + 0.5, y + 0.5, bw - 1, bh - 1);
+        return;
+      case SELECTED: this.ctx.fillStyle = '#00ff00'; break;
+      case PARTIAL: this.ctx.fillStyle = '#ff0000'; break;
+    }
+    this.ctx.fillRect(x, y, bw, bh);
+    this.ctx.strokeStyle = '#000';
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x + 0.5, y + 0.5, bw - 1, bh - 1);
+  }
+
+  render(defrag) {
+    this.ctx.fillStyle = '#fff';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    let offset = this.viewOffset;
+    for (let y = 0; y < this.canvas.height; y += BLOCK_H + BLOCK_SPACE) {
+      for (let x = 0; x < this.canvas.width; x += BLOCK_W + BLOCK_SPACE) {
+        if (offset < this.disk.blocks.length) {
+          this.drawBlock(x, y, this.disk.blocks[offset++]);
+        }
+      }
+    }
+  }
+}
+
+// --- Main ---
+const canvas = document.getElementById('defrag-canvas');
+let disk, defrag, renderer;
+let running = true;
+let startTime = Date.now();
+
+function init() {
+  disk = new Disk(DISK_SIZE, REGULAR_PCT, SYSTEM_PCT, 42);
+  defrag = new Defrag(disk);
+  renderer = new Renderer(canvas, disk);
+  renderer.resize();
+  renderer.render(defrag);
+  startTime = Date.now();
+  updateUI();
+}
+
+function updateUI() {
+  const pct = defrag.finished() ? 100 : Math.floor(defrag.progress() * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = defrag.finished()
+    ? 'Defragmentation complete!'
+    : `Consolidating clusters... ${pct}%`;
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('elapsed').textContent = `Elapsed: ${m}:${s}`;
+  document.getElementById('clusters').textContent = `Clusters: ${defrag.woffset} / ${DISK_SIZE}`;
+  const frag = Math.floor(disk.countType(EMPTY) / DISK_SIZE * 100);
+  document.getElementById('info-bar').textContent = `Drive C: 847 MB  ${frag}% fragmented`;
+  document.getElementById('status-text').textContent = defrag.finished() ? 'Complete!' : running ? 'Running...' : 'Paused';
+}
+
+function toggleRun() {
+  running = !running;
+  document.getElementById('start-btn').textContent = running ? 'Pause' : 'Resume';
+  if (running && defrag.finished()) restart();
+}
+
+function restart() {
+  running = true;
+  document.getElementById('start-btn').textContent = 'Pause';
+  init();
+}
+
+const extraRng = new Rng(0);
+function animate() {
+  if (running && !defrag.finished()) {
+    defrag.step();
+    renderer.centerView(defrag.woffset);
+  }
+  renderer.render(defrag);
+  updateUI();
+
+  // Random delay variation (10% chance of longer pause)
+  let delay = STEP_DELAY;
+  if (extraRng.randint(0, 9) === 0) delay += extraRng.randint(50, 400);
+  setTimeout(() => requestAnimationFrame(animate), delay);
+}
+
+init();
+animate();
+</script>
+</body>
+</html>

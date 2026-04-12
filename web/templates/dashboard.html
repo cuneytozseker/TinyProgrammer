@@ -84,6 +84,14 @@
         <h3>Work Hours</h3>
         <div class="status-value">{{ status.schedule_clock_in }}:00 - {{ status.schedule_clock_out }}:00</div>
     </div>
+    <div class="status-card">
+        <h3>System Time
+            <span class="info-bubble" tabindex="0" aria-label="Timezone hint">i
+                <span class="info-tooltip">If this doesn't match your local time, the schedule will fire at the wrong hour. Fix it on the Pi with: <code>sudo raspi-config</code> &rarr; Localisation Options &rarr; Timezone (or <code>sudo timedatectl set-timezone Region/City</code>).</span>
+            </span>
+        </h3>
+        <div class="status-value">{{ status.system_time }}</div>
+    </div>
 </div>
 {% endif %}
 
@@ -95,6 +103,7 @@
     <button onclick="screensaverOn()" class="btn-secondary">&#x1F4A4; Start Screensaver</button>
     {% endif %}
     <button onclick="location.reload()" class="btn-secondary">&#x1F504; Refresh</button>
+    <a href="/api/screenshot" class="btn-secondary">&#x1F4F7; Screenshot</a>
 </div>
 
 {# ── Pulse Chart + Mood Timeline ── #}

@@ -89,8 +89,9 @@ CANVAS_DRAW_H = int(212 * _SY)
 # LLM
 # =============================================================================
 
-# Backend type: "ollama", "llamacpp", "gemini", or "anthropic"
-LLM_BACKEND = "ollama"
+# Backend type: legacy/unused — actual routing is done via LLM_MODEL and
+# the model registry in llm/generator.py.
+LLM_BACKEND = "anthropic"
 LLM_MODEL = os.environ.get("LLM_MODEL", "")
 
 # --- Local backends (for Pi 4B with more RAM) ---

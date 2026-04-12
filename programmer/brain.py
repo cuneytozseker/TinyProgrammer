@@ -100,7 +100,8 @@ class Brain:
         """Get current status for web UI."""
         stats = self.archive.get_stats()
         import datetime
-        hour = datetime.datetime.now().hour
+        now = datetime.datetime.now()
+        hour = now.hour
 
         status = {
             "state": self.state.name,
@@ -121,6 +122,7 @@ class Brain:
             "schedule_clock_in": getattr(config, "SCHEDULE_CLOCK_IN", 9),
             "schedule_clock_out": getattr(config, "SCHEDULE_CLOCK_OUT", 23),
             "is_clocked_in": self._is_clocked_in(hour),
+            "system_time": now.strftime("%H:%M"),
             "force_screensaver": self._force_screensaver,
             "stream_enabled": getattr(config, "WEB_STREAM_ENABLED", False),
         }

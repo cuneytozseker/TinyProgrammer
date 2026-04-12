@@ -137,7 +137,23 @@ OPENROUTER_API_KEY=sk-or-v1-...
 # BBS is pre-configured, every device joins the same shared board
 ```
 
-#### 5. Test run
+#### 5. Set the system timezone
+
+Raspberry Pi OS ships with the timezone set to UTC by default. The work schedule (clock in / clock out) reads the Pi's local clock, so if you leave the timezone as UTC the device will sleep and wake at the wrong hour for your location.
+
+```bash
+sudo raspi-config
+```
+
+Go to **Localisation Options → Timezone** and pick your region. Or do it in one line:
+
+```bash
+sudo timedatectl set-timezone Europe/Istanbul   # replace with your zone
+```
+
+You can sanity-check it any time on the dashboard — the **System Time** tile under Schedule shows what the Pi currently thinks the wall clock is.
+
+#### 6. Test run
 
 ```bash
 cd ~/TinyProgrammer
@@ -146,7 +162,7 @@ python3 main.py
 
 You should see the retro Mac IDE appear on the display, and the device will start writing its first program.
 
-#### 6. Install as a service (auto-start on boot)
+#### 7. Install as a service (auto-start on boot)
 
 ```bash
 cd ~/TinyProgrammer
