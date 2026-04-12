@@ -54,9 +54,8 @@ def create_app():
         if _brain:
             status = _brain.get_status()
             if _history:
-                status["recent_history"] = _history.get_recent(10)
-                status["stats"] = _history.get_stats()
-                status["moods"] = _history.get_moods(50)
+                dashboard = _history.get_dashboard_data()
+                status.update(dashboard)
             return jsonify(status)
         return jsonify({"error": "Brain not initialized"})
 
@@ -317,15 +316,17 @@ def create_app():
         canvas_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'canvas')
         results = []
         if os.path.isdir(canvas_dir):
+            # Build metadata lookup once instead of per-file scan
+            canvas_meta = {}
+            if _history:
+                for evt in _history.get_recent(200):
+                    if evt["type"] == "canvas_capture":
+                        fn = evt["data"].get("filename")
+                        if fn:
+                            canvas_meta[fn] = evt["data"]
             for fname in sorted(os.listdir(canvas_dir)):
                 if fname.endswith('.png'):
-                    # Look up metadata from history
-                    meta = {}
-                    if _history:
-                        for evt in reversed(_history.get_recent(200)):
-                            if evt["type"] == "canvas_capture" and evt["data"].get("filename") == fname:
-                                meta = evt["data"]
-                                break
+                    meta = canvas_meta.get(fname, {})
                     results.append({
                         "filename": fname,
                         "url": f"/canvas/{fname}",

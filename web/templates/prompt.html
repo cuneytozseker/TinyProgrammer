@@ -4,16 +4,7 @@
 
 {% block content %}
 
-<div class="mac-window">
-    <div class="mac-titlebar">
-        <div class="mac-controls">
-            <div class="mac-ctrl mac-ctrl-close">×</div>
-            <div class="mac-ctrl mac-ctrl-min">–</div>
-            <div class="mac-ctrl mac-ctrl-zoom">+</div>
-        </div>
-        <span class="mac-title">Prompt Editor</span>
-    </div>
-    <div class="mac-body">
+{% call mac_window("Prompt Editor") %}
 
 <p class="hint">Customize the descriptions used to generate each program type.</p>
 
@@ -73,6 +64,5 @@
     </div>
 </form>
 
-    </div>
-</div>
+{% endcall %}
 {% endblock %}

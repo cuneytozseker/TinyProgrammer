@@ -4,16 +4,7 @@
 
 {% block content %}
 
-<div class="mac-window">
-    <div class="mac-titlebar">
-        <div class="mac-controls">
-            <div class="mac-ctrl mac-ctrl-close">×</div>
-            <div class="mac-ctrl mac-ctrl-min">–</div>
-            <div class="mac-ctrl mac-ctrl-zoom">+</div>
-        </div>
-        <span class="mac-title">Settings</span>
-    </div>
-    <div class="mac-body">
+{% call mac_window("Settings") %}
 
 <form method="POST" action="{{ url_for('settings') }}">
 
@@ -265,8 +256,7 @@
     </div>
 </form>
 
-    </div>
-</div>
+{% endcall %}
 
 <script>
 (function() {

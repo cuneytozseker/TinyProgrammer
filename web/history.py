@@ -8,9 +8,7 @@ to a JSON file for the activity timeline and charts.
 
 import json
 import threading
-import time
 from datetime import datetime
-from typing import Optional
 
 
 class HistoryLogger:
@@ -114,3 +112,35 @@ class HistoryLogger:
         """Return the last N mood shift events."""
         with self._lock:
             return [e for e in self._events if e["type"] == "mood_shift"][-n:]
+
+    def get_dashboard_data(self) -> dict:
+        """Single-lock call returning everything the dashboard needs."""
+        with self._lock:
+            recent = self._events[-10:]
+            results = [e for e in self._events if e["type"] == "program_result"]
+            moods = [e for e in self._events if e["type"] == "mood_shift"][-50:]
+
+        success = sum(1 for e in results if e["data"].get("success"))
+        fail = len(results) - success
+        by_type = {}
+        for e in results:
+            t = e["data"].get("prog_type", "unknown")
+            by_type[t] = by_type.get(t, 0) + 1
+        pulse = [{
+            "ts": e["ts"],
+            "success": e["data"].get("success", False),
+            "name": e["data"].get("name", ""),
+            "run_time": e["data"].get("run_time"),
+        } for e in results[-50:]]
+
+        return {
+            "recent_history": recent,
+            "stats": {
+                "total_programs": len(results),
+                "success": success,
+                "failed": fail,
+                "by_type": by_type,
+                "pulse": pulse,
+            },
+            "moods": moods,
+        }

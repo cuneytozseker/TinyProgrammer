@@ -39,6 +39,22 @@
     <div class="crt-overlay"></div>
     <div class="crt-vignette"></div>
 
+    {% macro mac_window(title) %}
+    <div class="mac-window">
+        <div class="mac-titlebar">
+            <div class="mac-controls">
+                <div class="mac-ctrl mac-ctrl-close">×</div>
+                <div class="mac-ctrl mac-ctrl-min">–</div>
+                <div class="mac-ctrl mac-ctrl-zoom">+</div>
+            </div>
+            <span class="mac-title">{{ title }}</span>
+        </div>
+        <div class="mac-body">
+            {{ caller() }}
+        </div>
+    </div>
+    {% endmacro %}
+
     <main>
         {% if message %}
         <div class="message success">{{ message }}</div>
