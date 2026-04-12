@@ -10,7 +10,6 @@ import time
 import threading
 from flask import Flask, render_template, request, redirect, url_for, jsonify, Response, send_from_directory
 
-from .avatar_expressions import AVATAR_BLINK_PIXELS, AVATAR_EXPRESSIONS
 from .config_manager import ConfigManager
 
 # Global reference to brain (set by main.py)
@@ -47,12 +46,7 @@ def create_app():
         status = {}
         if _brain:
             status = _brain.get_status()
-        return render_template(
-            'dashboard.html',
-            status=status,
-            avatar_expressions=AVATAR_EXPRESSIONS,
-            avatar_blink_pixels=AVATAR_BLINK_PIXELS,
-        )
+        return render_template('dashboard.html', status=status)
 
     @app.route('/api/status')
     def api_status():
