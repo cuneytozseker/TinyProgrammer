@@ -39,7 +39,9 @@ programs/*.py
 programs/screenshots/
 lessons.md
 config_overrides.json
+liked_programs.json
 promo/
 nul
 test_fb_direct.py
 test_framerate.py
+docs/HYBRID_AND_LIKE_PLAN.md

@@ -174,10 +174,13 @@ GITHUB_SYNC_INTERVAL = 3600  # Sync every hour
 # PROGRAMS
 # =============================================================================
 
-# Core programs — selected 50% of the time, using the simpler baseline
-# prompt (no creative dimensions). The other 50% uses the full creativity
-# system with style/palette/seed.
-CORE_PROMPT_PROBABILITY = 0.5
+# Three-way prompt split: variation → core → creative
+# Variation remixes a liked program (only fires if liked programs exist)
+VARIATION_PROBABILITY = 0.15
+# Core programs use the simpler baseline prompt (no creative dimensions)
+CORE_PROMPT_PROBABILITY = 0.50
+# Remaining ~35% uses the full creativity system with style/palette/seed
+MAX_LIKED_PROGRAMS = 20
 CORE_PROGRAMS = [
     "bouncing_ball",
     "cellular_automata",

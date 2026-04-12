@@ -421,6 +421,42 @@ class LLMGenerator:
         )
         return prompt
 
+    def build_variation_prompt(self, code: str, program_type: str) -> str:
+        """Build a prompt asking the LLM to create a small variation of a liked program."""
+        canvas_w = config.CANVAS_DRAW_W
+        canvas_h = config.CANVAS_DRAW_H
+
+        prompt = (
+            "Here's a Python program the user enjoyed:\n\n"
+            f"{code}\n\n"
+            "Write a variation of this program with minor changes. Try one or two of:\n"
+            "- Different color palette\n"
+            "- Different sizes or proportions\n"
+            "- Different speed or direction\n"
+            "- Slightly different shapes or patterns\n\n"
+            "Keep the core behavior and structure the same.\n\n"
+            "RULES:\n"
+            "- 20-50 lines of code\n"
+            "- NO imports (already done)\n"
+            "- Start with variables, then while True loop\n"
+            f"- Canvas: {canvas_w}x{canvas_h} pixels\n"
+            "- RGB values are integers 0-255 (NOT floats 0.0-1.0)\n"
+            "- ALWAYS call c.sleep(0.033) at end of loop\n"
+            "- Use simple shapes, avoid too many draw calls per frame\n\n"
+            "ONLY these methods exist on 'c':\n"
+            "  c.clear(r,g,b)\n"
+            "  c.pixel(x,y,r,g,b)\n"
+            "  c.line(x1,y1,x2,y2,r,g,b)\n"
+            "  c.rect(x,y,w,h,r,g,b)\n"
+            "  c.fill_rect(x,y,w,h,r,g,b)\n"
+            "  c.circle(x,y,radius,r,g,b)\n"
+            "  c.fill_circle(x,y,radius,r,g,b)\n"
+            "  c.sleep(seconds)\n"
+            "Do NOT use any other methods.\n\n"
+            "Output ONLY Python code. No markdown, no explanation.\n"
+        )
+        return prompt
+
     def build_reflection_prompt(self, code: str, result: str) -> str:
         """Build a prompt to learn from code execution."""
         # Get canvas dimensions from config

@@ -56,7 +56,9 @@
 
     <div class="status-card">
         <h3>Prompt Mode</h3>
-        {% if status.creative_style %}
+        {% if status.is_variation %}
+        <div class="status-value">Variation</div>
+        {% elif status.creative_style %}
         <div class="status-value" style="font-size: 0.9rem; line-height: 1.4;">
             <div><strong>{{ status.creative_style }}</strong></div>
             <div>{{ status.creative_palette }}</div>
@@ -67,6 +69,11 @@
         {% else %}
         <div class="status-value">Core</div>
         {% endif %}
+    </div>
+
+    <div class="status-card">
+        <h3>Liked Programs</h3>
+        <div class="status-value">{{ status.liked_count or 0 }}</div>
     </div>
 </div>
 
@@ -124,6 +131,7 @@
 
 
 <div class="actions">
+    <button onclick="likeProgram()" class="btn-primary" id="like-btn">Like Program</button>
     <button onclick="restartProgram()" class="btn-primary">Restart Program</button>
     {% if status.force_screensaver %}
     <button onclick="screensaverOff()" class="btn-primary">Wake Up</button>
@@ -135,6 +143,21 @@
 </div>
 
 <script>
+function likeProgram() {
+    var btn = document.getElementById('like-btn');
+    btn.disabled = true;
+    fetch('/api/like', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                btn.textContent = 'Liked! (' + data.liked_count + ')';
+            } else {
+                btn.textContent = data.error || 'Error';
+                btn.disabled = false;
+            }
+        })
+        .catch(err => { btn.textContent = 'Error'; btn.disabled = false; });
+}
 function restartProgram() {
     fetch('/api/restart', { method: 'POST' })
         .then(response => response.json())

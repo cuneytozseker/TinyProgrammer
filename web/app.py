@@ -83,6 +83,17 @@ def create_app():
             return jsonify({"success": True, "screensaver": "off"})
         return jsonify({"error": "Brain not initialized"})
 
+    @app.route('/api/like', methods=['POST'])
+    def api_like():
+        """Like the current program for future remixing."""
+        if not _brain or not _brain.current_program:
+            return jsonify({"error": "No program running"}), 400
+        prog = _brain.current_program
+        if not prog.code:
+            return jsonify({"error": "No code to like"}), 400
+        _brain.liked_store.add(prog.program_type, prog.code)
+        return jsonify({"success": True, "liked_count": _brain.liked_store.count()})
+
     @app.route('/api/screenshot')
     def api_screenshot():
         """Return the current display surface as a PNG download."""
