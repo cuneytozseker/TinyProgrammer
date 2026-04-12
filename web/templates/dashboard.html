@@ -88,13 +88,13 @@
 {% endif %}
 
 <div class="actions">
-    <button onclick="restartProgram()" class="btn-primary">Restart Program</button>
+    <button onclick="restartProgram()" class="btn-primary">&#x23ED; Skip to Next</button>
     {% if status.force_screensaver %}
-    <button onclick="screensaverOff()" class="btn-primary">Wake Up</button>
+    <button onclick="screensaverOff()" class="btn-primary">&#x2600;&#xFE0F; Wake Up</button>
     {% else %}
-    <button onclick="screensaverOn()" class="btn-secondary">Start Screensaver</button>
+    <button onclick="screensaverOn()" class="btn-secondary">&#x1F4A4; Start Screensaver</button>
     {% endif %}
-    <a href="{{ url_for('dashboard') }}" class="btn-secondary">Refresh</a>
+    <button onclick="location.reload()" class="btn-secondary">&#x1F504; Refresh</button>
 </div>
 
 {# ── Pulse Chart + Mood Timeline ── #}
