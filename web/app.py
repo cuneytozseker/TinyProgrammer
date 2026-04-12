@@ -166,12 +166,12 @@ def create_app():
             updates['TYPO_PROBABILITY'] = float(request.form.get('typo_probability', 0.02))
             updates['PAUSE_PROBABILITY'] = float(request.form.get('pause_probability', 0.05))
 
-            # Program types (checkboxes) — iterate over all known types from config
-            import config as _cfg
-            all_types = [t for t, _ in _cfg.PROGRAM_TYPES]
+            # Program types (checkboxes) — scan form keys directly so we
+            # pick up every checked type regardless of current config override.
             program_types = []
-            for ptype in all_types:
-                if request.form.get(f'ptype_{ptype}'):
+            for key in request.form:
+                if key.startswith('ptype_'):
+                    ptype = key[len('ptype_'):]
                     weight = int(request.form.get(f'pweight_{ptype}', 1))
                     program_types.append((ptype, weight))
             if program_types:
@@ -236,14 +236,15 @@ def create_app():
         if request.method == 'POST':
             updates = {}
 
-            # Program descriptions — iterate over all known types from config
-            import config as _cfg
-            all_types = [t for t, _ in _cfg.PROGRAM_TYPES]
+            # Program descriptions — scan form keys directly so we
+            # pick up every type regardless of current config override.
             descriptions = {}
-            for ptype in all_types:
-                desc = request.form.get(f'desc_{ptype}', '').strip()
-                if desc:
-                    descriptions[ptype] = desc
+            for key in request.form:
+                if key.startswith('desc_'):
+                    ptype = key[len('desc_'):]
+                    desc = request.form[key].strip()
+                    if desc:
+                        descriptions[ptype] = desc
 
             if descriptions:
                 updates['PROGRAM_DESCRIPTIONS'] = descriptions
