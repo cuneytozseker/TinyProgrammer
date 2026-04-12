@@ -43,3 +43,4 @@ promo/
 nul
 test_fb_direct.py
 test_framerate.py
+.superpowers/
