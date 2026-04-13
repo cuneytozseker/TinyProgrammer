@@ -7,6 +7,7 @@ import os
 # =============================================================================
 # Set DISPLAY_PROFILE in .env or config_overrides.json:
 #   "pi4-hdmi"   → 800x480, 16pt font, 60fps (default)
+#   "1080p"      → 1920x1080, 34pt font, 60fps
 #   "pizero-spi" → 480x320, 12pt font, 30fps
 
 DISPLAY_PROFILE = os.environ.get("DISPLAY_PROFILE", "pi4-hdmi")
@@ -25,6 +26,13 @@ elif DISPLAY_PROFILE == "pizero-spi":
     CHAR_WIDTH = 8
     CHAR_HEIGHT = 16
     TARGET_FPS = 30
+elif DISPLAY_PROFILE == "1080p":
+    DISPLAY_WIDTH = 1920
+    DISPLAY_HEIGHT = 1080
+    FONT_SIZE = 34
+    CHAR_WIDTH = 10
+    CHAR_HEIGHT = 20
+    TARGET_FPS = 60
 else:  # pi4-hdmi (default)
     DISPLAY_WIDTH = 800
     DISPLAY_HEIGHT = 480
