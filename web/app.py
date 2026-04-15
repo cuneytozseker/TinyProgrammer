@@ -235,11 +235,16 @@ def create_app():
     @app.route('/prompt', methods=['GET', 'POST'])
     def prompt_editor():
         """Program types & prompt editor — manage built-in and custom types."""
+        import config as _config
         from llm.generator import PROGRAM_DESCRIPTIONS as DEFAULT_DESCRIPTIONS
         from programmer.creativity import CATEGORIES
 
         builtin_slugs = list(DEFAULT_DESCRIPTIONS.keys())
         builtin_set = set(builtin_slugs)
+        core_set = set(getattr(_config, 'CORE_PROGRAMS', []))
+        # Keep declared order: core first (in CORE_PROGRAMS order), then the rest
+        core_slugs = [s for s in _config.CORE_PROGRAMS if s in builtin_set]
+        creative_slugs = [s for s in builtin_slugs if s not in core_set]
         category_names = list(CATEGORIES.keys())
 
         message = None
@@ -381,7 +386,8 @@ def create_app():
         descriptions.update(current.get('PROGRAM_DESCRIPTIONS') or {})
 
         return render_template('prompt.html',
-                             builtin_slugs=builtin_slugs,
+                             core_slugs=core_slugs,
+                             creative_slugs=creative_slugs,
                              enabled_weights=enabled_weights,
                              custom_types=custom_types,
                              descriptions=descriptions,

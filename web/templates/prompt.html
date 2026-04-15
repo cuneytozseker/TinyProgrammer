@@ -36,16 +36,13 @@
         </div>
     </section>
 
-    <section class="settings-section">
-        <h2>Built-in Program Types</h2>
-        <p class="hint">Toggle, reweight, or tweak the description. Higher weight = more frequent in creative mode.</p>
-
-        {% for slug in builtin_slugs %}
+    {% macro builtin_row(slug) %}
         {% set weight = enabled_weights.get(slug, 1) %}
         {% set enabled = slug in enabled_weights %}
         <div class="type-row">
             <div class="type-row-header">
                 <input type="checkbox" name="ptype_{{ slug }}" id="ptype_{{ slug }}"
+                       class="section-child" data-section="{{ kwargs.get('section') }}"
                        {% if enabled %}checked{% endif %}>
                 <label for="ptype_{{ slug }}">{{ slug|replace('_', ' ')|title }}</label>
                 <span class="slug">{{ slug }}</span>
@@ -60,11 +57,40 @@
                 <small class="default-hint">Default: {{ defaults.get(slug, 'N/A') }}</small>
             </div>
         </div>
-        {% endfor %}
+    {% endmacro %}
+
+    <section class="settings-section">
+        <div class="section-heading">
+            <h2>Core Programs</h2>
+            <label class="master-toggle">
+                <input type="checkbox" class="section-master" data-section="core">
+                <span>Enable all</span>
+            </label>
+        </div>
+        <p class="hint">These appear in the ~50% "core" rotation (simpler prompt, no creative dimensions).</p>
+        {% for slug in core_slugs %}{{ builtin_row(slug, section='core') }}{% endfor %}
     </section>
 
     <section class="settings-section">
-        <h2>Custom Program Types</h2>
+        <div class="section-heading">
+            <h2>Creative Programs</h2>
+            <label class="master-toggle">
+                <input type="checkbox" class="section-master" data-section="creative">
+                <span>Enable all</span>
+            </label>
+        </div>
+        <p class="hint">These only appear in the ~35% "creative" rotation with full style/palette/mood direction.</p>
+        {% for slug in creative_slugs %}{{ builtin_row(slug, section='creative') }}{% endfor %}
+    </section>
+
+    <section class="settings-section">
+        <div class="section-heading">
+            <h2>Custom Program Types</h2>
+            <label class="master-toggle">
+                <input type="checkbox" class="section-master" data-section="custom">
+                <span>Enable all</span>
+            </label>
+        </div>
         <p class="hint">Your user-defined types. These appear in the ~35% "creative" rotation by default — raise the weight, or tick "Include in core" to also surface them in the core pool (~50% of cycles).</p>
 
         {% if custom_types %}
@@ -74,6 +100,7 @@
             <div class="type-row custom">
                 <div class="type-row-header">
                     <input type="checkbox" name="ptype_{{ slug }}" id="ptype_{{ slug }}"
+                           class="section-child" data-section="custom"
                            {% if enabled %}checked{% endif %}>
                     <label for="ptype_{{ slug }}">{{ slug|replace('_', ' ')|title }}</label>
                     <span class="slug">{{ slug }}</span>
@@ -151,4 +178,31 @@
         <a href="{{ url_for('prompt_editor') }}" class="btn-secondary">Reset Form</a>
     </div>
 </form>
+
+<script>
+(function () {
+    const sections = ['core', 'creative', 'custom'];
+    sections.forEach(function (name) {
+        const master = document.querySelector('.section-master[data-section="' + name + '"]');
+        const children = document.querySelectorAll('.section-child[data-section="' + name + '"]');
+        if (!master || children.length === 0) return;
+
+        function refreshMaster() {
+            let checked = 0;
+            children.forEach(function (c) { if (c.checked) checked += 1; });
+            master.checked = checked === children.length;
+            master.indeterminate = checked > 0 && checked < children.length;
+        }
+
+        master.addEventListener('change', function () {
+            children.forEach(function (c) { c.checked = master.checked; });
+            master.indeterminate = false;
+        });
+        children.forEach(function (c) {
+            c.addEventListener('change', refreshMaster);
+        });
+        refreshMaster();
+    });
+})();
+</script>
 {% endblock %}
