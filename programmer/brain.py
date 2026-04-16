@@ -351,7 +351,9 @@ class Brain:
 
         # Stream from LLM - filter duplicate header lines
         try:
-            for token in self.llm.stream(self._current_prompt, stop=["if __name__", "<|im_end|>"]):
+            for token in self.llm.stream(self._current_prompt, max_tokens=config.LLM_MAX_TOKENS,
+                                            temperature=config.LLM_TEMPERATURE,
+                                            stop=["if __name__", "<|im_end|>"]):
                 # Basic markdown filtering
                 if "```" in token:
                     if not in_code_block:
@@ -614,7 +616,9 @@ class Brain:
         in_code_block = False
 
         try:
-            for token in self.llm.stream(prompt, stop=["if __name__", "<|im_end|>"]):
+            for token in self.llm.stream(prompt, max_tokens=config.LLM_MAX_TOKENS,
+                                            temperature=config.LLM_TEMPERATURE,
+                                            stop=["if __name__", "<|im_end|>"]):
                 # Basic markdown filtering
                 if "```" in token:
                     if not in_code_block:
@@ -664,7 +668,9 @@ class Brain:
         # Stream reflection
         lesson = ""
         try:
-            for token in self.llm.stream(prompt, stop=["<|im_end|>"]):
+            for token in self.llm.stream(prompt, max_tokens=config.LLM_MAX_TOKENS,
+                                            temperature=config.LLM_TEMPERATURE,
+                                            stop=["<|im_end|>"]):
                 # Filter newlines to keep it clean
                 token = token.replace("\n", " ")
                 self.terminal.type_char(token)
