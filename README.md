@@ -1,4 +1,4 @@
-# TinyProgrammer v0.1
+# TinyProgrammer v0.3
 
 A self-contained device that autonomously writes, runs, and watches little Python programs... forever. Powered by a Raspberry Pi and an LLM via [OpenRouter](https://openrouter.ai), it types code at human speed, makes mistakes, fixes them, and has its own mood. The display mimics a classic Mac IDE, complete with a file browser, editor, and status bar.
 
