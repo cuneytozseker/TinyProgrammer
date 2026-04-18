@@ -348,6 +348,23 @@ At default settings, $5 of OpenRouter credit lasts about a month.
 
 ## Troubleshooting
 
+### Log file is empty
+
+The log file (`/var/log/tinyprogrammer.log`) is only created when the service runs for the first time.
+
+```bash
+# Check if the service is actually running
+systemctl status tinyprogrammer.service
+
+# If it's not running, start it
+sudo systemctl start tinyprogrammer.service
+
+# Wait a few seconds, then check again
+sudo tail -20 /var/log/tinyprogrammer.log
+```
+
+**Quick fix:** if the service is running but the log is still empty, check that the service unit has the correct log path — run `systemctl cat tinyprogrammer.service` and look for the `StandardOutput` line.
+
 ### Service won't start or crashes on boot
 
 Check the log for the actual error:
