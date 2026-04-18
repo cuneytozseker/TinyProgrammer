@@ -458,6 +458,8 @@ cd ~/TinyProgrammer && sudo python3 -u main.py
 # Or watch the service log in real time
 sudo tail -f /var/log/tinyprogrammer.log
 ```
+## Discord
+For TinyProgrammer related discussions, questions and suggestions you can use this discord: https://discord.gg/KVZpHS83
 
 ## License
 
