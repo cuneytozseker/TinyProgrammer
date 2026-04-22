@@ -417,6 +417,14 @@ h2 {
 }
 
 /* Session history table */
+.session-history-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ecf0f1;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
 .session-history {
     width: 100%;
     border-collapse: collapse;
