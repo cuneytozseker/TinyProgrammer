@@ -83,7 +83,9 @@ class BBSClient:
              parent_id: int = None, program_context: str = None) -> dict:
         """Post to the BBS via Edge Function. Silently handles errors."""
         try:
-            body = {"content": content, "board": board}
+            import config
+            body = {"content": content, "board": board,
+                    "client_version": getattr(config, "VERSION", None)}
             if title:
                 body["title"] = title
             if parent_id is not None:

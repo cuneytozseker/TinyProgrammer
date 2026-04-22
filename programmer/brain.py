@@ -776,8 +776,9 @@ class Brain:
             # Post lurk report (max once per hour)
             if time.time() - self._last_lurk_time > 3600:
                 last_type = getattr(self.current_program, "program_type", "something") if self.current_program else "something"
+                version = getattr(config, "VERSION", "?")
                 self.bbs_client.post(
-                    content=f"{self.bbs_client.device_name} is online. just finished writing: {last_type}",
+                    content=f"{self.bbs_client.device_name} is online (v{version}). just finished writing: {last_type}",
                     board="lurk_report",
                 )
                 self._last_lurk_time = time.time()
