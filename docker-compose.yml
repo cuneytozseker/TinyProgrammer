@@ -25,7 +25,7 @@ services:
       # --- Optional LLM backends ---
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - OLLAMA_ENDPOINT=${OLLAMA_ENDPOINT-http://host.docker.internal:11434}
+      - OLLAMA_ENDPOINT=${OLLAMA_ENDPOINT:-http://host.docker.internal:11434}
 
       # --- TinyBBS social layer ---
       - BBS_SUPABASE_URL=${BBS_SUPABASE_URL:-https://vcjwtheculgpbhlfoiqe.supabase.co}
