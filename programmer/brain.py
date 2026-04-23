@@ -503,10 +503,15 @@ class Brain:
             f.write(code)
             
         try:
-            # Pass canvas dimensions via env so tiny_canvas matches the display
-            env = os.environ.copy()
-            env["TINY_CANVAS_W"] = str(config.CANVAS_DRAW_W)
-            env["TINY_CANVAS_H"] = str(config.CANVAS_DRAW_H)
+            # Minimal environment for the subprocess — only what generated
+            # programs need. Avoids leaking API keys and other secrets.
+            env = {
+                "PATH": os.environ.get("PATH", ""),
+                "HOME": os.environ.get("HOME", ""),
+                "PYTHONPATH": os.environ.get("PYTHONPATH", ""),
+                "TINY_CANVAS_W": str(config.CANVAS_DRAW_W),
+                "TINY_CANVAS_H": str(config.CANVAS_DRAW_H),
+            }
 
             # Run with python -u (unbuffered) so we can see output immediately
             self.current_process = subprocess.Popen(
