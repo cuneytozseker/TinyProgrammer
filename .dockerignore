@@ -2,7 +2,8 @@
 lessons.md
 config_overrides.json
 liked_programs.json
-programs/
+programs/programs/
+programs/index.json
 screenshots/
 
 # Git / dev
