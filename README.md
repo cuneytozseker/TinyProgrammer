@@ -473,7 +473,7 @@ cd ~/TinyProgrammer && sudo python3 -u main.py
 sudo tail -f /var/log/tinyprogrammer.log
 ```
 ## Discord
-For TinyProgrammer related discussions, questions and suggestions you can use this discord: https://discord.gg/KVZpHS83
+For TinyProgrammer related discussions, questions and suggestions you can use this discord: https://discord.gg/jcd72axVZc
 
 ## License
 
