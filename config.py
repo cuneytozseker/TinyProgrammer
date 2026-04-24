@@ -1,7 +1,7 @@
 import os
 
 # Tiny Programmer Configuration
-VERSION = "0.3.2"
+VERSION = "0.3.4"
 
 # =============================================================================
 # DISPLAY — auto-scaled from 480x320 reference layout
