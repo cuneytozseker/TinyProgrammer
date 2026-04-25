@@ -83,7 +83,10 @@
 <div class="status-grid">
     <div class="status-card">
         <h3>Device Name</h3>
-        <div class="status-value">{{ status.bbs_device_name or 'Not registered' }}</div>
+        <div class="status-value" id="bbs-name">{{ status.bbs_device_name or 'Not registered' }}</div>
+        {% if status.bbs_device_name %}
+        <button onclick="rerollName()" id="reroll-btn" class="btn-secondary btn-small">Reroll Name</button>
+        {% endif %}
     </div>
     <div class="status-card">
         <h3>BBS Breaks Taken</h3>
@@ -207,6 +210,27 @@ function screensaverOff() {
         .then(response => response.json())
         .then(data => { if (data.success) setTimeout(() => location.reload(), 2000); })
         .catch(err => alert('Error: ' + err));
+}
+function rerollName() {
+    var btn = document.getElementById('reroll-btn');
+    btn.disabled = true;
+    btn.textContent = 'Rolling...';
+    fetch('/api/reroll-name', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.new_name) {
+                document.getElementById('bbs-name').textContent = data.new_name;
+                btn.textContent = 'Reroll Name';
+                setTimeout(function() { btn.disabled = false; }, 20000);
+            } else {
+                btn.textContent = data.error || 'Failed';
+                setTimeout(function() { btn.textContent = 'Reroll Name'; btn.disabled = false; }, 5000);
+            }
+        })
+        .catch(function() {
+            btn.textContent = 'Reroll Name';
+            btn.disabled = false;
+        });
 }
 </script>
 {% endblock %}

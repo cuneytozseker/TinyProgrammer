@@ -460,6 +460,12 @@ h2 {
 .mode-creative { background: #ebdef0; color: #7d3c98; }
 .mode-variation { background: #fdebd0; color: #ca6f1e; }
 
+.btn-small {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+    margin-top: 0.5rem;
+}
+
 /* Buttons */
 .form-actions {
     margin-top: 1.5rem;

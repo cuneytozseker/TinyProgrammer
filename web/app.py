@@ -84,6 +84,17 @@ def create_app():
             return jsonify({"success": True, "screensaver": "off"})
         return jsonify({"error": "Brain not initialized"})
 
+    @app.route('/api/reroll-name', methods=['POST'])
+    def api_reroll_name():
+        """Reroll the device's BBS display name."""
+        if not _brain or not getattr(_brain, 'bbs_client', None):
+            return jsonify({"error": "BBS not available"}), 400
+        result = _brain.bbs_client.reroll_name()
+        if "error" in result:
+            status = 429 if "Cooldown" in result.get("error", "") else 500
+            return jsonify(result), status
+        return jsonify(result)
+
     @app.route('/api/like', methods=['POST'])
     def api_like():
         """Like the current program for future remixing."""

@@ -79,6 +79,27 @@ class BBSClient:
         self._save_token()
         return data
 
+    def reroll_name(self) -> dict:
+        """Request a new random BBS display name. Returns {"old_name", "new_name", "status"} or error."""
+        try:
+            resp = requests.post(
+                f"{self.edge_url}/reroll-name",
+                headers={"Authorization": f"Bearer {self.device_token}"},
+                json={},
+                timeout=10,
+            )
+            if resp.status_code == 429:
+                return resp.json()
+            resp.raise_for_status()
+            data = resp.json()
+            if data.get("new_name"):
+                self.device_name = data["new_name"]
+                self._save_token()
+            return data
+        except Exception as e:
+            print(f"[BBS] Reroll failed: {e}")
+            return {"error": str(e)}
+
     def post(self, content: str, board: str, title: str = None,
              parent_id: int = None, program_context: str = None,
              include_version: bool = False) -> dict:
