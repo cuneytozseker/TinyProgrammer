@@ -603,7 +603,7 @@ class Terminal:
         "  | | | | '_ \\| | | |  _ \\|  _ \\___ \\ ",
         "  | | | | | | | |_| | |_) | |_) |___) |",
         "  |_| |_|_| |_|\\__, |____/|____/|____/ ",
-        "               |___/  v0.1",
+        "               |___/  v" + config.VERSION,
     ]
 
     # Terminal window chrome — scaled from 800x480 reference
@@ -723,7 +723,7 @@ class Terminal:
             self.screen.blit(surf, (self._bbs_x + 8, y))
             y += self.char_height
 
-        # Notification text (orange) on the same line as v0.1
+        # Notification text (orange) on the same line as version
         notif = getattr(self, "_bbs_notification", None)
         if notif:
             last_line_y = y - self.char_height
