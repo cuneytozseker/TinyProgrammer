@@ -45,3 +45,7 @@ nul
 test_fb_direct.py
 test_framerate.py
 docs/HYBRID_AND_LIKE_PLAN.md
+
+# Claude Code
+.claude/
+CLAUDE.md
