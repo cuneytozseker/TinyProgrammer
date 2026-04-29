@@ -39,6 +39,7 @@ class State(Enum):
     ARCHIVE = auto()
     REFLECT = auto()
     BBS_BREAK = auto()
+    DEMO_SCREENSAVER = auto()
     ERROR = auto()
 
 
@@ -98,6 +99,7 @@ class Brain:
         self.current_process = None
         self._force_screensaver = False
         self.liked_store = LikedStore()
+        self._demo_programs_since_bbs = 0
 
     def request_restart(self):
         """Request a restart - skip to next program cycle."""
@@ -141,6 +143,7 @@ class Brain:
             "is_variation": getattr(self, "_current_variation", None) is not None,
             "liked_count": self.liked_store.count(),
             "session_history": list(reversed(self._session_history)),
+            "demo_mode": getattr(config, "DEMO_MODE", False),
         }
         return status
 
@@ -188,6 +191,8 @@ class Brain:
                     self._do_reflect()
                 elif self.state == State.BBS_BREAK:
                     self._do_bbs_break()
+                elif self.state == State.DEMO_SCREENSAVER:
+                    self._do_demo_screensaver()
                 elif self.state == State.ERROR:
                     self._do_error()
                 
@@ -246,6 +251,31 @@ class Brain:
 
         # Prepare mood and creative dimensions for this cycle
         mood = self.personality.get_mood_status()
+
+        # Demo mode: always pick a variation from liked store
+        if getattr(config, "DEMO_MODE", False) and self.liked_store.count() > 0:
+            liked = self.liked_store.pick()
+            program_type = liked["type"]
+            self._current_creative = None
+            self._current_variation = liked
+            self._current_mode = "variation"
+            print(f"[Brain] Demo variation: remixing liked {program_type}")
+
+            comment = self.personality.get_thinking_comment()
+            self.terminal.type_string(f"\n{comment}\n")
+            time.sleep(random.uniform(2.0, 4.0))
+
+            lessons = self.learning.get_recent_lessons()
+            self._current_prompt = self.llm.build_variation_prompt(liked["code"], program_type)
+
+            self.current_program = Program(
+                code="",
+                program_type=program_type,
+                thought_process=comment,
+                timestamp=time.time()
+            )
+            self._transition(State.WRITE)
+            return
 
         # Three-way split: variation > core > creative
         variation_prob = getattr(config, "VARIATION_PROBABILITY", 0.15)
@@ -745,8 +775,19 @@ class Brain:
         })
         
         time.sleep(1)
+
+        # Demo mode: skip reflect, BBS every 2 programs then screensaver
+        if getattr(config, "DEMO_MODE", False):
+            self._demo_programs_since_bbs += 1
+            if self._demo_programs_since_bbs >= 2 and config.BBS_ENABLED and self.bbs_client:
+                self._demo_programs_since_bbs = 0
+                self._transition(State.BBS_BREAK)
+            else:
+                self._transition(State.THINK)
+            return
+
         self._transition(State.REFLECT)
-    
+
     def _do_error(self):
         """
         Error state.
@@ -814,7 +855,33 @@ class Brain:
                 self.terminal.exit_bbs_mode()
             except Exception:
                 pass
-            self._transition(State.THINK)
+            if getattr(config, "DEMO_MODE", False):
+                self._transition(State.DEMO_SCREENSAVER)
+            else:
+                self._transition(State.THINK)
+
+    def _do_demo_screensaver(self):
+        """Demo mode: show After Dark screensaver for 2 minutes, then loop back."""
+        from display.screensaver import StarryNight
+
+        duration = 120  # 2 minutes, hardcoded
+        print(f"[Brain] Demo screensaver for {duration}s")
+
+        screensaver = StarryNight(config.DISPLAY_WIDTH, config.DISPLAY_HEIGHT)
+        self.terminal.enter_screensaver_mode()
+
+        start = time.time()
+        while time.time() - start < duration:
+            if self._restart_requested:
+                self._restart_requested = False
+                break
+            screensaver.update()
+            screensaver.render(self.terminal.screen)
+            self.terminal.flush()
+            self.terminal.tick(15)
+
+        self.terminal.exit_screensaver_mode()
+        self._transition(State.THINK)
 
     def _bbs_browse(self):
         """Silently browse 2-3 random boards (read only)."""

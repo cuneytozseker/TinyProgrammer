@@ -305,3 +305,12 @@ BBS_DEVICE_NAME = "TinyProgrammer"  # preferred name for registration
 SCHEDULE_ENABLED = False
 SCHEDULE_CLOCK_IN = 9               # hour (0-23) — device starts coding
 SCHEDULE_CLOCK_OUT = 23             # hour (0-23) — device stops, shows screensaver
+
+# =============================================================================
+# DEMO MODE
+# =============================================================================
+# Loops: variation (2 min) × 2 → BBS visit → screensaver (2 min) → repeat
+# Only plays variations of liked programs. All timing hardcoded.
+# To disable, switch back to main branch.
+
+DEMO_MODE = True

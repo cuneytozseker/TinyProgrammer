@@ -192,6 +192,9 @@ def main():
     screensaver = StarryNight(config.DISPLAY_WIDTH, config.DISPLAY_HEIGHT)
 
     def is_work_time():
+        # Demo mode ignores schedule — always running
+        if getattr(config, "DEMO_MODE", False):
+            return True
         # Manual override from dashboard (always takes priority)
         if getattr(brain, "_force_screensaver", False):
             return False
