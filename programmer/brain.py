@@ -39,6 +39,7 @@ class State(Enum):
     ARCHIVE = auto()
     REFLECT = auto()
     BBS_BREAK = auto()
+    DEMO_REPLAY = auto()
     DEMO_SCREENSAVER = auto()
     ERROR = auto()
 
@@ -99,7 +100,6 @@ class Brain:
         self.current_process = None
         self._force_screensaver = False
         self.liked_store = LikedStore()
-        self._demo_programs_since_bbs = 0
 
     def request_restart(self):
         """Request a restart - skip to next program cycle."""
@@ -191,6 +191,8 @@ class Brain:
                     self._do_reflect()
                 elif self.state == State.BBS_BREAK:
                     self._do_bbs_break()
+                elif self.state == State.DEMO_REPLAY:
+                    self._do_demo_replay()
                 elif self.state == State.DEMO_SCREENSAVER:
                     self._do_demo_screensaver()
                 elif self.state == State.ERROR:
@@ -779,14 +781,12 @@ class Brain:
         
         time.sleep(1)
 
-        # Demo mode: skip reflect, BBS every 2 programs then screensaver
+        # Demo mode: skip reflect, go straight to BBS then replay
         if getattr(config, "DEMO_MODE", False):
-            self._demo_programs_since_bbs += 1
-            if self._demo_programs_since_bbs >= 2 and config.BBS_ENABLED and self.bbs_client:
-                self._demo_programs_since_bbs = 0
+            if config.BBS_ENABLED and self.bbs_client:
                 self._transition(State.BBS_BREAK)
             else:
-                self._transition(State.THINK)
+                self._transition(State.DEMO_REPLAY)
             return
 
         self._transition(State.REFLECT)
@@ -838,17 +838,25 @@ class Brain:
             self.terminal.render_bbs_menu(stats, self.bbs_client.device_name)
             time.sleep(random.uniform(2.0, 4.0))
 
-            # Browse 2-3 random boards (always, before any posting)
-            self._bbs_browse()
-
-            # Mood decides if device also posts/replies, or just leaves
-            mood = self.personality.get_mood_status()
-            if mood != "tired":
+            if getattr(config, "DEMO_MODE", False):
+                # Demo: visit one board only
                 board = self._pick_bbs_board()
                 if board == "code_share":
-                    self._bbs_code_share()
+                    self._bbs_browse_threads()
                 else:
                     self._bbs_flat_board(board)
+            else:
+                # Browse 2-3 random boards (always, before any posting)
+                self._bbs_browse()
+
+                # Mood decides if device also posts/replies, or just leaves
+                mood = self.personality.get_mood_status()
+                if mood != "tired":
+                    board = self._pick_bbs_board()
+                    if board == "code_share":
+                        self._bbs_code_share()
+                    else:
+                        self._bbs_flat_board(board)
 
         except Exception as e:
             print(f"[BBS] Break failed: {e}")
@@ -859,9 +867,87 @@ class Brain:
             except Exception:
                 pass
             if getattr(config, "DEMO_MODE", False):
-                self._transition(State.DEMO_SCREENSAVER)
+                self._transition(State.DEMO_REPLAY)
             else:
                 self._transition(State.THINK)
+
+    def _do_demo_replay(self):
+        """Demo mode: replay all liked programs from disk, 2 min each."""
+        items = list(self.liked_store._items)
+        if not items:
+            print("[Brain] Demo replay: no liked programs, skipping")
+            self._transition(State.DEMO_SCREENSAVER)
+            return
+
+        print(f"[Brain] Demo replay: {len(items)} liked programs")
+
+        for i, item in enumerate(items):
+            if self._restart_requested:
+                self._restart_requested = False
+                break
+
+            program_type = item.get("type", "unknown")
+            code = item.get("code", "")
+            if not code.strip():
+                continue
+
+            print(f"[Brain] Replaying {i+1}/{len(items)}: {program_type}")
+            self.terminal.set_status("REPLAYING", "proud")
+            self.terminal.type_string(f"\n// replaying: {program_type}\n")
+            time.sleep(1)
+
+            # Write code to temp file and run it
+            filepath = os.path.join("programs", "temp_execution.py")
+            with open(filepath, 'w') as f:
+                f.write(code)
+
+            try:
+                env = {
+                    "PATH": os.environ.get("PATH", ""),
+                    "HOME": os.environ.get("HOME", ""),
+                    "PYTHONPATH": os.environ.get("PYTHONPATH", ""),
+                    "TINY_CANVAS_W": str(config.CANVAS_DRAW_W),
+                    "TINY_CANVAS_H": str(config.CANVAS_DRAW_H),
+                }
+                proc = subprocess.Popen(
+                    [sys.executable, "-u", filepath],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    universal_newlines=True,
+                    bufsize=1,
+                    env=env,
+                )
+
+                self.terminal.show_canvas()
+                start = time.time()
+                while time.time() - start < 120:
+                    if self._restart_requested:
+                        break
+                    if proc.poll() is not None:
+                        break
+                    try:
+                        ready, _, _ = select.select([proc.stdout], [], [], 0.1)
+                        if ready:
+                            line = proc.stdout.readline()
+                            if line and line.startswith("CMD:"):
+                                self.terminal.process_draw_command(line)
+                    except Exception:
+                        pass
+                    self.terminal.tick()
+
+                self.terminal.hide_canvas()
+                if proc.poll() is None:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=1.0)
+                    except Exception:
+                        proc.kill()
+
+            except Exception as e:
+                print(f"[Brain] Replay error: {e}")
+                self.terminal.hide_canvas()
+
+        self._transition(State.DEMO_SCREENSAVER)
 
     def _do_demo_screensaver(self):
         """Demo mode: show After Dark screensaver for 2 minutes, then loop back."""
