@@ -10,6 +10,7 @@ VERSION = "0.3.4"
 #   "pi4-hdmi"   → 800x480, 16pt font, 60fps (default)
 #   "1080p"      → 1920x1080, 34pt font, 60fps
 #   "pizero-spi" → 480x320, 12pt font, 30fps
+#   "waveshare-4dpi-720" → 720x720, 16pt font, 30fps
 
 DISPLAY_PROFILE = os.environ.get("DISPLAY_PROFILE", "pi4-hdmi")
 
@@ -26,6 +27,13 @@ elif DISPLAY_PROFILE == "pizero-spi":
     FONT_SIZE = 12
     CHAR_WIDTH = 8
     CHAR_HEIGHT = 16
+    TARGET_FPS = 30
+elif DISPLAY_PROFILE == "waveshare-4dpi-720":
+    DISPLAY_WIDTH = 720
+    DISPLAY_HEIGHT = 720
+    FONT_SIZE = 16
+    CHAR_WIDTH = 10
+    CHAR_HEIGHT = 24
     TARGET_FPS = 30
 elif DISPLAY_PROFILE == "1080p":
     DISPLAY_WIDTH = 1920
@@ -79,6 +87,14 @@ LINE_NUM_W = int(25 * _SX)
 
 STATUS_BAR_Y = int(289 * _SY) + LAYOUT_OFFSET_Y
 STATUS_BAR_HEIGHT = int(24 * _SY)
+
+if DISPLAY_PROFILE == "waveshare-4dpi-720":
+    # Space Mono line numbers are rendered as a 3-character right-aligned
+    # string. With the smaller 720px profile font, the generic scaled gutter
+    # pushes the visible digits too close to the code divider.
+    LINE_NUM_SIDEBAR_OVERLAP_PX = 5
+    LINE_NUM_X = SIDEBAR_X + SIDEBAR_W - LINE_NUM_SIDEBAR_OVERLAP_PX
+    LINE_NUM_W = CODE_AREA_X - LINE_NUM_X
 
 # Display modes
 MODE_TERMINAL = "terminal"

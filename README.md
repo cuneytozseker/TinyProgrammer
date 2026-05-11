@@ -36,7 +36,7 @@ After work hours, a **Starry Night screensaver** takes over, a city skyline with
 ## Requirements (Raspberry Pi)
 
 - **Raspberry Pi** (tested on Pi 4B and Pi Zero 2 W)
-- **Display** any framebuffer-compatible screen (HDMI or SPI TFT)
+- **Display** any framebuffer-compatible screen (HDMI, SPI TFT, or supported KMS DPI panel)
 - **Python 3.11+**
 - **OpenRouter API key** sign up at [openrouter.ai](https://openrouter.ai) and create an API key. TinyProgrammer uses cheap/fast models (Haiku, Gemini Flash, GPT-4.1 Mini, etc.) so costs are minimal. (0.15usd/day in default settings can be lowered much more)
 - **Network connection** needed for OpenRouter API and BBS
@@ -59,15 +59,15 @@ sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
 
 ## Hardware
 
-TinyProgrammer should run on any Raspberry Pi with a display. Two tested configurations:
+TinyProgrammer should run on any Raspberry Pi with a display. Tested or targeted configurations:
 
-|            | Pi 4 (HDMI)                     | Pi Zero 2 W (SPI)                  |
-| ---------- | ------------------------------- | ---------------------------------- |
-| Board      | Raspberry Pi 4B                 | Raspberry Pi Zero 2 W              |
-| Display    | Waveshare 4" HDMI LCD (800x480) | Waveshare 4" SPI TFT (480x320)     |
-| Profile    | `pi4-hdmi`                      | `pizero-spi`                       |
-| FPS        | 60                              | 30                                 |
-| Connection | HDMI, no driver needed          | SPI, requires Waveshare LCD driver |
+|            | Pi 4 (HDMI)                     | Pi Zero 2 W (SPI)                  | Pi Zero 2 W (DPI)                         |
+| ---------- | ------------------------------- | ---------------------------------- | ----------------------------------------- |
+| Board      | Raspberry Pi 4B                 | Raspberry Pi Zero 2 W              | Raspberry Pi Zero 2 W                     |
+| Display    | Waveshare 4" HDMI LCD (800x480) | Waveshare 4" SPI TFT (480x320)     | Waveshare 4inch DPI LCD (C), 720x720      |
+| Profile    | `pi4-hdmi`                      | `pizero-spi`                       | `waveshare-4dpi-720`                      |
+| FPS        | 60                              | 30                                 | 30                                        |
+| Connection | HDMI, no driver needed          | SPI, requires Waveshare LCD driver | GPIO DPI, requires Waveshare KMS overlays |
 
 Other displays should work too, set `DISPLAY_WIDTH` and `DISPLAY_HEIGHT` in `config.py` and provide a matching background image (`display/assets/bg-WxH.png`). The layout auto-scales from a 480x320 reference design.
 
@@ -91,6 +91,15 @@ cd LCD-show && chmod +x LCD4-show && sudo ./LCD4-show
 ```
 
 After reboot, run the install command above.
+
+**Pi Zero 2 W with Waveshare 4inch DPI LCD (C):** After the quick install
+finishes, configure the display overlays from the checkout:
+
+```bash
+cd ~/TinyProgrammer
+./scripts/setup-waveshare-4dpi-720.sh
+sudo reboot
+```
 
 ### Manual install
 
@@ -129,7 +138,7 @@ nano .env
 
 ```bash
 # Required: your display type
-DISPLAY_PROFILE=pi4-hdmi          # or pizero-spi
+DISPLAY_PROFILE=pi4-hdmi          # or pizero-spi, waveshare-4dpi-720
 
 # Required: LLM API key (get one at https://openrouter.ai)
 OPENROUTER_API_KEY=sk-or-v1-...
@@ -297,7 +306,7 @@ All settings are in `config.py` and can be overridden via the web dashboard (sav
 
 | Setting              | Default    | Description                                             |
 | -------------------- | ---------- | ------------------------------------------------------- |
-| `DISPLAY_PROFILE`    | `pi4-hdmi` | Display target (`pi4-hdmi` or `pizero-spi`)             |
+| `DISPLAY_PROFILE`    | `pi4-hdmi` | Display target (`pi4-hdmi`, `pizero-spi`, or `waveshare-4dpi-720`) |
 | `BBS_ENABLED`        | `True`     | Enable BBS social breaks                                |
 | `BBS_BREAK_CHANCE`   | `0.3`      | Probability of BBS break after each coding cycle        |
 | `BBS_DISPLAY_COLOR`  | `green`    | BBS terminal color (`green`, `amber`, `white`)          |
@@ -407,7 +416,7 @@ grep DISPLAY_PROFILE ~/TinyProgrammer/.env
 ls -la /dev/fb0
 ```
 
-**Quick fixes:** set `DISPLAY_PROFILE=pi4-hdmi` in `.env` for HDMI displays, `pizero-spi` for SPI screens. Make sure the service runs as root (it needs framebuffer access).
+**Quick fixes:** set `DISPLAY_PROFILE=pi4-hdmi` in `.env` for HDMI displays, `pizero-spi` for SPI screens, or `waveshare-4dpi-720` for the Waveshare 4inch DPI LCD (C). Make sure the service runs as root (it needs framebuffer access). On the Waveshare 720x720 panel, rerun `./scripts/setup-waveshare-4dpi-720.sh` and reboot so `/boot/firmware/config.txt` and the `.dtbo` overlays are active.
 
 ### Display shows the desktop instead of TinyProgrammer
 
