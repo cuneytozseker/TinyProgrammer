@@ -129,6 +129,20 @@
         <h2>Display</h2>
 
         <div class="form-group">
+            <label for="interface_theme">Interface Theme</label>
+            <select name="interface_theme" id="interface_theme">
+                {% set interface_themes = {
+                    'asset': 'Default',
+                    'system6': 'System 6 (experimental)'
+                } %}
+                {% for backend, label in interface_themes.items() %}
+                <option value="{{ backend }}" {% if config.DISPLAY_CHROME_BACKEND == backend %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <p class="hint">Requires restarting TinyProgrammer to take effect.</p>
+        </div>
+
+        <div class="form-group">
             <label for="color_scheme">Color Scheme</label>
             <select name="color_scheme" id="color_scheme">
                 {% set scheme_names = {

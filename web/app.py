@@ -164,6 +164,7 @@ def create_app():
         if request.method == 'POST':
             # Collect form data
             updates = {}
+            previous_chrome_backend = config_mgr.get('DISPLAY_CHROME_BACKEND', 'asset')
 
             # LLM model selection (OpenRouter)
             selected_model = request.form.get('llm_model', DEFAULT_MODEL)
@@ -192,6 +193,12 @@ def create_app():
             updates['TYPING_SKIP_INDENT'] = 'typing_skip_indent' in request.form
 
             # Program types live on the /prompt page now; see prompt_editor().
+
+            # Interface theme
+            interface_theme = request.form.get('interface_theme', 'asset')
+            if interface_theme not in ('asset', 'system6'):
+                interface_theme = 'asset'
+            updates['DISPLAY_CHROME_BACKEND'] = interface_theme
 
             # Color scheme (display adjustment layer)
             color_scheme = request.form.get('color_scheme', 'none')
@@ -224,7 +231,13 @@ def create_app():
                 pass  # Framebuffer not available (e.g., on dev machine)
 
             config_mgr.save_overrides(updates)
-            message = "Settings saved! Changes will apply on next program cycle."
+            if interface_theme != previous_chrome_backend:
+                message = (
+                    "Settings saved! Interface theme changes require restarting "
+                    "TinyProgrammer; other changes will apply on the next program cycle."
+                )
+            else:
+                message = "Settings saved! Changes will apply on next program cycle."
 
         # Load current config
         current = config_mgr.get_all()

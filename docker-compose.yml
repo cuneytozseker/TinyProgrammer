@@ -18,6 +18,7 @@ services:
       - SDL_AUDIODRIVER=dummy
       - XDG_RUNTIME_DIR=/tmp
       - DISPLAY_PROFILE=${DISPLAY_PROFILE:-pi4-hdmi}
+      - DISPLAY_CHROME_BACKEND=${DISPLAY_CHROME_BACKEND:-asset}
       - WEB_STREAM_ENABLED=true
       # --- Optional LLM backends ---
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}

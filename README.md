@@ -141,6 +141,9 @@ nano .env
 # Required: your display type
 DISPLAY_PROFILE=pi4-hdmi          # or pizero-spi, waveshare-4dpi-720
 
+# Optional: display chrome renderer
+DISPLAY_CHROME_BACKEND=asset      # or system6 for scalable procedural chrome
+
 # Required: LLM API key (get one at https://openrouter.ai)
 OPENROUTER_API_KEY=sk-or-v1-...
 
@@ -305,20 +308,23 @@ Once running, access the dashboard at `http://<pi-ip>:5000` to:
 
 All settings are in `config.py` and can be overridden via the web dashboard (saved to `config_overrides.json`).
 
-| Setting              | Default    | Description                                             |
-| -------------------- | ---------- | ------------------------------------------------------- |
-| `DISPLAY_PROFILE`    | `pi4-hdmi` | Display target (`pi4-hdmi`, `pizero-spi`, or `waveshare-4dpi-720`) |
-| `BBS_ENABLED`        | `True`     | Enable BBS social breaks                                |
-| `BBS_BREAK_CHANCE`   | `0.3`      | Probability of BBS break after each coding cycle        |
-| `BBS_DISPLAY_COLOR`  | `green`    | BBS terminal color (`green`, `amber`, `white`)          |
-| `REMINISCE_ENABLED`  | `False`    | Enable archive replay after completed BBS breaks        |
-| `REMINISCE_ENTRY_PROBABILITY` | `0.67` | Probability of starting REMINISCE after BBS        |
-| `REMINISCE_LOOP_PROBABILITY`  | `0.50` | Probability of replaying another archived creation |
-| `REMINISCE_INTRO_PAUSE_SECONDS` | `3.0` | Delay between REMINISCE intro text and canvas replay |
-| `SCHEDULE_ENABLED`   | `False`    | Enable work schedule (screensaver after hours)          |
-| `SCHEDULE_CLOCK_IN`  | `9`        | Hour to start coding (0-23)                             |
-| `SCHEDULE_CLOCK_OUT` | `23`       | Hour to stop coding (0-23)                              |
-| `COLOR_SCHEME`       | `none`     | Display color overlay (`amber`, `green`, `night`, etc.) |
+| Setting                          | Default    | Description                                                        |
+| -------------------------------- | ---------- | ------------------------------------------------------------------ |
+| `DISPLAY_PROFILE`                | `pi4-hdmi` | Display target (`pi4-hdmi`, `pizero-spi`, or `waveshare-4dpi-720`) |
+| `DISPLAY_CHROME_BACKEND`         | `asset`    | Chrome renderer (`asset` PNGs or opt-in `system6` procedural)      |
+| `BBS_ENABLED`                    | `True`     | Enable BBS social breaks                                           |
+| `BBS_BREAK_CHANCE`               | `0.3`      | Probability of BBS break after each coding cycle                   |
+| `BBS_DISPLAY_COLOR`              | `green`    | BBS terminal color (`green`, `amber`, `white`)                     |
+| `REMINISCE_ENABLED`              | `False`    | Enable archive replay after completed BBS breaks                   |
+| `REMINISCE_ENTRY_PROBABILITY`    | `0.67`     | Probability of starting REMINISCE after BBS                        |
+| `REMINISCE_LOOP_PROBABILITY`     | `0.50`     | Probability of replaying another archived creation                 |
+| `REMINISCE_INTRO_PAUSE_SECONDS`  | `3.0`      | Delay between REMINISCE intro text and canvas replay               |
+| `SCHEDULE_ENABLED`               | `False`    | Enable work schedule (screensaver after hours)                     |
+| `SCHEDULE_CLOCK_IN`              | `9`        | Hour to start coding (0-23)                                        |
+| `SCHEDULE_CLOCK_OUT`             | `23`       | Hour to stop coding (0-23)                                         |
+| `COLOR_SCHEME`                   | `none`     | Display color overlay (`amber`, `green`, `night`, etc.)            |
+
+Procedural chrome development notes live in `docs/procedural-chrome.md`.
 
 ## Project structure
 

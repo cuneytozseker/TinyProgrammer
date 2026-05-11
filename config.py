@@ -67,6 +67,10 @@ COLOR_DIM = (128, 128, 128)     # Dimmed text for comments
 # Font settings (Space Mono from Google Fonts)
 FONT_NAME = "SpaceMono-Regular"
 
+# Chrome renderer: "asset" keeps the existing PNG-backed UI. "system6" enables
+# the opt-in scalable procedural chrome.
+DISPLAY_CHROME_BACKEND = os.environ.get("DISPLAY_CHROME_BACKEND", "asset").lower()
+
 # Global offset to align with background
 LAYOUT_OFFSET_X = int(2 * _SX + 0.5)
 LAYOUT_OFFSET_Y = int(1 * _SY + 0.5)
