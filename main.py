@@ -45,7 +45,7 @@ from archive.repository import Repository
 
 
 def signal_handler(sig, frame):
-    """Handle Ctrl+C gracefully."""
+    """Handle Ctrl+C and service stops gracefully."""
     print("\n[Tiny Programmer] Shutting down...")
     sys.exit(0)
 
@@ -96,6 +96,7 @@ def main():
     Initializes all components and starts the main loop.
     """
     signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
     
     print("[Tiny Programmer] Booting up...")
 
