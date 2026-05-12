@@ -684,10 +684,11 @@ class Brain:
                                             stop=["<|im_end|>"]):
                 # Filter newlines to keep it clean
                 token = token.replace("\n", " ")
-                self.terminal.type_char(token)
                 lesson += token
-                time.sleep(random.uniform(0.01, 0.05))
-                self.terminal.tick()
+                for char in token:
+                    self.terminal.type_char(char)
+                    time.sleep(random.uniform(0.01, 0.05))
+                    self.terminal.tick()
         except Exception:
             pass
             
