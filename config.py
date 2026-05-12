@@ -1,6 +1,7 @@
 import os
 
-from display_layout import CANVAS_REFERENCE, scale_floor
+from display_layout import CANVAS_REFERENCE as _CANVAS_REFERENCE
+from display_layout import scale_floor as _scale_floor
 
 # Tiny Programmer Configuration
 VERSION = "0.3.4"
@@ -124,14 +125,14 @@ MODE_TERMINAL = "terminal"
 MODE_RUN = "run"
 
 # Canvas popup window — scaled from 480x320 reference
-CANVAS_X = scale_floor(CANVAS_REFERENCE.window.x, _SX)
-CANVAS_Y = scale_floor(CANVAS_REFERENCE.window.y, _SY)
-CANVAS_W = scale_floor(CANVAS_REFERENCE.window.w, _SX)
-CANVAS_H = scale_floor(CANVAS_REFERENCE.window.h, _SY)
-CANVAS_DRAW_OFFSET_X = scale_floor(CANVAS_REFERENCE.content_offset_x, _SX)
-CANVAS_DRAW_OFFSET_Y = scale_floor(CANVAS_REFERENCE.content_offset_y, _SY)
-CANVAS_DRAW_W = scale_floor(CANVAS_REFERENCE.content_w, _SX)
-CANVAS_DRAW_H = scale_floor(CANVAS_REFERENCE.content_h, _SY)
+CANVAS_X = _scale_floor(_CANVAS_REFERENCE.window.x, _SX)
+CANVAS_Y = _scale_floor(_CANVAS_REFERENCE.window.y, _SY)
+CANVAS_W = _scale_floor(_CANVAS_REFERENCE.window.w, _SX)
+CANVAS_H = _scale_floor(_CANVAS_REFERENCE.window.h, _SY)
+CANVAS_DRAW_OFFSET_X = _scale_floor(_CANVAS_REFERENCE.content_offset_x, _SX)
+CANVAS_DRAW_OFFSET_Y = _scale_floor(_CANVAS_REFERENCE.content_offset_y, _SY)
+CANVAS_DRAW_W = _scale_floor(_CANVAS_REFERENCE.content_w, _SX)
+CANVAS_DRAW_H = _scale_floor(_CANVAS_REFERENCE.content_h, _SY)
 
 # =============================================================================
 # LLM

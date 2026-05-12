@@ -29,13 +29,16 @@ REFERENCE_RECTS: Mapping[str, ReferenceRect] = MappingProxyType({
     "status": (4, 289, 465, 18),
 })
 
-TOOLBAR_ICON_RECTS: tuple[ReferenceRect, ...] = (
-    (13, 36, 18, 17),
-    (40, 39, 18, 14),
-    (66, 35, 18, 18),
-    (93, 34, 18, 20),
-    (124, 36, 15, 17),
+SYSTEM6_TOOLBAR_ICON_FILES: tuple[str, ...] = (
+    "icon-new-system6.png",
+    "icon-open-system6.png",
+    "icon-save-system6.png",
+    "icon-run-system6.png",
+    "icon-settings-system6.png",
 )
+SYSTEM6_LOGO_FILE = "logo-system6.png"
+SYSTEM6_TOOLBAR_ICON_EXTENTS = (8, 12, 16, 24, 32, 40, 48, 56, 64)
+SYSTEM6_LOGO_ICON_EXTENTS = (8, 12, 15, 16, 23, 24, 32, 40, 48, 56, 64)
 
 # IDE toolbar and desktop
 TOOLBAR_HEIGHT = 34
@@ -265,15 +268,9 @@ class System6Chrome:
             "ChicagoFLF.ttf",
             max(MENU_FONT_MIN_SIZE, int(MENU_FONT_SIZE * self.unit)),
         )
-        self._bg_asset = self._load_image("bg.png")
-        self._display_bg_asset = self._load_image(f"bg-{width}-{height}.png")
-        if self._display_bg_asset and self._display_bg_asset.get_size() != (width, height):
-            self._display_bg_asset = None
-        self._toolbar_icons = self._load_toolbar_icons()
-        self._apple_icon = (
-            self._load_display_fragment("apple_icon")
-            or self._load_fragment("apple_icon")
-        )
+        self._toolbar_icon_extent = self._compute_toolbar_icon_extent()
+        self._toolbar_icons = self._load_toolbar_icons(self._toolbar_icon_extent)
+        self._menu_logo = self._load_menu_logo()
 
     def draw_ide(self) -> None:
         """Draw the base IDE chrome and content wells."""
@@ -300,21 +297,33 @@ class System6Chrome:
         """Draw the BBS terminal frame."""
         self._draw_system6_window(self.regions.bbs_window, "Terminal")
 
-    def _load_fragment(self, name: str) -> pygame.Surface | None:
-        return self._crop_image(self._bg_asset, pygame.Rect(REFERENCE_RECTS[name]))
+    def _load_toolbar_icons(self, extent: int) -> list[pygame.Surface]:
+        return [
+            self._load_generated_icon(filename, extent)
+            for filename in SYSTEM6_TOOLBAR_ICON_FILES
+        ]
 
-    def _load_display_fragment(self, name: str) -> pygame.Surface | None:
-        if self._display_bg_asset is None:
-            return None
-        return self._crop_image(self._display_bg_asset, self.layout.rect_from_ref(name))
+    def _load_generated_icon(self, filename: str, extent: int) -> pygame.Surface:
+        path = os.path.join(
+            self.assets_dir,
+            "system6",
+            "generated",
+            str(extent),
+            filename,
+        )
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"missing generated System 6 icon: {path}")
+        return pygame.image.load(path)
 
-    def _load_toolbar_icons(self) -> list[pygame.Surface]:
-        icons = []
-        for rect in TOOLBAR_ICON_RECTS:
-            icon = self._crop_image(self._bg_asset, pygame.Rect(rect))
-            if icon is not None:
-                icons.append(icon)
-        return icons
+    def _load_menu_logo(self) -> pygame.Surface:
+        reference_logo = self._load_generated_icon(
+            SYSTEM6_LOGO_FILE,
+            SYSTEM6_LOGO_ICON_EXTENTS[-1],
+        )
+        extent = self._menu_logo_extent(reference_logo)
+        if extent == SYSTEM6_LOGO_ICON_EXTENTS[-1]:
+            return reference_logo
+        return self._load_generated_icon(SYSTEM6_LOGO_FILE, extent)
 
     def _load_font(self, filename: str, size: int) -> pygame.font.Font:
         path = os.path.join(self.assets_dir, filename)
@@ -322,21 +331,10 @@ class System6Chrome:
             return pygame.font.Font(path, size)
         return pygame.font.Font(None, size)
 
-    def _load_image(self, filename: str) -> pygame.Surface | None:
-        path = os.path.join(self.assets_dir, filename)
-        if not os.path.exists(path):
-            return None
-        return pygame.image.load(path)
-
-    def _crop_image(self, image: pygame.Surface | None, rect: pygame.Rect) -> pygame.Surface | None:
-        if image is None:
-            return None
-        return image.subsurface(rect).copy()
-
     def _draw_menu_bar(self, height: int) -> None:
         pygame.draw.rect(self.surface, WHITE, (0, 0, self.width, height))
         self._painter.line((0, height - self.scale), (self.width, height - self.scale))
-        self._painter.blit_scaled(self._apple_icon, self.layout.rect_from_ref("apple_icon"))
+        self._blit_menu_logo(self.layout.rect_from_ref("apple_icon"))
         x = self.scale_context.x(MENU_LABEL_X)
         y = max(self.scale, (height - self._menu_font.get_height()) // 2)
         for label in ("File", "Edit", "View", "Compile", "Debug", "Special"):
@@ -375,15 +373,20 @@ class System6Chrome:
             )
 
     def _draw_toolbar_glyphs(self, rect: pygame.Rect) -> None:
+        for index, button in enumerate(self._toolbar_button_rects(rect)):
+            icon = self._toolbar_icons[index] if index < len(self._toolbar_icons) else None
+            self._draw_toolbar_button(button, icon)
+
+    def _toolbar_button_rects(self, rect: pygame.Rect) -> tuple[pygame.Rect, ...]:
         size = self.scale_context.u(TOOLBAR_BUTTON_SIZE)
         gap = self.scale_context.u(TOOLBAR_BUTTON_GAP)
         x = rect.x + self.scale_context.u(TOOLBAR_BUTTON_X)
         y = rect.y + max(self.scale, (rect.h - size) // 2)
-        for index in range(len(TOOLBAR_ICON_RECTS)):
-            button = pygame.Rect(x, y, size, size)
-            icon = self._toolbar_icons[index] if index < len(self._toolbar_icons) else None
-            self._draw_toolbar_button(button, icon)
+        buttons = []
+        for _ in SYSTEM6_TOOLBAR_ICON_FILES:
+            buttons.append(pygame.Rect(x, y, size, size))
             x += size + gap
+        return tuple(buttons)
 
     def _draw_content_wells(self) -> None:
         sidebar_frame = self.layout.sidebar_frame_rect()
@@ -564,17 +567,48 @@ class System6Chrome:
         pygame.draw.rect(self.surface, BLACK, rect, self.scale, border_radius=radius)
 
     def _blit_toolbar_icon(self, icon: pygame.Surface, rect: pygame.Rect) -> None:
+        target = icon.get_rect(center=rect.center)
+        self.surface.blit(icon, target.topleft)
+
+    def _blit_menu_logo(self, rect: pygame.Rect) -> None:
+        target = self._menu_logo.get_rect(center=rect.center)
+        self.surface.blit(self._menu_logo, target.topleft)
+
+    def _compute_toolbar_icon_extent(self) -> int:
+        button_size = self.scale_context.u(TOOLBAR_BUTTON_SIZE)
         pad = self.scale_context.u(TOOLBAR_ICON_PAD)
-        max_w = max(1, rect.w - pad * 2)
-        max_h = max(1, rect.h - pad * 2)
-        scale = min(max_w / icon.get_width(), max_h / icon.get_height())
-        target_size = (
-            max(1, int(icon.get_width() * scale + 0.5)),
-            max(1, int(icon.get_height() * scale + 0.5)),
+        return self._preferred_icon_extent(
+            max(1, button_size - pad * 2),
+            SYSTEM6_TOOLBAR_ICON_EXTENTS,
         )
-        target = pygame.Rect(0, 0, *target_size)
-        target.center = rect.center
-        self.surface.blit(pygame.transform.scale(icon, target_size), target.topleft)
+
+    def _menu_logo_extent(self, reference_logo: pygame.Surface) -> int:
+        logo_rect = self.layout.rect_from_ref("apple_icon")
+        target_size = self._fit_icon_size(reference_logo.get_size(), logo_rect.size)
+        return self._preferred_icon_extent(
+            max(target_size),
+            SYSTEM6_LOGO_ICON_EXTENTS,
+        )
+
+    @staticmethod
+    def _fit_icon_size(
+        source_size: tuple[int, int],
+        max_size: tuple[int, int],
+    ) -> tuple[int, int]:
+        source_w, source_h = source_size
+        max_w, max_h = max_size
+        scale = min(max_w / source_w, max_h / source_h)
+        return (
+            max(1, int(source_w * scale + 0.5)),
+            max(1, int(source_h * scale + 0.5)),
+        )
+
+    @staticmethod
+    def _preferred_icon_extent(max_extent: int, extents: tuple[int, ...]) -> int:
+        for extent in reversed(extents):
+            if extent <= max_extent:
+                return extent
+        return extents[0]
 
     def _draw_arrow(self, rect: pygame.Rect, direction: str) -> None:
         cx, cy = rect.center

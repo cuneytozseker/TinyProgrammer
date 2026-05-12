@@ -89,8 +89,3 @@ class ChromePainter:
         clipped = rect.clip(self.surface.get_rect())
         if clipped.w > 0 and clipped.h > 0:
             pygame.draw.rect(self.surface, color, clipped)
-
-    def blit_scaled(self, fragment: pygame.Surface | None, dest: pygame.Rect) -> None:
-        if fragment is None:
-            return
-        self.surface.blit(pygame.transform.scale(fragment, dest.size), dest.topleft)
