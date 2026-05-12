@@ -131,10 +131,6 @@
         <div class="form-group">
             <label for="interface_theme">Interface Theme</label>
             <select name="interface_theme" id="interface_theme">
-                {% set interface_themes = {
-                    'asset': 'Default',
-                    'system6': 'System 6 (experimental)'
-                } %}
                 {% for backend, label in interface_themes.items() %}
                 <option value="{{ backend }}" {% if config.DISPLAY_CHROME_BACKEND == backend %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}

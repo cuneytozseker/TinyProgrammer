@@ -84,7 +84,8 @@ SCROLLBAR_ARROW_HEIGHT_DIVISOR = 6
 # Floating canvas window
 CANVAS_X_INSET = 3
 CANVAS_TITLE_OFFSET = 19
-CANVAS_BOTTOM_GAP = 11
+CANVAS_CONTENT_W = 416
+CANVAS_CONTENT_H = 212
 
 # BBS terminal window
 BBS_REFERENCE_WIDTH = 800
@@ -154,8 +155,6 @@ class System6Layout:
             canvas_content=canvas_content,
             bbs_window=bbs_window,
             bbs_content=bbs_content,
-            line_number_align="right",
-            status_text_centered=True,
         )
 
     def _build_ide_regions(self) -> tuple[pygame.Rect, pygame.Rect, pygame.Rect, pygame.Rect]:
@@ -196,13 +195,13 @@ class System6Layout:
     def _build_canvas_regions(self) -> tuple[pygame.Rect, pygame.Rect]:
         scale = self.scale
         canvas_window = self.rect_from_ref("canvas_window")
-        canvas_x_inset = scale.x(CANVAS_X_INSET)
-        canvas_content_y = canvas_window.y + scale.u(CANVAS_TITLE_OFFSET)
+        canvas_x_inset = max(1, int(CANVAS_X_INSET * scale.sx))
+        canvas_content_y = canvas_window.y + max(1, int(CANVAS_TITLE_OFFSET * scale.sy))
         canvas_content = pygame.Rect(
             canvas_window.x + canvas_x_inset,
             canvas_content_y,
-            canvas_window.w - canvas_x_inset * 2,
-            canvas_window.bottom - canvas_content_y - scale.u(CANVAS_BOTTOM_GAP),
+            max(1, int(CANVAS_CONTENT_W * scale.sx)),
+            max(1, int(CANVAS_CONTENT_H * scale.sy)),
         )
         return canvas_window, canvas_content
 
@@ -215,20 +214,21 @@ class System6Layout:
         )
         bbs_x = bbs_scale.x(BBS_X)
         bbs_y = bbs_scale.y(BBS_Y)
-        bbs_lift = max(BBS_LIFT_MIN, bbs_scale.u(BBS_LIFT))
+        bbs_lift = max(BBS_LIFT_MIN, bbs_scale.y(BBS_LIFT))
+        bbs_bottom_gap = max(1, bbs_scale.y(BBS_BOTTOM_GAP))
         bbs_window = pygame.Rect(
             bbs_x,
             max(0, bbs_y - bbs_lift),
             self.width - bbs_x * 2,
-            self.height - bbs_y - BBS_BOTTOM_GAP,
+            self.height - bbs_y - bbs_bottom_gap,
         )
         bbs_x_inset = bbs_scale.x(BBS_X_INSET)
-        bbs_content_y = bbs_window.y + bbs_scale.u(BBS_TITLE_OFFSET)
+        bbs_content_y = bbs_window.y + bbs_scale.y(BBS_TITLE_OFFSET)
         bbs_content = pygame.Rect(
             bbs_window.x + bbs_x_inset,
             bbs_content_y,
             bbs_window.w - bbs_x_inset * 2,
-            bbs_window.bottom - bbs_content_y - max(1, bbs_scale.u(BBS_BOTTOM_GAP)),
+            bbs_window.bottom - bbs_content_y - bbs_bottom_gap,
         )
         return bbs_window, bbs_content
 

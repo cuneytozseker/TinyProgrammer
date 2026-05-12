@@ -25,7 +25,7 @@ import pygame
 
 import config
 from .framebuffer import get_writer, IS_FRAMEBUFFER_AVAILABLE
-from .chrome import create_chrome_backend, default_chrome_regions
+from .chrome import System6Chrome, default_chrome_regions
 
 # Initialize pygame with dummy driver
 PYGAME_AVAILABLE = True
@@ -61,7 +61,8 @@ class Terminal:
         self.fb_writer = None
         self._chrome_backend = "asset"
         self._chrome = None
-        self._apply_chrome_regions(default_chrome_regions(config, width, height))
+        self._draw_command_error_count = 0
+        self._apply_chrome_regions(default_chrome_regions(config))
 
         self._init_display(font_name, font_size)
         self._init_chrome_backend()
@@ -184,24 +185,19 @@ class Terminal:
             self.font_bold = self.font
 
     def _init_chrome_backend(self):
-        backend = getattr(config, "DISPLAY_CHROME_BACKEND", "asset").lower()
+        normalize_backend = getattr(config, "normalize_display_chrome_backend", None)
+        requested_backend = getattr(config, "DISPLAY_CHROME_BACKEND", "asset")
+        backend = normalize_backend(requested_backend) if normalize_backend else requested_backend.lower()
 
         if backend == "asset" or self.mock_mode:
             self._chrome_backend = "asset"
             return
 
         try:
-            self._chrome = create_chrome_backend(backend, self.screen, self.width, self.height)
-            if self._chrome is None:
-                self._chrome_backend = "asset"
-                return
+            self._chrome = System6Chrome(self.screen, self.width, self.height)
             self._chrome_backend = backend
             self._apply_chrome_regions(self._chrome.regions)
             print(f"[Terminal] Using experimental {backend} chrome backend")
-        except ValueError:
-            self._chrome = None
-            self._chrome_backend = "asset"
-            print(f"[Terminal] Unknown chrome backend '{backend}', using asset")
         except Exception as e:
             self._chrome = None
             self._chrome_backend = "asset"
@@ -224,11 +220,13 @@ class Terminal:
         self.code_area_w, self.code_area_h = self.code_rect.size
         self.status_bar_x, self.status_bar_y = self.status_rect.topleft
         self.status_bar_w, self.status_bar_h = self.status_rect.size
-        self._line_number_align = regions.line_number_align
-        self._status_text_centered = regions.status_text_centered
 
     def _use_chrome_backend(self) -> bool:
         return self._chrome_backend != "asset" and self._chrome is not None
+
+    @property
+    def canvas_size(self) -> tuple[int, int]:
+        return self.canvas_draw_rect.size
 
     def _load_canvas_assets(self):
         """Load the canvas.png popup window chrome."""
@@ -497,7 +495,7 @@ class Terminal:
         st_surface = self.font_bold.render(status, True, (0, 0, 0))
         online_text = f"{self._online_count} Online"
         online_surface = self.font_bold.render(online_text, True, (0, 0, 0))
-        if self._status_text_centered:
+        if self._use_chrome_backend():
             status_pos, online_pos = self._status_positions(st_surface, online_surface)
         else:
             # Shift status text left by 210px (at 800w), scaled for other resolutions
@@ -516,7 +514,7 @@ class Terminal:
         self.screen.blit(online_surface, online_pos)
 
     def _line_number_position(self, text_surface: pygame.Surface, y: int) -> tuple[int, int]:
-        if self._line_number_align != "right":
+        if not self._use_chrome_backend():
             return self.line_num_x, y
 
         x = self.line_num_x + self.line_num_w - text_surface.get_width()
@@ -598,7 +596,10 @@ class Terminal:
             if c == "CLEAR":
                 target.fill(tuple(args[:3]))
             elif c == "PIXEL":
-                target.set_at((args[0], args[1]), tuple(args[2:]))
+                point = (args[0], args[1])
+                if not target.get_rect().collidepoint(point):
+                    raise ValueError(f"pixel outside canvas bounds: {point}")
+                target.set_at(point, tuple(args[2:]))
             elif c == "LINE":
                 pygame.draw.line(
                     target, tuple(args[4:]),
@@ -619,9 +620,18 @@ class Terminal:
                 pygame.draw.circle(
                     target, tuple(args[3:]),
                     (args[0], args[1]), args[2])
+            else:
+                raise ValueError(f"unknown draw command '{c}'")
             self._dirty = True  # Will be composited on next _render()
         except Exception as e:
-            pass  # Silently ignore malformed commands
+            self._warn_draw_command(cmd_str, e)
+
+    def _warn_draw_command(self, cmd_str: str, error: Exception):
+        self._draw_command_error_count += 1
+        if self._draw_command_error_count <= 5:
+            print(f"[Terminal] Ignored draw command {cmd_str.strip()!r}: {error}")
+        elif self._draw_command_error_count == 6:
+            print("[Terminal] Further draw command errors suppressed")
 
     # =========================================================================
     # Event handling and tick

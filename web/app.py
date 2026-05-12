@@ -158,6 +158,7 @@ def create_app():
     @app.route('/settings', methods=['GET', 'POST'])
     def settings():
         """Settings page - view and edit configuration."""
+        import config as _config
         from llm.generator import AVAILABLE_MODELS, DEFAULT_MODEL, SURPRISE_ME, SURPRISE_ME_LOCAL
 
         message = None
@@ -195,9 +196,9 @@ def create_app():
             # Program types live on the /prompt page now; see prompt_editor().
 
             # Interface theme
-            interface_theme = request.form.get('interface_theme', 'asset')
-            if interface_theme not in ('asset', 'system6'):
-                interface_theme = 'asset'
+            interface_theme = _config.normalize_display_chrome_backend(
+                request.form.get('interface_theme', 'asset')
+            )
             updates['DISPLAY_CHROME_BACKEND'] = interface_theme
 
             # Color scheme (display adjustment layer)
@@ -263,6 +264,7 @@ def create_app():
                              message=message,
                              available_models=models_for_template,
                              current_model=current_model,
+                             interface_themes=_config.DISPLAY_CHROME_CHOICES,
                              color_schemes=color_schemes)
 
     @app.route('/prompt', methods=['GET', 'POST'])

@@ -1,10 +1,9 @@
-"""Small interface shared by chrome backends."""
+"""Region helpers shared by Terminal and procedural chrome."""
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Protocol
 
 import pygame
 
@@ -25,28 +24,11 @@ class ChromeRegions:
     canvas_content: pygame.Rect
     bbs_window: pygame.Rect
     bbs_content: pygame.Rect
-    line_number_align: str = "left"
-    status_text_centered: bool = False
 
 
-class ChromeBackend(Protocol):
-    """Surface-oriented drawing contract used by Terminal."""
-
-    regions: ChromeRegions
-
-    def draw_ide(self) -> None:
-        """Draw the base IDE chrome."""
-
-    def draw_canvas_window(self) -> None:
-        """Draw the floating canvas window chrome."""
-
-    def draw_bbs_window(self) -> None:
-        """Draw the BBS terminal window chrome."""
-
-
-def default_chrome_regions(config_module, width: int, height: int) -> ChromeRegions:
-    """Return the PNG asset layout as the default region contract."""
-    bbs_window, bbs_content = _default_bbs_regions(width, height)
+def default_chrome_regions(config_module) -> ChromeRegions:
+    """Return the PNG asset layout from the active config module."""
+    bbs_window, bbs_content = _default_bbs_regions(config_module)
     return ChromeRegions(
         sidebar=pygame.Rect(
             config_module.SIDEBAR_X,
@@ -69,7 +51,7 @@ def default_chrome_regions(config_module, width: int, height: int) -> ChromeRegi
         status=pygame.Rect(
             0,
             config_module.STATUS_BAR_Y,
-            width,
+            config_module.DISPLAY_WIDTH,
             config_module.STATUS_BAR_HEIGHT,
         ),
         canvas_window=pygame.Rect(
@@ -89,7 +71,9 @@ def default_chrome_regions(config_module, width: int, height: int) -> ChromeRegi
     )
 
 
-def _default_bbs_regions(width: int, height: int) -> tuple[pygame.Rect, pygame.Rect]:
+def _default_bbs_regions(config_module) -> tuple[pygame.Rect, pygame.Rect]:
+    width = config_module.DISPLAY_WIDTH
+    height = config_module.DISPLAY_HEIGHT
     chrome_x = int(12 * width / 800)
     chrome_y = int(55 * height / 480)
     window = pygame.Rect(

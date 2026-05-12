@@ -69,7 +69,24 @@ FONT_NAME = "SpaceMono-Regular"
 
 # Chrome renderer: "asset" keeps the existing PNG-backed UI. "system6" enables
 # the opt-in scalable procedural chrome.
-DISPLAY_CHROME_BACKEND = os.environ.get("DISPLAY_CHROME_BACKEND", "asset").lower()
+CHROME_BACKEND_ASSET = "asset"
+CHROME_BACKEND_SYSTEM6 = "system6"
+DISPLAY_CHROME_CHOICES = {
+    CHROME_BACKEND_ASSET: "Default",
+    CHROME_BACKEND_SYSTEM6: "System 6 (experimental)",
+}
+
+
+def normalize_display_chrome_backend(value):
+    backend = (value or CHROME_BACKEND_ASSET).lower()
+    if backend not in DISPLAY_CHROME_CHOICES:
+        return CHROME_BACKEND_ASSET
+    return backend
+
+
+DISPLAY_CHROME_BACKEND = normalize_display_chrome_backend(
+    os.environ.get("DISPLAY_CHROME_BACKEND", CHROME_BACKEND_ASSET)
+)
 
 # Global offset to align with background
 LAYOUT_OFFSET_X = int(2 * _SX + 0.5)
