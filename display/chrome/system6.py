@@ -9,6 +9,8 @@ from types import MappingProxyType
 import pygame
 import numpy as np
 
+from display_layout import CANVAS_REFERENCE, scale_floor
+
 from .base import DEFAULT_ASSETS_DIR, ChromeRegions
 from .primitives import ChromePainter, ScaleContext
 
@@ -25,7 +27,6 @@ REFERENCE_RECTS: Mapping[str, ReferenceRect] = MappingProxyType({
     "main_window": (4, 26, 465, 281),
     "apple_icon": (20, 2, 13, 15),
     "status": (4, 289, 465, 18),
-    "canvas_window": (31, 36, 422, 242),
 })
 
 TOOLBAR_ICON_RECTS: tuple[ReferenceRect, ...] = (
@@ -80,12 +81,6 @@ MENU_LABEL_GAP = 13
 SCROLLBAR_ARROW_MIN_DELTA = 2
 SCROLLBAR_ARROW_WIDTH_DIVISOR = 4
 SCROLLBAR_ARROW_HEIGHT_DIVISOR = 6
-
-# Floating canvas window
-CANVAS_X_INSET = 3
-CANVAS_TITLE_OFFSET = 19
-CANVAS_CONTENT_W = 416
-CANVAS_CONTENT_H = 212
 
 # BBS terminal window
 BBS_REFERENCE_WIDTH = 800
@@ -194,14 +189,18 @@ class System6Layout:
 
     def _build_canvas_regions(self) -> tuple[pygame.Rect, pygame.Rect]:
         scale = self.scale
-        canvas_window = self.rect_from_ref("canvas_window")
-        canvas_x_inset = max(1, int(CANVAS_X_INSET * scale.sx))
-        canvas_content_y = canvas_window.y + max(1, int(CANVAS_TITLE_OFFSET * scale.sy))
+        reference = CANVAS_REFERENCE
+        canvas_window = pygame.Rect(
+            scale_floor(reference.window.x, scale.sx),
+            scale_floor(reference.window.y, scale.sy),
+            max(1, scale_floor(reference.window.w, scale.sx)),
+            max(1, scale_floor(reference.window.h, scale.sy)),
+        )
         canvas_content = pygame.Rect(
-            canvas_window.x + canvas_x_inset,
-            canvas_content_y,
-            max(1, int(CANVAS_CONTENT_W * scale.sx)),
-            max(1, int(CANVAS_CONTENT_H * scale.sy)),
+            canvas_window.x + scale_floor(reference.content_offset_x, scale.sx),
+            canvas_window.y + scale_floor(reference.content_offset_y, scale.sy),
+            max(1, scale_floor(reference.content_w, scale.sx)),
+            max(1, scale_floor(reference.content_h, scale.sy)),
         )
         return canvas_window, canvas_content
 

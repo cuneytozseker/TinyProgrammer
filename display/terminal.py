@@ -2,7 +2,7 @@
 Terminal Display for TFT Screen - Retro Mac OS IDE Theme
 
 Renders to an in-memory pygame surface with a classic Mac OS IDE background,
-writes directly to framebuffer. Bypasses SDL's broken fbcon driver.
+then writes directly to framebuffer. Bypasses SDL's broken fbcon driver.
 
 Layout (480x320):
 - Title bar + menus (from bg.png, static)
@@ -25,7 +25,7 @@ import pygame
 
 import config
 from .framebuffer import get_writer, IS_FRAMEBUFFER_AVAILABLE
-from .chrome import System6Chrome, default_chrome_regions
+from .chrome import default_chrome_regions
 
 # Initialize pygame with dummy driver
 PYGAME_AVAILABLE = True
@@ -61,7 +61,6 @@ class Terminal:
         self.fb_writer = None
         self._chrome_backend = "asset"
         self._chrome = None
-        self._draw_command_error_count = 0
         self._apply_chrome_regions(default_chrome_regions(config))
 
         self._init_display(font_name, font_size)
@@ -187,13 +186,19 @@ class Terminal:
     def _init_chrome_backend(self):
         normalize_backend = getattr(config, "normalize_display_chrome_backend", None)
         requested_backend = getattr(config, "DISPLAY_CHROME_BACKEND", "asset")
-        backend = normalize_backend(requested_backend) if normalize_backend else requested_backend.lower()
+        backend = (
+            normalize_backend(requested_backend)
+            if normalize_backend
+            else str(requested_backend or "asset").strip().lower()
+        )
 
         if backend == "asset" or self.mock_mode:
             self._chrome_backend = "asset"
             return
 
         try:
+            from .chrome.system6 import System6Chrome
+
             self._chrome = System6Chrome(self.screen, self.width, self.height)
             self._chrome_backend = backend
             self._apply_chrome_regions(self._chrome.regions)
@@ -596,10 +601,7 @@ class Terminal:
             if c == "CLEAR":
                 target.fill(tuple(args[:3]))
             elif c == "PIXEL":
-                point = (args[0], args[1])
-                if not target.get_rect().collidepoint(point):
-                    raise ValueError(f"pixel outside canvas bounds: {point}")
-                target.set_at(point, tuple(args[2:]))
+                target.set_at((args[0], args[1]), tuple(args[2:]))
             elif c == "LINE":
                 pygame.draw.line(
                     target, tuple(args[4:]),
@@ -620,18 +622,9 @@ class Terminal:
                 pygame.draw.circle(
                     target, tuple(args[3:]),
                     (args[0], args[1]), args[2])
-            else:
-                raise ValueError(f"unknown draw command '{c}'")
             self._dirty = True  # Will be composited on next _render()
-        except Exception as e:
-            self._warn_draw_command(cmd_str, e)
-
-    def _warn_draw_command(self, cmd_str: str, error: Exception):
-        self._draw_command_error_count += 1
-        if self._draw_command_error_count <= 5:
-            print(f"[Terminal] Ignored draw command {cmd_str.strip()!r}: {error}")
-        elif self._draw_command_error_count == 6:
-            print("[Terminal] Further draw command errors suppressed")
+        except Exception:
+            pass  # Silently ignore malformed commands
 
     # =========================================================================
     # Event handling and tick

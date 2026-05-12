@@ -1,5 +1,7 @@
 import os
 
+from display_layout import CANVAS_REFERENCE, scale_floor
+
 # Tiny Programmer Configuration
 VERSION = "0.3.4"
 
@@ -78,7 +80,7 @@ DISPLAY_CHROME_CHOICES = {
 
 
 def normalize_display_chrome_backend(value):
-    backend = (value or CHROME_BACKEND_ASSET).lower()
+    backend = str(value or CHROME_BACKEND_ASSET).strip().lower()
     if backend not in DISPLAY_CHROME_CHOICES:
         return CHROME_BACKEND_ASSET
     return backend
@@ -122,14 +124,14 @@ MODE_TERMINAL = "terminal"
 MODE_RUN = "run"
 
 # Canvas popup window — scaled from 480x320 reference
-CANVAS_X = int(29 * _SX) + LAYOUT_OFFSET_X
-CANVAS_Y = int(35 * _SY) + LAYOUT_OFFSET_Y
-CANVAS_W = int(422 * _SX)
-CANVAS_H = int(242 * _SY)
-CANVAS_DRAW_OFFSET_X = int(3 * _SX)
-CANVAS_DRAW_OFFSET_Y = int(19 * _SY)
-CANVAS_DRAW_W = int(416 * _SX)
-CANVAS_DRAW_H = int(212 * _SY)
+CANVAS_X = scale_floor(CANVAS_REFERENCE.window.x, _SX)
+CANVAS_Y = scale_floor(CANVAS_REFERENCE.window.y, _SY)
+CANVAS_W = scale_floor(CANVAS_REFERENCE.window.w, _SX)
+CANVAS_H = scale_floor(CANVAS_REFERENCE.window.h, _SY)
+CANVAS_DRAW_OFFSET_X = scale_floor(CANVAS_REFERENCE.content_offset_x, _SX)
+CANVAS_DRAW_OFFSET_Y = scale_floor(CANVAS_REFERENCE.content_offset_y, _SY)
+CANVAS_DRAW_W = scale_floor(CANVAS_REFERENCE.content_w, _SX)
+CANVAS_DRAW_H = scale_floor(CANVAS_REFERENCE.content_h, _SY)
 
 # =============================================================================
 # LLM

@@ -324,8 +324,6 @@ All settings are in `config.py` and can be overridden via the web dashboard (sav
 | `SCHEDULE_CLOCK_OUT`             | `23`       | Hour to stop coding (0-23)                                         |
 | `COLOR_SCHEME`                   | `none`     | Display color overlay (`amber`, `green`, `night`, etc.)            |
 
-Procedural chrome development notes live in `docs/procedural-chrome.md`.
-
 ## Project structure
 
 ```
