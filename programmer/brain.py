@@ -545,10 +545,51 @@ class Brain:
         print(f"[Brain] Watch duration: {duration}s (range: {config.WATCH_DURATION_MIN}-{config.WATCH_DURATION_MAX})")
 
         last_output = ""
+        output_buffer = ""
+        READ_CHUNK_SIZE = 4096
+        MAX_DRAIN_CHUNKS = 16
+        MAX_DRAIN_SECONDS = 0.01
+
+        def process_output_line(line: str):
+            nonlocal last_output
+            if line.startswith("CMD:"):
+                self.terminal.process_draw_command(line)
+            else:
+                self.terminal.type_string(line)
+            last_output = line
+
+        def flush_output_buffer():
+            nonlocal output_buffer
+            if output_buffer:
+                process_output_line(output_buffer)
+                output_buffer = ""
+
+        def drain_ready_output(stdout):
+            nonlocal output_buffer
+            ready, _, _ = select.select([stdout], [], [], 0.1)
+            drain_chunks = 0
+            drain_deadline = time.monotonic() + MAX_DRAIN_SECONDS
+            while ready and drain_chunks < MAX_DRAIN_CHUNKS and time.monotonic() < drain_deadline:
+                # Use the fd directly so TextIOWrapper buffering does not hide
+                # already-read lines from the next non-blocking select().
+                chunk = os.read(stdout.fileno(), READ_CHUNK_SIZE)
+                if not chunk:
+                    break
+                drain_chunks += 1
+                output_buffer += chunk.decode(errors="replace")
+                lines = output_buffer.splitlines(keepends=True)
+                if lines and not lines[-1].endswith(("\n", "\r")):
+                    output_buffer = lines.pop()
+                else:
+                    output_buffer = ""
+                for line in lines:
+                    process_output_line(line)
+                ready, _, _ = select.select([stdout], [], [], 0)
         
         while time.time() - start_time < duration:
             # Check for restart or screensaver request
             if self._restart_requested or self._force_screensaver:
+                flush_output_buffer()
                 if self._restart_requested:
                     self._restart_requested = False
                     self.terminal.type_string("\n// Restart requested!\n")
@@ -558,27 +599,21 @@ class Brain:
 
             # Check if process finished
             if self.current_process.poll() is not None:
+                flush_output_buffer()
                 self.terminal.type_string("\n// Program finished early.\n")
                 break
 
             # Non-blocking read so timeout always works
             try:
-                ready, _, _ = select.select(
-                    [self.current_process.stdout], [], [], 0.1)
-                if ready:
-                    line = self.current_process.stdout.readline()
-                    if line:
-                        if line.startswith("CMD:"):
-                            self.terminal.process_draw_command(line)
-                        else:
-                            self.terminal.type_string(line)
-                        last_output = line
+                drain_ready_output(self.current_process.stdout)
             except Exception:
                 pass
 
             # Flush display to show drawing updates
             self.terminal.tick()
         
+        flush_output_buffer()
+
         # Hide canvas popup
         self.terminal.hide_canvas()
 
