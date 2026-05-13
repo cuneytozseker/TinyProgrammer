@@ -139,6 +139,9 @@ LLM_STOP_TOKENS = ["```", "# END", "if __name__"]
 TYPING_SPEED_MIN = 2
 TYPING_SPEED_MAX = 8
 
+# Opt-in jump over leading indentation while generated code is typed.
+TYPING_SKIP_INDENT = False
+
 # Probability of making a typo (0.0 - 1.0)
 TYPO_PROBABILITY = 0.02
 

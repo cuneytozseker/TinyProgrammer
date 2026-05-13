@@ -263,8 +263,7 @@ class Terminal:
         elif char == '\b':
             self._backspace()
         elif char == '\t':
-            for _ in range(4):
-                self.type_char(' ', render=False)
+            self.type_indent(4, render=False)
         else:
             if self.cursor_x < self.cols:
                 line = self.lines[self.cursor_y]
@@ -275,6 +274,18 @@ class Terminal:
                 self.cursor_x += 1
             if self.cursor_x >= self.cols:
                 self._newline()
+        self._dirty = True
+        if render:
+            self._render()
+
+    def type_indent(self, columns: int = 4, render: bool = True):
+        """Insert indentation spaces with a single render."""
+        columns = int(columns)
+        if columns <= 0:
+            return
+
+        for _ in range(columns):
+            self.type_char(' ', render=False)
         self._dirty = True
         if render:
             self._render()

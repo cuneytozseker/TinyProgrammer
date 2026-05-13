@@ -189,6 +189,8 @@ def create_app():
             updates['TYPO_PROBABILITY'] = float(request.form.get('typo_probability', 0.02))
             updates['PAUSE_PROBABILITY'] = float(request.form.get('pause_probability', 0.05))
 
+            updates['TYPING_SKIP_INDENT'] = 'typing_skip_indent' in request.form
+
             # Program types live on the /prompt page now; see prompt_editor().
 
             # Color scheme (display adjustment layer)

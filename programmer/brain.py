@@ -21,6 +21,7 @@ from display.terminal import Terminal
 from llm.generator import LLMGenerator
 from programmer.personality import Personality
 from programmer import creativity
+from programmer.code_typing import CodeTypingRenderer
 from programmer.liked_store import LikedStore
 from archive.repository import Repository
 from archive.learning import LearningSystem
@@ -338,6 +339,11 @@ class Brain:
         header = self.llm.get_header(self.current_program.program_type if self.current_program else "")
         self.terminal.type_string(header)
         full_code = header
+        code_typing = CodeTypingRenderer(
+            self.terminal,
+            skip_indent=getattr(config, "TYPING_SKIP_INDENT", False),
+            delay_range=(0.02, 0.08),
+        )
 
         in_code_block = False
 
@@ -387,11 +393,8 @@ class Brain:
 
                         if not should_skip:
                             # Output the line
-                            for c in current_line:
-                                self.terminal.type_char(c)
-                                full_code += c
-                                time.sleep(random.uniform(0.02, 0.08))
-                                self.terminal.tick()
+                            code_typing.type_text(current_line)
+                            full_code += current_line
                         else:
                             print(f"[Brain] Skipping duplicate: {line_stripped}")
 
@@ -402,6 +405,7 @@ class Brain:
 
         except Exception as e:
             print(f"[Brain] LLM Error: {e}")
+            code_typing.finish()
             self.terminal.type_string(f"\n// Error: {e}\n")
             self.current_program.success = False
             self.current_program.error_message = str(e)
@@ -410,9 +414,10 @@ class Brain:
 
         # Output any remaining buffered content
         if current_line:
-            for c in current_line:
-                self.terminal.type_char(c)
-                full_code += c
+            code_typing.type_text(current_line)
+            full_code += current_line
+
+        code_typing.finish()
 
         self.current_program.code = full_code
         self.terminal.type_string("\n\n// finished.\n")
@@ -625,6 +630,11 @@ class Brain:
         
         full_code = ""
         in_code_block = False
+        code_typing = CodeTypingRenderer(
+            self.terminal,
+            skip_indent=getattr(config, "TYPING_SKIP_INDENT", False),
+            delay_range=(0.01, 0.05),
+        )
 
         try:
             for token in self.llm.stream(prompt, max_tokens=config.LLM_MAX_TOKENS,
@@ -646,17 +656,16 @@ class Brain:
                 if self._restart_requested or self._force_screensaver:
                     break
 
-                for char in token:
-                    self.terminal.type_char(char)
-                    full_code += char
-                    time.sleep(random.uniform(0.01, 0.05))
-                    self.terminal.tick()
+                code_typing.type_text(token)
+                full_code += token
 
         except Exception as e:
             print(f"[Brain] Fix Error: {e}")
+            code_typing.finish()
             self._transition(State.ERROR)
             return
 
+        code_typing.finish()
         self.current_program.code = full_code
         self.terminal.type_string("\n\n// fixed?\n")
         time.sleep(1)

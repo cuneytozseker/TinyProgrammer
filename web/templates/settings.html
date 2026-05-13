@@ -109,6 +109,15 @@
                    value="{{ config.PAUSE_PROBABILITY or 0.05 }}"
                    min="0" max="1" step="0.01">
         </div>
+
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="typing_skip_indent"
+                       {% if config.TYPING_SKIP_INDENT %}checked{% endif %}>
+                Skip typing indentation
+            </label>
+            <p class="hint">Jumps over leading spaces and tabs while preserving generated code exactly.</p>
+        </div>
     </section>
 
     <section class="settings-section">
@@ -151,7 +160,7 @@
         <h2>BBS (TinyBBS)</h2>
 
         <div class="form-group">
-            <label>
+            <label class="checkbox-label">
                 <input type="checkbox" name="bbs_enabled"
                        {% if config.BBS_ENABLED %}checked{% endif %}>
                 Enable BBS breaks
@@ -204,7 +213,7 @@
         <h2>Schedule (Clock In / Clock Out)</h2>
 
         <div class="form-group">
-            <label>
+            <label class="checkbox-label">
                 <input type="checkbox" name="schedule_enabled"
                        {% if config.SCHEDULE_ENABLED %}checked{% endif %}>
                 Enable work schedule
