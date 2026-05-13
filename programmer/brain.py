@@ -2,7 +2,9 @@
 Brain - Main State Machine
 
 Controls the overall behavior loop:
-THINK → WRITE → RUN → WATCH → ARCHIVE → repeat
+THINK → WRITE → REVIEW → RUN → WATCH → ARCHIVE → REFLECT → repeat
+
+Optional BBS breaks can lead into REMINISCE, which replays archived creations.
 """
 
 import os
@@ -23,6 +25,7 @@ from programmer.personality import Personality
 from programmer import creativity
 from programmer.code_typing import CodeTypingRenderer
 from programmer.liked_store import LikedStore
+from programmer.reminiscence import Reminiscence
 from archive.repository import Repository
 from archive.learning import LearningSystem
 import config
@@ -40,6 +43,7 @@ class State(Enum):
     ARCHIVE = auto()
     REFLECT = auto()
     BBS_BREAK = auto()
+    REMINISCE = auto()
     ERROR = auto()
 
 
@@ -98,6 +102,7 @@ class Brain:
         self._session_history = []  # resets each restart
         self.current_process = None
         self._force_screensaver = False
+        self.reminiscence = Reminiscence()
         self.liked_store = LikedStore()
 
     def request_restart(self):
@@ -189,6 +194,8 @@ class Brain:
                     self._do_reflect()
                 elif self.state == State.BBS_BREAK:
                     self._do_bbs_break()
+                elif self.state == State.REMINISCE:
+                    self._do_reminisce()
                 elif self.state == State.ERROR:
                     self._do_error()
                 
@@ -211,6 +218,85 @@ class Brain:
         self._update_sidebar()
         time.sleep(config.STATE_TRANSITION_DELAY)
         self.state = new_state
+
+    def _program_environment(self) -> dict:
+        """Build the restricted subprocess environment for canvas programs."""
+        python_paths = [self.archive.local_path]
+        existing_pythonpath = os.environ.get("PYTHONPATH", "")
+        if existing_pythonpath:
+            python_paths.append(existing_pythonpath)
+        return {
+            "PATH": os.environ.get("PATH", ""),
+            "HOME": os.environ.get("HOME", ""),
+            "PYTHONPATH": os.pathsep.join(python_paths),
+            "TINY_CANVAS_W": str(config.CANVAS_DRAW_W),
+            "TINY_CANVAS_H": str(config.CANVAS_DRAW_H),
+        }
+
+    def _start_program_process(self, filepath: str):
+        """Start a canvas program with unbuffered output."""
+        return subprocess.Popen(
+            [sys.executable, "-u", filepath],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            bufsize=1,
+            env=self._program_environment(),
+        )
+
+    def _watch_running_process(self, status: str, mood: str,
+                               early_finish_message: str):
+        """Display output from the current process for the WATCH duration."""
+        self.terminal.set_status(status, mood)
+
+        start_time = time.time()
+        duration = random.randint(config.WATCH_DURATION_MIN, config.WATCH_DURATION_MAX)
+        print(f"[Brain] Watch duration: {duration}s (range: {config.WATCH_DURATION_MIN}-{config.WATCH_DURATION_MAX})")
+
+        last_output = ""
+        stop_reason = "timeout"
+
+        while time.time() - start_time < duration:
+            if self._restart_requested or self._force_screensaver:
+                if self._restart_requested:
+                    self._restart_requested = False
+                    stop_reason = "restart"
+                    self.terminal.type_string("\n// Restart requested!\n")
+                else:
+                    stop_reason = "screensaver"
+                if self.current_process.poll() is None:
+                    self.current_process.terminate()
+                break
+
+            if self.current_process.poll() is not None:
+                stop_reason = "exited"
+                self.terminal.type_string(early_finish_message)
+                break
+
+            try:
+                ready, _, _ = select.select([self.current_process.stdout], [], [], 0.1)
+                if ready:
+                    line = self.current_process.stdout.readline()
+                    if line:
+                        if line.startswith("CMD:"):
+                            self.terminal.process_draw_command(line)
+                        else:
+                            self.terminal.type_string(line)
+                        last_output = line
+            except Exception:
+                pass
+
+            self.terminal.tick()
+
+        self.terminal.hide_canvas()
+        exit_code = self.current_process.poll()
+        if exit_code is None:
+            self.current_process.terminate()
+            try:
+                self.current_process.wait(timeout=1.0)
+            except Exception:
+                self.current_process.kill()
+        return exit_code, last_output, stop_reason
     
     def _do_boot(self):
         """
@@ -499,7 +585,7 @@ class Brain:
         
         # Save cleaned code to temp file for execution
         filename = "temp_execution.py"
-        programs_dir = "programs"
+        programs_dir = self.archive.local_path
         if not os.path.exists(programs_dir):
             os.makedirs(programs_dir)
             
@@ -508,25 +594,7 @@ class Brain:
             f.write(code)
             
         try:
-            # Minimal environment for the subprocess — only what generated
-            # programs need. Avoids leaking API keys and other secrets.
-            env = {
-                "PATH": os.environ.get("PATH", ""),
-                "HOME": os.environ.get("HOME", ""),
-                "PYTHONPATH": os.environ.get("PYTHONPATH", ""),
-                "TINY_CANVAS_W": str(config.CANVAS_DRAW_W),
-                "TINY_CANVAS_H": str(config.CANVAS_DRAW_H),
-            }
-
-            # Run with python -u (unbuffered) so we can see output immediately
-            self.current_process = subprocess.Popen(
-                [sys.executable, "-u", filepath],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                universal_newlines=True,
-                bufsize=1,  # Line buffered
-                env=env,
-            )
+            self.current_process = self._start_program_process(filepath)
             
             self.current_program.success = True
             self._transition(State.WATCH)
@@ -543,58 +611,12 @@ class Brain:
         
         Let the program run for a while, display its output.
         """
-        self.terminal.set_status("WATCHING", "proud")
-
-        start_time = time.time()
-        duration = random.randint(config.WATCH_DURATION_MIN, config.WATCH_DURATION_MAX)
-        print(f"[Brain] Watch duration: {duration}s (range: {config.WATCH_DURATION_MIN}-{config.WATCH_DURATION_MAX})")
-
-        last_output = ""
-        
-        while time.time() - start_time < duration:
-            # Check for restart or screensaver request
-            if self._restart_requested or self._force_screensaver:
-                if self._restart_requested:
-                    self._restart_requested = False
-                    self.terminal.type_string("\n// Restart requested!\n")
-                if self.current_process.poll() is None:
-                    self.current_process.terminate()
-                break
-
-            # Check if process finished
-            if self.current_process.poll() is not None:
-                self.terminal.type_string("\n// Program finished early.\n")
-                break
-
-            # Non-blocking read so timeout always works
-            try:
-                ready, _, _ = select.select(
-                    [self.current_process.stdout], [], [], 0.1)
-                if ready:
-                    line = self.current_process.stdout.readline()
-                    if line:
-                        if line.startswith("CMD:"):
-                            self.terminal.process_draw_command(line)
-                        else:
-                            self.terminal.type_string(line)
-                        last_output = line
-            except Exception:
-                pass
-
-            # Flush display to show drawing updates
-            self.terminal.tick()
-        
-        # Hide canvas popup
-        self.terminal.hide_canvas()
-
-        # Cleanup process
-        exit_code = self.current_process.poll()
+        exit_code, last_output, _ = self._watch_running_process(
+            "WATCHING",
+            self.personality.get_mood_status(),
+            "\n// Program finished early.\n",
+        )
         if exit_code is None:
-            self.current_process.terminate()
-            try:
-                self.current_process.wait(timeout=1.0)
-            except Exception:
-                self.current_process.kill()
             self.current_program.success = True
             self._transition(State.ARCHIVE)
         else:
@@ -770,12 +792,111 @@ class Brain:
         self._transition(State.THINK)
 
     # =========================================================================
+    # Reminisce
+    # =========================================================================
+
+    def _next_state_after_bbs(self, completed: bool) -> State:
+        """Choose the state after a BBS break."""
+        self.reminiscence.clear()
+
+        if not completed or not getattr(config, "REMINISCE_ENABLED", False):
+            return State.THINK
+
+        candidates = self.archive.get_replay_candidates()
+        if not candidates:
+            print("[Brain] Reminisce skipped: no replay candidates")
+            return State.THINK
+
+        chance = getattr(config, "REMINISCE_ENTRY_PROBABILITY", 0.67)
+        if random.random() >= chance:
+            return State.THINK
+
+        return State.REMINISCE
+
+    def _type_reminisce_intro(self, metadata):
+        """Type a short tender-machine transition before replaying an archive."""
+        mood = metadata.mood or "quiet"
+        self.terminal.set_status("REMINISCING", mood)
+        self.terminal.type_string("\n")
+        for line in self.reminiscence.intro_lines(metadata):
+            self.terminal.type_string(line)
+            time.sleep(random.uniform(0.4, 0.9))
+            self.terminal.tick()
+
+    def _pause_after_reminisce_intro(self):
+        """Hold the REMINISCE intro briefly before opening the archived canvas."""
+        pause_seconds = max(0, getattr(config, "REMINISCE_INTRO_PAUSE_SECONDS", 3.0))
+        deadline = time.time() + pause_seconds
+        while time.time() < deadline:
+            time.sleep(min(0.1, deadline - time.time()))
+            self.terminal.tick()
+
+    def _after_reminisce(self):
+        """Either continue a REMINISCE sequence or return to THINK."""
+        if not getattr(config, "REMINISCE_ENABLED", False):
+            self.reminiscence.clear()
+            self._transition(State.THINK)
+            return
+
+        candidates = self.archive.get_replay_candidates()
+        chance = getattr(config, "REMINISCE_LOOP_PROBABILITY", 0.50)
+        if self.reminiscence.has_unseen(candidates) and random.random() < chance:
+            self._transition(State.REMINISCE)
+            return
+
+        self.reminiscence.clear()
+        self._transition(State.THINK)
+
+    def _do_reminisce(self):
+        """Replay one archived creation as a memory after a BBS session."""
+        metadata = self.reminiscence.choose(self.archive.get_replay_candidates())
+        if not metadata:
+            print("[Brain] Reminisce complete: no unseen replay candidates")
+            self.reminiscence.clear()
+            self._transition(State.THINK)
+            return
+
+        self._type_reminisce_intro(metadata)
+        self._pause_after_reminisce_intro()
+
+        filepath = self.archive.get_program_path(metadata)
+        self.terminal.show_canvas()
+        try:
+            self.current_process = self._start_program_process(filepath)
+        except Exception as e:
+            self.terminal.hide_canvas()
+            print(f"[Brain] Reminisce start failed for {metadata.filename}: {e}")
+            self.terminal.type_string(f"\n// the reminisce replay would not open: {e}\n")
+            self._after_reminisce()
+            return
+
+        exit_code, last_output, stop_reason = self._watch_running_process(
+            "REMINISCING",
+            metadata.mood or self.personality.get_mood_status(),
+            "\n// Reminisce replay finished early.\n",
+        )
+        if stop_reason == "restart":
+            self.reminiscence.clear()
+            self._transition(State.THINK)
+            return
+
+        if exit_code not in (None, 0):
+            remaining = self.current_process.stdout.read()
+            error_msg = (last_output + "\n" + remaining).strip()
+            if not error_msg:
+                error_msg = f"Process exited with code {exit_code}"
+            print(f"[Brain] Reminisce replay failed for {metadata.filename}: {error_msg}")
+
+        self._after_reminisce()
+
+    # =========================================================================
     # BBS Break
     # =========================================================================
 
     def _do_bbs_break(self):
         """BBS break: device visits the bulletin board."""
         self._bbs_breaks_taken += 1
+        completed = False
         try:
             # Fetch notification before entering BBS mode so it's
             # available when the banner is first rendered.
@@ -815,6 +936,7 @@ class Brain:
                     self._bbs_code_share()
                 else:
                     self._bbs_flat_board(board)
+            completed = True
 
         except Exception as e:
             print(f"[BBS] Break failed: {e}")
@@ -824,7 +946,7 @@ class Brain:
                 self.terminal.exit_bbs_mode()
             except Exception:
                 pass
-            self._transition(State.THINK)
+            self._transition(self._next_state_after_bbs(completed))
 
     def _bbs_browse(self):
         """Silently browse 2-3 random boards (read only)."""

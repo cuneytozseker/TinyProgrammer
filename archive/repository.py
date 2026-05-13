@@ -11,7 +11,7 @@ import os
 import json
 import time
 from datetime import datetime
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 from dataclasses import dataclass, asdict
 
 
@@ -57,6 +57,7 @@ class Repository:
         
         self.index_path = os.path.join(local_path, "index.json")
         self.index: List[ProgramMetadata] = []
+        self._replayable_cache: Dict[str, Tuple[Tuple[int, int], bool]] = {}
         
         self._ensure_directories()
         self._load_index()
@@ -174,6 +175,45 @@ class Repository:
     def get_recent(self, count: int = 10) -> List[ProgramMetadata]:
         """Get most recent programs."""
         return self.index[-count:]
+
+    def get_program_path(self, metadata: ProgramMetadata) -> str:
+        """Get the archived source path for a program."""
+        return os.path.join(self.local_path, "programs", metadata.filename)
+
+    def get_replay_candidates(self) -> List[ProgramMetadata]:
+        """Get successful archived programs that are safe to replay."""
+        return [
+            metadata for metadata in self.index
+            if self._is_replayable(metadata)
+        ]
+
+    def _is_replayable(self, metadata: ProgramMetadata) -> bool:
+        """Return whether an archived program can be parsed for replay."""
+        if not metadata.success:
+            return False
+
+        path = self.get_program_path(metadata)
+        try:
+            stat = os.stat(path)
+        except OSError:
+            return False
+
+        cache_key = metadata.filename or metadata.id
+        stamp = (stat.st_mtime_ns, stat.st_size)
+        cached = self._replayable_cache.get(cache_key)
+        if cached and cached[0] == stamp:
+            return cached[1]
+
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                source = f.read()
+            compile(source, path, 'exec')
+            replayable = True
+        except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
+            replayable = False
+
+        self._replayable_cache[cache_key] = (stamp, replayable)
+        return replayable
     
     # =========================================================================
     # GITHUB SYNC (FUTURE IMPLEMENTATION)

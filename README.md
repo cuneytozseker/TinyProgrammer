@@ -28,6 +28,7 @@ TinyProgrammer runs an infinite loop:
 6. **ARCHIVE** saves the code and metadata to disk
 7. **REFLECT** asks the LLM what it learned, stores the lesson
 8. **BBS BREAK** (30% chance) visits TinyBBS to browse posts, share code, or lurk
+9. **REMINISCE** (optional) replays successful archived creations after BBS sessions
 
 The device has a mood system (hopeful, proud, frustrated, tired, playful...) that affects which programs it writes, how it types, and how it behaves on the BBS.
 
@@ -231,7 +232,7 @@ On first run this downloads the base image and builds the container — subseque
 
 Visit **http://localhost:5001** once the container is running. This is your window into what TinyProgrammer is doing: current state, mood, program history, model settings, timing controls, and more.
 
-You'll see log output in the terminal showing each phase (THINK → WRITE → RUN → ARCHIVE → REFLECT).
+You'll see log output in the terminal showing each phase (THINK → WRITE → REVIEW → RUN → WATCH → ARCHIVE → REFLECT), with optional BBS BREAK and REMINISCE states.
 
 ### 5. Browse generated programs
 
@@ -295,7 +296,7 @@ Once running, access the dashboard at `http://<pi-ip>:5000` to:
 - Monitor current state, mood, and programs written
 - Switch LLM models or enable "Surprise Me" (random model per program)
 - Adjust typing speed, watch duration, and other timing
-- Toggle BBS settings and work schedule
+- Toggle BBS, REMINISCE, and work schedule settings
 - Start/stop screensaver manually
 - Customize program type weights and prompts
 - Apply display color schemes (amber, green, night, etc.)
@@ -310,6 +311,10 @@ All settings are in `config.py` and can be overridden via the web dashboard (sav
 | `BBS_ENABLED`        | `True`     | Enable BBS social breaks                                |
 | `BBS_BREAK_CHANCE`   | `0.3`      | Probability of BBS break after each coding cycle        |
 | `BBS_DISPLAY_COLOR`  | `green`    | BBS terminal color (`green`, `amber`, `white`)          |
+| `REMINISCE_ENABLED`  | `False`    | Enable archive replay after completed BBS breaks        |
+| `REMINISCE_ENTRY_PROBABILITY` | `0.67` | Probability of starting REMINISCE after BBS        |
+| `REMINISCE_LOOP_PROBABILITY`  | `0.50` | Probability of replaying another archived creation |
+| `REMINISCE_INTRO_PAUSE_SECONDS` | `3.0` | Delay between REMINISCE intro text and canvas replay |
 | `SCHEDULE_ENABLED`   | `False`    | Enable work schedule (screensaver after hours)          |
 | `SCHEDULE_CLOCK_IN`  | `9`        | Hour to start coding (0-23)                             |
 | `SCHEDULE_CLOCK_OUT` | `23`       | Hour to stop coding (0-23)                              |
@@ -322,7 +327,8 @@ TinyProgrammer/
 ├── main.py                 # Entry point, clock in/out loop
 ├── config.py               # All configuration (auto-scales by display profile)
 ├── programmer/
-│   ├── brain.py            # State machine (think/write/run/watch/bbs/reflect)
+│   ├── brain.py            # State machine (think/write/run/watch/bbs/reminisce)
+│   ├── reminiscence.py     # REMINISCE archive replay selection + intro text
 │   └── personality.py      # Mood system, typing quirks
 ├── display/
 │   ├── terminal.py         # Pygame display (IDE + BBS + screensaver)

@@ -205,6 +205,12 @@ def create_app():
             updates['BBS_DISPLAY_COLOR'] = request.form.get('bbs_display_color', 'green')
             updates['BBS_DEVICE_NAME'] = request.form.get('bbs_device_name', 'TinyProgrammer')
 
+            # Reminisce settings
+            updates['REMINISCE_ENABLED'] = 'reminisce_enabled' in request.form
+            updates['REMINISCE_ENTRY_PROBABILITY'] = float(request.form.get('reminisce_entry_probability', 0.67))
+            updates['REMINISCE_LOOP_PROBABILITY'] = float(request.form.get('reminisce_loop_probability', 0.50))
+            updates['REMINISCE_INTRO_PAUSE_SECONDS'] = float(request.form.get('reminisce_intro_pause_seconds', 3.0))
+
             # Schedule settings
             updates['SCHEDULE_ENABLED'] = 'schedule_enabled' in request.form
             updates['SCHEDULE_CLOCK_IN'] = int(request.form.get('schedule_clock_in', 9))

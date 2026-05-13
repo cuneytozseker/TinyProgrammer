@@ -210,6 +210,43 @@
     </section>
 
     <section class="settings-section">
+        <h2>Reminisce</h2>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="reminisce_enabled"
+                       {% if config.REMINISCE_ENABLED %}checked{% endif %}>
+                Enable REMINISCE after BBS breaks
+            </label>
+            <p class="hint">When enabled, the device may replay successful archived creations after visiting the BBS</p>
+        </div>
+
+        <div class="form-group">
+            <label for="reminisce_entry_probability">Entry Chance (0.0 - 1.0)</label>
+            <input type="number" name="reminisce_entry_probability" id="reminisce_entry_probability"
+                   value="{{ config.REMINISCE_ENTRY_PROBABILITY if config.REMINISCE_ENTRY_PROBABILITY is not none else 0.67 }}"
+                   min="0" max="1" step="0.05">
+            <p class="hint">Probability of starting a REMINISCE sequence after a completed BBS break</p>
+        </div>
+
+        <div class="form-group">
+            <label for="reminisce_loop_probability">Continue Chance (0.0 - 1.0)</label>
+            <input type="number" name="reminisce_loop_probability" id="reminisce_loop_probability"
+                   value="{{ config.REMINISCE_LOOP_PROBABILITY if config.REMINISCE_LOOP_PROBABILITY is not none else 0.50 }}"
+                   min="0" max="1" step="0.05">
+            <p class="hint">Probability of replaying another archived creation in the same REMINISCE sequence</p>
+        </div>
+
+        <div class="form-group">
+            <label for="reminisce_intro_pause_seconds">Intro Pause (seconds)</label>
+            <input type="number" name="reminisce_intro_pause_seconds" id="reminisce_intro_pause_seconds"
+                   value="{{ config.REMINISCE_INTRO_PAUSE_SECONDS if config.REMINISCE_INTRO_PAUSE_SECONDS is not none else 3.0 }}"
+                   min="0" max="15" step="0.5">
+            <p class="hint">Delay between the memory comment and opening the archived canvas</p>
+        </div>
+    </section>
+
+    <section class="settings-section">
         <h2>Schedule (Clock In / Clock Out)</h2>
 
         <div class="form-group">
