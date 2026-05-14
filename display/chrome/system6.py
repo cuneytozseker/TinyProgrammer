@@ -66,6 +66,7 @@ GUTTER_W = 24
 LINE_NUMBER_RIGHT_PAD = 2
 CODE_X_PAD = 6
 SCROLLBAR_BUTTON = 16
+SCROLLBAR_THICKNESS_SCALE = 0.8
 STATUS_TEXT_X_PAD = 18
 
 # Window titlebars and menu bar
@@ -101,6 +102,10 @@ BBS_BOTTOM_GAP = 4
 BBS_X_INSET = 5
 BBS_TITLE_OFFSET = 32
 SHADOW_OFFSET_SCALE = 2
+
+
+def _scaled_scrollbar_button(scale: ScaleContext) -> int:
+    return max(1, int(scale.u(SCROLLBAR_BUTTON) * SCROLLBAR_THICKNESS_SCALE + 0.5))
 
 
 class System6Layout:
@@ -164,7 +169,7 @@ class System6Layout:
         scale = self.scale
         status_frame = self.status_rect()
         editor = self.editor_outer_rect()
-        button = scale.u(SCROLLBAR_BUTTON)
+        button = _scaled_scrollbar_button(scale)
         sidebar_frame = self.sidebar_frame_rect()
         sidebar = pygame.Rect(
             sidebar_frame.x + scale.x(SIDEBAR_CONTENT_X_PAD),
@@ -517,7 +522,7 @@ class System6Chrome:
 
     def _draw_scrollbars(self) -> None:
         editor = self.layout.editor_outer_rect()
-        button = self.scale_context.u(SCROLLBAR_BUTTON)
+        button = _scaled_scrollbar_button(self.scale_context)
         corner_join = self.scale
         right = pygame.Rect(
             editor.right - button,
