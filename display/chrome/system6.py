@@ -389,7 +389,8 @@ class System6Chrome:
         size = self.scale_context.u(TOOLBAR_BUTTON_SIZE)
         gap = self.scale_context.u(TOOLBAR_BUTTON_GAP)
         x = rect.x + self.scale_context.u(TOOLBAR_BUTTON_X)
-        y = rect.y + max(self.scale, (rect.h - size) // 2)
+        interior_h = max(0, rect.h - self.scale * 2)
+        y = rect.y + self.scale + max(0, (interior_h - size + 1) // 2)
         buttons = []
         for _ in SYSTEM6_TOOLBAR_ICON_FILES:
             buttons.append(pygame.Rect(x, y, size, size))
