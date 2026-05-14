@@ -229,8 +229,8 @@ class Brain:
             "PATH": os.environ.get("PATH", ""),
             "HOME": os.environ.get("HOME", ""),
             "PYTHONPATH": os.pathsep.join(python_paths),
-            "TINY_CANVAS_W": str(config.CANVAS_DRAW_W),
-            "TINY_CANVAS_H": str(config.CANVAS_DRAW_H),
+            "TINY_CANVAS_W": str(self.terminal.canvas_size[0]),
+            "TINY_CANVAS_H": str(self.terminal.canvas_size[1]),
         }
 
     def _start_program_process(self, filepath: str):

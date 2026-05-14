@@ -81,6 +81,7 @@ TITLE_FONT_SIZE = 11
 TITLE_FONT_MIN_SIZE = 10
 TITLE_STRIPE_MIN_GAP = 2
 TITLE_STRIPE_ENDPOINT_ADJUST = 1
+WINDOW_CONTENT_PAD = 3
 MENU_FONT_SIZE = 15
 MENU_FONT_MIN_SIZE = 10
 MENU_LABEL_X = 50
@@ -100,12 +101,15 @@ BBS_LIFT = 6
 BBS_LIFT_MIN = 3
 BBS_BOTTOM_GAP = 4
 BBS_X_INSET = 5
-BBS_TITLE_OFFSET = 32
 SHADOW_OFFSET_SCALE = 2
 
 
 def _scaled_scrollbar_button(scale: ScaleContext) -> int:
     return max(1, int(scale.u(SCROLLBAR_BUTTON) * SCROLLBAR_THICKNESS_SCALE + 0.5))
+
+
+def _window_content_pad(scale: ScaleContext) -> int:
+    return max(1, scale.u(WINDOW_CONTENT_PAD))
 
 
 class System6Layout:
@@ -203,6 +207,8 @@ class System6Layout:
     def _build_canvas_regions(self) -> tuple[pygame.Rect, pygame.Rect]:
         scale = self.scale
         reference = CANVAS_REFERENCE
+        content_pad = _window_content_pad(scale)
+        title_h = scale.u(TITLEBAR_HEIGHT)
         canvas_window = pygame.Rect(
             scale_floor(reference.window.x, scale.sx)
             + scale_round_half_up(REFERENCE_LAYOUT_OFFSET_X, scale.sx),
@@ -212,10 +218,10 @@ class System6Layout:
             max(1, scale_floor(reference.window.h, scale.sy)),
         )
         canvas_content = pygame.Rect(
-            canvas_window.x + scale_floor(reference.content_offset_x, scale.sx),
-            canvas_window.y + scale_floor(reference.content_offset_y, scale.sy),
-            max(1, scale_floor(reference.content_w, scale.sx)),
-            max(1, scale_floor(reference.content_h, scale.sy)),
+            canvas_window.x + content_pad,
+            canvas_window.y + title_h + content_pad,
+            max(1, canvas_window.w - content_pad * 2),
+            max(1, canvas_window.h - title_h - content_pad * 2),
         )
         return canvas_window, canvas_content
 
@@ -237,12 +243,14 @@ class System6Layout:
             self.height - bbs_y - bbs_bottom_gap,
         )
         bbs_x_inset = bbs_scale.x(BBS_X_INSET)
-        bbs_content_y = bbs_window.y + bbs_scale.y(BBS_TITLE_OFFSET)
+        bbs_y_inset = _window_content_pad(self.scale)
+        title_h = self.scale.u(TITLEBAR_HEIGHT)
+        bbs_content_y = bbs_window.y + title_h + bbs_y_inset
         bbs_content = pygame.Rect(
             bbs_window.x + bbs_x_inset,
             bbs_content_y,
             bbs_window.w - bbs_x_inset * 2,
-            bbs_window.bottom - bbs_content_y - bbs_bottom_gap,
+            bbs_window.bottom - bbs_content_y - bbs_y_inset,
         )
         return bbs_window, bbs_content
 
