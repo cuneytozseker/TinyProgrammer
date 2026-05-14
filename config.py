@@ -1,7 +1,10 @@
 import os
 
 from display.layout import CANVAS_REFERENCE as _CANVAS_REFERENCE
+from display.layout import REFERENCE_LAYOUT_OFFSET_X as _REFERENCE_LAYOUT_OFFSET_X
+from display.layout import REFERENCE_LAYOUT_OFFSET_Y as _REFERENCE_LAYOUT_OFFSET_Y
 from display.layout import scale_floor as _scale_floor
+from display.layout import scale_round_half_up as _scale_round_half_up
 
 # Tiny Programmer Configuration
 VERSION = "0.3.4"
@@ -92,8 +95,8 @@ DISPLAY_CHROME_BACKEND = normalize_display_chrome_backend(
 )
 
 # Global offset to align with background
-LAYOUT_OFFSET_X = int(2 * _SX + 0.5)
-LAYOUT_OFFSET_Y = int(1 * _SY + 0.5)
+LAYOUT_OFFSET_X = _scale_round_half_up(_REFERENCE_LAYOUT_OFFSET_X, _SX)
+LAYOUT_OFFSET_Y = _scale_round_half_up(_REFERENCE_LAYOUT_OFFSET_Y, _SY)
 
 # Layout regions — computed from 480x320 reference coordinates
 SIDEBAR_X = int(5 * _SX) + LAYOUT_OFFSET_X
@@ -125,8 +128,8 @@ MODE_TERMINAL = "terminal"
 MODE_RUN = "run"
 
 # Canvas popup window — scaled from 480x320 reference
-CANVAS_X = _scale_floor(_CANVAS_REFERENCE.window.x, _SX)
-CANVAS_Y = _scale_floor(_CANVAS_REFERENCE.window.y, _SY)
+CANVAS_X = _scale_floor(_CANVAS_REFERENCE.window.x, _SX) + LAYOUT_OFFSET_X
+CANVAS_Y = _scale_floor(_CANVAS_REFERENCE.window.y, _SY) + LAYOUT_OFFSET_Y
 CANVAS_W = _scale_floor(_CANVAS_REFERENCE.window.w, _SX)
 CANVAS_H = _scale_floor(_CANVAS_REFERENCE.window.h, _SY)
 CANVAS_DRAW_OFFSET_X = _scale_floor(_CANVAS_REFERENCE.content_offset_x, _SX)

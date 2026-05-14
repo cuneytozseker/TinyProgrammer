@@ -9,7 +9,13 @@ from types import MappingProxyType
 import pygame
 import numpy as np
 
-from display.layout import CANVAS_REFERENCE, scale_floor
+from display.layout import (
+    CANVAS_REFERENCE,
+    REFERENCE_LAYOUT_OFFSET_X,
+    REFERENCE_LAYOUT_OFFSET_Y,
+    scale_floor,
+    scale_round_half_up,
+)
 
 from .base import DEFAULT_ASSETS_DIR, ChromeRegions
 from .primitives import ChromePainter, ScaleContext
@@ -194,8 +200,10 @@ class System6Layout:
         scale = self.scale
         reference = CANVAS_REFERENCE
         canvas_window = pygame.Rect(
-            scale_floor(reference.window.x, scale.sx),
-            scale_floor(reference.window.y, scale.sy),
+            scale_floor(reference.window.x, scale.sx)
+            + scale_round_half_up(REFERENCE_LAYOUT_OFFSET_X, scale.sx),
+            scale_floor(reference.window.y, scale.sy)
+            + scale_round_half_up(REFERENCE_LAYOUT_OFFSET_Y, scale.sy),
             max(1, scale_floor(reference.window.w, scale.sx)),
             max(1, scale_floor(reference.window.h, scale.sy)),
         )

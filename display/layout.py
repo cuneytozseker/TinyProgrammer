@@ -22,8 +22,11 @@ class CanvasReference:
     content_h: int
 
 
+REFERENCE_LAYOUT_OFFSET_X = 2
+REFERENCE_LAYOUT_OFFSET_Y = 1
+
 CANVAS_REFERENCE = CanvasReference(
-    window=ReferenceRect(31, 36, 422, 242),
+    window=ReferenceRect(29, 35, 422, 242),
     content_offset_x=3,
     content_offset_y=19,
     content_w=416,
@@ -33,3 +36,7 @@ CANVAS_REFERENCE = CanvasReference(
 
 def scale_floor(value: int, factor: float) -> int:
     return int(value * factor)
+
+
+def scale_round_half_up(value: int, factor: float) -> int:
+    return int(value * factor + 0.5)
