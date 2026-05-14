@@ -50,7 +50,6 @@ SYSTEM6_LOGO_ICON_EXTENTS = (8, 12, 15, 16, 23, 24, 32, 40, 48, 56, 64)
 TOOLBAR_HEIGHT = 34
 TOOLBAR_BUTTON_SIZE = 25
 TOOLBAR_BUTTON_GAP = 2
-TOOLBAR_BUTTON_X = 3
 TOOLBAR_BUTTON_RADIUS = 2
 TOOLBAR_BUTTON_RADIUS_LIMIT_DIVISOR = 4
 TOOLBAR_ICON_PAD = 4
@@ -388,9 +387,10 @@ class System6Chrome:
     def _toolbar_button_rects(self, rect: pygame.Rect) -> tuple[pygame.Rect, ...]:
         size = self.scale_context.u(TOOLBAR_BUTTON_SIZE)
         gap = self.scale_context.u(TOOLBAR_BUTTON_GAP)
-        x = rect.x + self.scale_context.u(TOOLBAR_BUTTON_X)
         interior_h = max(0, rect.h - self.scale * 2)
-        y = rect.y + self.scale + max(0, (interior_h - size + 1) // 2)
+        vertical_pad = max(0, (interior_h - size + 1) // 2)
+        x = rect.x + self.scale + vertical_pad
+        y = rect.y + self.scale + vertical_pad
         buttons = []
         for _ in SYSTEM6_TOOLBAR_ICON_FILES:
             buttons.append(pygame.Rect(x, y, size, size))
