@@ -470,7 +470,12 @@ class System6Chrome:
         text = self._title_font.render(title, True, BLACK)
         text_rect = text.get_rect(center=(rect.centerx, title_center_y))
         title_pad = self.scale_context.u(TITLE_TEXT_PAD)
-        erase = text_rect.inflate(title_pad * 2, 0).clip(title_rect)
+        erase = pygame.Rect(
+            text_rect.x - title_pad,
+            title_rect.y,
+            text_rect.w + title_pad * 2,
+            title_rect.h,
+        ).clip(title_rect)
         left_of_close_x = title_rect.x + stripe_inset
         left_of_close = pygame.Rect(
             left_of_close_x,
@@ -496,10 +501,18 @@ class System6Chrome:
         self._draw_title_stripes(right_stripe)
         pygame.draw.rect(self.surface, WHITE, erase)
         self.surface.blit(text, text_rect)
-        self._painter.line(
-            (rect.x, title_rect.bottom),
-            (rect.right - self.scale, title_rect.bottom),
-        )
+        title_bottom_y = title_rect.bottom
+        title_bottom_right = rect.right - self.scale
+        if erase.x > rect.x:
+            self._painter.line(
+                (rect.x, title_bottom_y),
+                (erase.x - self.scale, title_bottom_y),
+            )
+        if erase.right < title_bottom_right:
+            self._painter.line(
+                (erase.right, title_bottom_y),
+                (title_bottom_right, title_bottom_y),
+            )
 
     def _window_titlebar_height(self) -> int:
         return self.scale_context.u(TITLEBAR_HEIGHT)
