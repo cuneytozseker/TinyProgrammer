@@ -9,7 +9,7 @@ from types import MappingProxyType
 import pygame
 import numpy as np
 
-from display_layout import CANVAS_REFERENCE, scale_floor
+from display.layout import CANVAS_REFERENCE, scale_floor
 
 from .base import DEFAULT_ASSETS_DIR, ChromeRegions
 from .primitives import ChromePainter, ScaleContext

@@ -1,7 +1,7 @@
 import os
 
-from display_layout import CANVAS_REFERENCE as _CANVAS_REFERENCE
-from display_layout import scale_floor as _scale_floor
+from display.layout import CANVAS_REFERENCE as _CANVAS_REFERENCE
+from display.layout import scale_floor as _scale_floor
 
 # Tiny Programmer Configuration
 VERSION = "0.3.4"
