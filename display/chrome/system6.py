@@ -39,8 +39,8 @@ SYSTEM6_TOOLBAR_ICON_FILES: tuple[str, ...] = (
     "icon-new-system6.png",
     "icon-open-system6.png",
     "icon-save-system6.png",
-    "icon-run-system6.png",
     "icon-settings-system6.png",
+    "icon-run-system6.png",
 )
 SYSTEM6_LOGO_FILE = "logo-system6.png"
 SYSTEM6_TOOLBAR_ICON_EXTENTS = (8, 12, 16, 24, 32, 40, 48, 56, 64)
