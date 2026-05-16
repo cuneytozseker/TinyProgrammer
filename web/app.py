@@ -16,11 +16,65 @@ from .config_manager import ConfigManager
 # Global reference to brain (set by main.py)
 _brain = None
 
+_BBS_DEVICE_NAME_RE = re.compile(r'^[A-Za-z0-9 _.-]+$')
+
 
 def set_brain(brain):
     """Set the brain instance for status access."""
     global _brain
     _brain = brain
+
+
+def _validate_bbs_device_name(device_name):
+    name = device_name.strip()
+    if not name:
+        return name, "Device name is required."
+    if len(name) > 32:
+        return name, "Device name must be 32 characters or less."
+    if not _BBS_DEVICE_NAME_RE.match(name):
+        return (
+            name,
+            "Device name may only contain letters, numbers, spaces, "
+            "underscores, hyphens, and periods.",
+        )
+    return name, None
+
+
+def _apply_bbs_device_name_update(updates, requested_device_name, previous_device_name, brain):
+    """Apply dashboard BBS name changes and return an optional status message."""
+    requested_name_clean, validation_error = _validate_bbs_device_name(requested_device_name)
+    updates['BBS_DEVICE_NAME'] = requested_name_clean
+    updates['BBS_PENDING_DEVICE_NAME'] = ''
+
+    if validation_error:
+        updates['BBS_DEVICE_NAME'] = previous_device_name
+        return f"BBS name change failed: {validation_error}"
+
+    bbs_client = getattr(brain, 'bbs_client', None) if brain else None
+    live_device_name = getattr(bbs_client, 'device_name', None)
+    name_changed = requested_name_clean != previous_device_name
+    name_out_of_sync = (
+        bbs_client is not None
+        and requested_name_clean
+        and requested_name_clean != live_device_name
+    )
+    if not (name_changed or name_out_of_sync):
+        return None
+
+    if not bbs_client:
+        updates['BBS_PENDING_DEVICE_NAME'] = requested_name_clean
+        return "BBS name saved and will update when BBS reconnects."
+
+    rename_result = bbs_client.rename_device(requested_name_clean)
+    if "error" in rename_result:
+        updates['BBS_DEVICE_NAME'] = previous_device_name
+        return f"BBS name change failed: {rename_result['error']}"
+
+    assigned_name = rename_result.get('new_name', bbs_client.device_name)
+    updates['BBS_DEVICE_NAME'] = assigned_name
+    if assigned_name == requested_name_clean:
+        return f"BBS name changed to {assigned_name}."
+    return f"BBS name changed to {assigned_name} (adjusted from {requested_name_clean})."
 
 
 def create_app():
@@ -166,6 +220,8 @@ def create_app():
             # Collect form data
             updates = {}
             previous_chrome_backend = config_mgr.get('DISPLAY_CHROME_BACKEND', 'asset')
+            previous_bbs_device_name = config_mgr.get('BBS_DEVICE_NAME', 'TinyProgrammer')
+            bbs_message = None
 
             # LLM model selection (OpenRouter)
             selected_model = request.form.get('llm_model', DEFAULT_MODEL)
@@ -211,7 +267,13 @@ def create_app():
             updates['BBS_BREAK_DURATION_MIN'] = int(request.form.get('bbs_break_duration_min', 120))
             updates['BBS_BREAK_DURATION_MAX'] = int(request.form.get('bbs_break_duration_max', 300))
             updates['BBS_DISPLAY_COLOR'] = request.form.get('bbs_display_color', 'green')
-            updates['BBS_DEVICE_NAME'] = request.form.get('bbs_device_name', 'TinyProgrammer')
+            requested_bbs_device_name = request.form.get('bbs_device_name', 'TinyProgrammer')
+            bbs_message = _apply_bbs_device_name_update(
+                updates,
+                requested_bbs_device_name,
+                previous_bbs_device_name,
+                _brain,
+            )
 
             # Reminisce settings
             updates['REMINISCE_ENABLED'] = 'reminisce_enabled' in request.form
@@ -239,6 +301,8 @@ def create_app():
                 )
             else:
                 message = "Settings saved! Changes will apply on next program cycle."
+            if bbs_message:
+                message = f"{message} {bbs_message}"
 
         # Load current config
         current = config_mgr.get_all()

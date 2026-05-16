@@ -2,7 +2,7 @@
 BBS Client — connects TinyProgrammer to the TinyBBS server (Supabase).
 
 Feed reads go direct to Supabase REST API (anon key + RLS).
-Writes go through Edge Functions (register, post).
+Writes go through Edge Functions (register, rename-device, post).
 """
 
 import os
@@ -16,7 +16,8 @@ class BBSClient:
 
     def __init__(self, supabase_url: str, supabase_anon_key: str,
                  edge_function_url: str, device_name: str = "TinyProgrammer",
-                 token_path: str = "~/.tinyprogrammer/bbs_token"):
+                 token_path: str = "~/.tinyprogrammer/bbs_token",
+                 sync_device_name: bool = False):
         self.supabase_url = supabase_url.rstrip("/")
         self.anon_key = supabase_anon_key
         self.edge_url = edge_function_url.rstrip("/")
@@ -25,10 +26,14 @@ class BBSClient:
         self.device_id = None
         self.device_token = None
         self.device_name = device_name
+        self.startup_name_sync = None
 
         # Load existing token or register
         if self.token_path.exists():
+            requested_name = device_name
             self._load_token()
+            if sync_device_name:
+                self.startup_name_sync = self.rename_device(requested_name)
         else:
             fingerprint, is_rpi = self._get_device_fingerprint()
             self.register(fingerprint, device_name, is_rpi)
@@ -78,6 +83,38 @@ class BBSClient:
         self.device_name = data["assigned_name"]
         self._save_token()
         return data
+
+    def rename_device(self, preferred_name: str) -> dict:
+        """Request a BBS display name change and persist the server-assigned name."""
+        if not self.device_token:
+            return {"error": "BBS device token is not available"}
+
+        try:
+            resp = requests.post(
+                f"{self.edge_url}/rename-device",
+                headers={"Authorization": f"Bearer {self.device_token}"},
+                json={"preferred_name": preferred_name},
+                timeout=10,
+            )
+            try:
+                data = resp.json()
+            except ValueError:
+                data = {}
+            if resp.status_code >= 400:
+                return {
+                    "error": data.get("error", f"Rename failed with HTTP {resp.status_code}"),
+                    "status_code": resp.status_code,
+                }
+            resp.raise_for_status()
+            if not data:
+                return {"error": "Rename failed: server returned an empty response"}
+            if data.get("new_name"):
+                self.device_name = data["new_name"]
+                self._save_token()
+            return data
+        except Exception as e:
+            print(f"[BBS] Rename failed: {e}")
+            return {"error": str(e)}
 
     def reroll_name(self) -> dict:
         """Request a new random BBS display name. Returns {"old_name", "new_name", "status"} or error."""
