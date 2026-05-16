@@ -14,6 +14,8 @@ from datetime import datetime
 from typing import Optional, Dict, List, Tuple
 from dataclasses import dataclass, asdict
 
+from program_source import ProgramSource
+
 
 @dataclass
 class ProgramMetadata:
@@ -29,6 +31,14 @@ class ProgramMetadata:
     error_message: Optional[str] = None
     screenshot_path: Optional[str] = None
     synced_to_github: bool = False
+
+
+@dataclass(frozen=True)
+class ReplayCandidate:
+    """An archived program with the sanitized source validated for replay."""
+
+    metadata: ProgramMetadata
+    source: ProgramSource
 
 
 class Repository:
@@ -57,7 +67,9 @@ class Repository:
         
         self.index_path = os.path.join(local_path, "index.json")
         self.index: List[ProgramMetadata] = []
-        self._replayable_cache: Dict[str, Tuple[Tuple[int, int], bool]] = {}
+        self._replayable_cache: Dict[
+            str, Tuple[Tuple[int, int], Optional[ProgramSource]]
+        ] = {}
         
         self._ensure_directories()
         self._load_index()
@@ -180,23 +192,30 @@ class Repository:
         """Get the archived source path for a program."""
         return os.path.join(self.local_path, "programs", metadata.filename)
 
-    def get_replay_candidates(self) -> List[ProgramMetadata]:
-        """Get successful archived programs that are safe to replay."""
-        return [
-            metadata for metadata in self.index
-            if self._is_replayable(metadata)
-        ]
+    def get_program_source(self, metadata: ProgramMetadata) -> ProgramSource:
+        """Load and sanitize an archived program source."""
+        with open(self.get_program_path(metadata), 'r', encoding='utf-8') as f:
+            return ProgramSource.from_generated(f.read())
 
-    def _is_replayable(self, metadata: ProgramMetadata) -> bool:
-        """Return whether an archived program can be parsed for replay."""
+    def get_replay_candidates(self) -> List[ReplayCandidate]:
+        """Get replayable archived programs with their validated source."""
+        items = []
+        for metadata in self.index:
+            source = self._get_replay_source(metadata)
+            if source is not None:
+                items.append(ReplayCandidate(metadata=metadata, source=source))
+        return items
+
+    def _get_replay_source(self, metadata: ProgramMetadata) -> Optional[ProgramSource]:
+        """Return sanitized source only when an archive entry can replay."""
         if not metadata.success:
-            return False
+            return None
 
         path = self.get_program_path(metadata)
         try:
             stat = os.stat(path)
         except OSError:
-            return False
+            return None
 
         cache_key = metadata.filename or metadata.id
         stamp = (stat.st_mtime_ns, stat.st_size)
@@ -204,16 +223,17 @@ class Repository:
         if cached and cached[0] == stamp:
             return cached[1]
 
+        replay_source = None
         try:
-            with open(path, 'r', encoding='utf-8') as f:
-                source = f.read()
-            compile(source, path, 'exec')
-            replayable = True
+            source = self.get_program_source(metadata)
+            if source.code.strip():
+                source.compile(path)
+                replay_source = source
         except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
-            replayable = False
+            replay_source = None
 
-        self._replayable_cache[cache_key] = (stamp, replayable)
-        return replayable
+        self._replayable_cache[cache_key] = (stamp, replay_source)
+        return replay_source
     
     # =========================================================================
     # GITHUB SYNC (FUTURE IMPLEMENTATION)

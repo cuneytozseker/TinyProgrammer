@@ -3,7 +3,10 @@
 import random
 from typing import Iterable, List, Optional
 
-from archive.repository import ProgramMetadata
+from archive.repository import ProgramMetadata, ReplayCandidate
+
+
+ReplayEntry = ProgramMetadata | ReplayCandidate
 
 
 INTRO_TEMPLATES = [
@@ -99,14 +102,14 @@ class Reminiscence:
 
     def __init__(self):
         self._seen = set()
-        self.current: Optional[ProgramMetadata] = None
+        self.current: Optional[ReplayEntry] = None
 
     def clear(self):
         """Reset sequence-local replay state."""
         self._seen = set()
         self.current = None
 
-    def choose(self, candidates: Iterable[ProgramMetadata]) -> Optional[ProgramMetadata]:
+    def choose(self, candidates: Iterable[ReplayEntry]) -> Optional[ReplayEntry]:
         """Pick and mark an unseen candidate from this REMINISCE sequence."""
         unseen = self.unseen(candidates)
         if not unseen:
@@ -115,23 +118,25 @@ class Reminiscence:
         self._seen.add(self.key(self.current))
         return self.current
 
-    def has_unseen(self, candidates: Iterable[ProgramMetadata]) -> bool:
+    def has_unseen(self, candidates: Iterable[ReplayEntry]) -> bool:
         """Return whether any candidate has not played in this sequence."""
         return bool(self.unseen(candidates))
 
-    def unseen(self, candidates: Iterable[ProgramMetadata]) -> List[ProgramMetadata]:
+    def unseen(self, candidates: Iterable[ReplayEntry]) -> List[ReplayEntry]:
         """Return candidates not yet replayed in this sequence."""
         return [
-            metadata for metadata in candidates
-            if self.key(metadata) not in self._seen
+            candidate for candidate in candidates
+            if self.key(candidate) not in self._seen
         ]
 
-    def key(self, metadata: ProgramMetadata) -> str:
+    def key(self, candidate: ReplayEntry) -> str:
         """Stable key for avoiding repeats in one REMINISCE sequence."""
+        metadata = self._metadata(candidate)
         return metadata.filename or metadata.id
 
-    def intro_lines(self, metadata: ProgramMetadata) -> List[str]:
+    def intro_lines(self, candidate: ReplayEntry) -> List[str]:
         """Return formatted tender-machine intro lines for a candidate."""
+        metadata = self._metadata(candidate)
         program_type = metadata.program_type.replace("_", " ")
         mood = metadata.mood or "quiet"
         template = random.choice(INTRO_TEMPLATES)
@@ -143,3 +148,8 @@ class Reminiscence:
             )
             for line in template
         ]
+
+    def _metadata(self, candidate: ReplayEntry) -> ProgramMetadata:
+        if isinstance(candidate, ReplayCandidate):
+            return candidate.metadata
+        return candidate

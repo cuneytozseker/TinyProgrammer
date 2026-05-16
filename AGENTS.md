@@ -106,8 +106,8 @@ Practical consequence:
   may be override-only when consumers read them with `getattr`.
 - The dashboard model picker is driven from `llm/generator.py`; add models
   there, not only in templates.
-- `programmer/brain.py` duplicates generated-code cleaning across review and
-  run paths. Update both when changing sanitation rules.
+- `program_source.py` owns generated-code sanitation and source parsing
+  helpers. Use it for review, run, archive, and replay behavior.
 - Generated programs are intentionally restricted. `_do_review()` rejects
   `pygame`, `turtle`, `tkinter`, and `matplotlib`.
 

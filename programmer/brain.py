@@ -27,6 +27,7 @@ from programmer.code_typing import CodeTypingRenderer
 from programmer.error_log import log_error
 from programmer.liked_store import LikedStore
 from programmer.reminiscence import Reminiscence
+from program_source import ProgramSource
 from archive.repository import Repository
 from archive.learning import LearningSystem
 import config
@@ -51,12 +52,26 @@ class State(Enum):
 @dataclass
 class Program:
     """Represents a generated program."""
-    code: str
+    source: ProgramSource
     program_type: str
     thought_process: str  # The "thinking" comments
     timestamp: float
     success: bool = False
     error_message: Optional[str] = None
+
+    @property
+    def code(self) -> str:
+        """Executable source after removing model wrapper artifacts."""
+        return self.source.code
+
+    @code.setter
+    def code(self, raw_code: str):
+        self.source = ProgramSource.from_generated(raw_code)
+
+    @property
+    def raw_code(self) -> str:
+        """Original generated source before sanitization."""
+        return self.source.raw
 
 
 class Brain:
@@ -233,6 +248,16 @@ class Brain:
             "TINY_CANVAS_W": str(self.terminal.canvas_size[0]),
             "TINY_CANVAS_H": str(self.terminal.canvas_size[1]),
         }
+
+    def _write_program_execution_file(self, filename: str, code: str) -> str:
+        """Write executable generated source to a transient run file."""
+        programs_dir = self.archive.local_path
+        os.makedirs(programs_dir, exist_ok=True)
+
+        filepath = os.path.join(programs_dir, filename)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(code)
+        return filepath
 
     def _start_program_process(self, filepath: str):
         """Start a canvas program with unbuffered output."""
@@ -438,7 +463,7 @@ class Brain:
         
         # Initialize current program container
         self.current_program = Program(
-            code="",
+            source=ProgramSource.empty(),
             program_type=program_type,
             thought_process=comment,
             timestamp=time.time()
@@ -469,14 +494,12 @@ class Brain:
         # Start with the header
         header = self.llm.get_header(self.current_program.program_type if self.current_program else "")
         self.terminal.type_string(header)
-        full_code = header
+        raw_code = header
         code_typing = CodeTypingRenderer(
             self.terminal,
             skip_indent=getattr(config, "TYPING_SKIP_INDENT", False),
             delay_range=(0.02, 0.08),
         )
-
-        in_code_block = False
 
         # Track lines to filter duplicates from LLM output
         current_line = ""
@@ -497,35 +520,26 @@ class Brain:
             for token in self.llm.stream(self._current_prompt, max_tokens=config.LLM_MAX_TOKENS,
                                             temperature=config.LLM_TEMPERATURE,
                                             stop=["if __name__", "<|im_end|>"]):
-                # Basic markdown filtering
-                if "```" in token:
-                    if not in_code_block:
-                        in_code_block = True
-                        token = token.replace("```python", "").replace("```", "")
-                    else:
-                        break  # End of block
-
-                token = token.replace("```python", "").replace("```", "")
-                token = token.replace("<|im_end|>", "")
-
-                if not token:
-                    continue
-
                 if self._restart_requested or self._force_screensaver:
                     break
 
-                for char in token:
+                raw_code += token
+                display_token = token.replace("<|im_end|>", "")
+                if not display_token:
+                    continue
+
+                for char in display_token:
                     current_line += char
 
                     # When we hit a newline, check if line should be skipped
                     if char == '\n':
                         line_stripped = current_line.strip()
-                        should_skip = any(line_stripped == pat for pat in skip_patterns)
+                        is_fence = line_stripped.startswith("```") or line_stripped.startswith("~~~")
+                        should_skip = is_fence or any(line_stripped == pat for pat in skip_patterns)
 
                         if not should_skip:
                             # Output the line
                             code_typing.type_text(current_line)
-                            full_code += current_line
                         else:
                             print(f"[Brain] Skipping duplicate: {line_stripped}")
 
@@ -546,11 +560,10 @@ class Brain:
         # Output any remaining buffered content
         if current_line:
             code_typing.type_text(current_line)
-            full_code += current_line
 
         code_typing.finish()
 
-        self.current_program.code = full_code
+        self.current_program.code = raw_code
         self.terminal.type_string("\n\n// finished.\n")
         time.sleep(0.5)
         self._transition(State.REVIEW)
@@ -563,16 +576,20 @@ class Brain:
         self.terminal.type_string("\n// checking my work...\n")
         time.sleep(1)
         
-        # Clean the code (same as in _do_run)
-        raw_code = self.current_program.code
-        lines = raw_code.split('\n')
-        clean_lines = []
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith('```') or stripped == 'python':
-                continue
-            clean_lines.append(line)
-        code = '\n'.join(clean_lines).strip()
+        source = self.current_program.source
+        code = source.code
+
+        if not code.strip():
+            msg = "No executable Python code after sanitization"
+            log_error(self.current_program.program_type, "review", msg)
+            self.terminal.type_string("# no runnable code found.\n")
+            if self.fix_attempts < 2:
+                self.current_program.error_message = msg
+                self._transition(State.FIX)
+                return
+            self.current_program.success = False
+            self._transition(State.ARCHIVE)
+            return
         
         # 1. Check for banned imports
         banned = ["pygame", "turtle", "tkinter", "matplotlib"]
@@ -590,7 +607,7 @@ class Brain:
 
         # 2. Check syntax
         try:
-            compile(code, "<string>", "exec")
+            source.compile("<generated>")
         except SyntaxError as e:
             msg = f"SyntaxError: {e.msg} at line {e.lineno}"
             log_error(self.current_program.program_type, "review", msg)
@@ -618,27 +635,10 @@ class Brain:
         self.terminal.set_status("RUNNING")
         self.terminal.show_canvas()
 
-        # Clean the code
         code = self.current_program.code
-        # Strip markdown and language identifiers
-        lines = code.split('\n')
-        clean_lines = []
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith('```') or stripped == 'python':
-                continue
-            clean_lines.append(line)
-        code = '\n'.join(clean_lines).strip()
-        
+
         # Save cleaned code to temp file for execution
-        filename = "temp_execution.py"
-        programs_dir = self.archive.local_path
-        if not os.path.exists(programs_dir):
-            os.makedirs(programs_dir)
-            
-        filepath = os.path.join(programs_dir, filename)
-        with open(filepath, 'w') as f:
-            f.write(code)
+        filepath = self._write_program_execution_file("temp_execution.py", code)
             
         try:
             self.current_process = self._start_program_process(filepath)
@@ -698,8 +698,8 @@ class Brain:
         
         prompt = self.llm.build_fix_prompt(self.current_program.code, self.current_program.error_message)
         
-        full_code = ""
-        in_code_block = False
+        raw_code = ""
+        current_line = ""
         code_typing = CodeTypingRenderer(
             self.terminal,
             skip_indent=getattr(config, "TYPING_SKIP_INDENT", False),
@@ -710,24 +710,20 @@ class Brain:
             for token in self.llm.stream(prompt, max_tokens=config.LLM_MAX_TOKENS,
                                             temperature=config.LLM_TEMPERATURE,
                                             stop=["if __name__", "<|im_end|>"]):
-                # Basic markdown filtering
-                if "```" in token:
-                    if not in_code_block:
-                        in_code_block = True
-                        token = token.replace("```python", "").replace("```", "")
-                    else:
-                        break # End of block
-                
-                token = token.replace("```python", "").replace("```", "")
-                
-                if not token:
-                    continue
-                    
                 if self._restart_requested or self._force_screensaver:
                     break
 
-                code_typing.type_text(token)
-                full_code += token
+                raw_code += token
+                display_token = token.replace("<|im_end|>", "")
+                for char in display_token:
+                    current_line += char
+                    if char == '\n':
+                        line_stripped = current_line.strip()
+                        is_fence = line_stripped.startswith("```") or line_stripped.startswith("~~~")
+                        should_skip = is_fence or line_stripped == "python"
+                        if not should_skip:
+                            code_typing.type_text(current_line)
+                        current_line = ""
 
         except Exception as e:
             print(f"[Brain] Fix Error: {e}")
@@ -735,8 +731,10 @@ class Brain:
             self._transition(State.ERROR)
             return
 
+        if current_line:
+            code_typing.type_text(current_line)
         code_typing.finish()
-        self.current_program.code = full_code
+        self.current_program.code = raw_code
         self.terminal.type_string("\n\n// fixed?\n")
         time.sleep(1)
         self._transition(State.REVIEW)
@@ -897,19 +895,20 @@ class Brain:
 
     def _do_reminisce(self):
         """Replay one archived creation as a memory after a BBS session."""
-        metadata = self.reminiscence.choose(self.archive.get_replay_candidates())
-        if not metadata:
+        candidate = self.reminiscence.choose(self.archive.get_replay_candidates())
+        if not candidate:
             print("[Brain] Reminisce complete: no unseen replay candidates")
             self.reminiscence.clear()
             self._transition(State.THINK)
             return
 
+        metadata = candidate.metadata
         self._type_reminisce_intro(metadata)
         self._pause_after_reminisce_intro()
 
-        filepath = self.archive.get_program_path(metadata)
         self.terminal.show_canvas()
         try:
+            filepath = self._write_program_execution_file("temp_replay.py", candidate.source.code)
             self.current_process = self._start_program_process(filepath)
         except Exception as e:
             self.terminal.hide_canvas()
