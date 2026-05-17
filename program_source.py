@@ -23,29 +23,6 @@ _GENERATED_SETUP_LINES = {
     "from tiny_plot3d import Plot3D",
     "p = Plot3D(c)",
 }
-_PROSE_STARTS = (
-    "here is the code",
-    "here's the code",
-    "here is a",
-    "here's a",
-    "sure, here",
-    "sure, below",
-    "below is",
-    "the following",
-    "this script",
-    "this code",
-    "this program",
-)
-_PROSE_LINES = {
-    "thanks",
-    "thanks!",
-    "done",
-    "done.",
-    "explanation",
-    "explanation:",
-    "that is all",
-    "that is all.",
-}
 
 
 def sanitize_generated_code(raw: str) -> tuple[str, list[str]]:
@@ -59,12 +36,10 @@ def sanitize_generated_code(raw: str) -> tuple[str, list[str]]:
     candidates = _fenced_candidates(text)
     if candidates:
         candidate, candidate_diags = candidates[0]
-        code, edge_diags = _trim_obvious_edge_prose(candidate)
-        return _finish(code), diagnostics + candidate_diags + edge_diags
+        return _finish(candidate), diagnostics + candidate_diags
 
     cleaned, clean_diags = _drop_wrapper_lines(text)
-    code, edge_diags = _trim_obvious_edge_prose(cleaned)
-    return _finish(code), diagnostics + clean_diags + edge_diags
+    return _finish(cleaned), diagnostics + clean_diags
 
 
 def is_generated_wrapper_line(line: str) -> bool:
@@ -110,29 +85,6 @@ def _drop_wrapper_lines(text: str) -> tuple[str, list[str]]:
     return "\n".join(lines), diagnostics
 
 
-def _trim_obvious_edge_prose(text: str) -> tuple[str, list[str]]:
-    """Trim only plain prose at the outer edges of a response."""
-    text = _trim_blank(text)
-    if not text:
-        return "", []
-
-    lines = text.split("\n")
-    start = 0
-    end = len(lines)
-    diagnostics: list[str] = []
-
-    while start < end and _is_obvious_prose(lines[start]):
-        start += 1
-    while end > start and _is_obvious_prose(lines[end - 1]):
-        end -= 1
-
-    if start:
-        diagnostics.append("removed leading prose")
-    if end < len(lines):
-        diagnostics.append("removed trailing prose")
-    return "\n".join(lines[start:end]), diagnostics
-
-
 def _generated_setup_prefix(text: str) -> tuple[str, list[str]] | None:
     """Return known generated setup code if a fence prefix contains only that."""
     prefix, diagnostics = _drop_wrapper_lines(text)
@@ -143,23 +95,6 @@ def _generated_setup_prefix(text: str) -> tuple[str, list[str]] | None:
     if all(line.strip() in _GENERATED_SETUP_LINES for line in kept):
         return prefix, diagnostics
     return None
-
-
-def _is_obvious_prose(line: str) -> bool:
-    """Return whether a single edge line is clearly response prose."""
-    stripped = line.strip()
-    if not stripped:
-        return False
-    lowered = stripped.lower()
-    if stripped.startswith(("#", "import ", "from ", "def ", "class ", "@")):
-        return False
-    if re.match(r"^(if|elif|else|for|while|try|except|finally|with|match|case)\b", stripped):
-        return False
-    if re.match(r"^(return|break|continue|pass|raise|yield|assert|print)\b", stripped):
-        return False
-    if re.match(r"^[A-Za-z_][A-Za-z0-9_]*(?:\(|\[|\.|\s*=)", stripped):
-        return False
-    return lowered in _PROSE_LINES or lowered.startswith(_PROSE_STARTS)
 
 
 def _is_python_fence(info: str) -> bool:

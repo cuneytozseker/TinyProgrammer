@@ -56,12 +56,14 @@ def test_ignores_non_setup_prefix_before_fenced_body():
     assert code == "print('ok')\n"
 
 
-def test_trims_obvious_edge_prose_for_simple_body():
-    code, _ = sanitize_generated_code(
+def test_preserves_unfenced_prose_for_review_or_fix():
+    raw = (
         "Here is the code:\nprint('ok')\nThat is all.\n"
     )
 
-    assert code == "print('ok')\n"
+    code, _ = sanitize_generated_code(raw)
+
+    assert code == raw
 
 
 def test_does_not_rescue_middle_prose():
@@ -100,14 +102,6 @@ def test_preserves_multiline_python_closing_delimiters():
     code, _ = sanitize_generated_code(raw)
 
     assert code == raw
-
-
-def test_trims_phrase_level_trailing_explanation():
-    code, _ = sanitize_generated_code(
-        "print('ok')\nThis script uses print to show text.\n"
-    )
-
-    assert code == "print('ok')\n"
 
 
 def test_broken_code_returns_cleaned_source():
@@ -166,12 +160,12 @@ def test_wrapper_line_detection():
     assert not is_generated_wrapper_line("print('ok')")
 
 
-def test_replay_candidates_sanitize_legacy_archive_sources(tmp_path):
+def test_replay_candidates_sanitize_wrapped_archive_sources(tmp_path):
     repo = Repository(str(tmp_path))
     programs_dir = tmp_path / "programs"
 
     (programs_dir / "legacy.py").write_text(
-        "Here is the code:\nprint('ok')\nThat is all.\n",
+        "```python\nprint('ok')\n```\n",
         encoding="utf-8",
     )
     (programs_dir / "broken.py").write_text(
