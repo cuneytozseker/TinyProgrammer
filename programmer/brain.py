@@ -254,6 +254,20 @@ class Brain:
             or any(line_stripped == pat for pat in skip_patterns)
         )
 
+    def _strip_generated_setup_prefix(self, code: str,
+                                      skip_patterns=()) -> str:
+        """Remove model-repeated setup before appending the app header."""
+        setup_lines = {pat for pat in skip_patterns if pat}
+        lines = code.split("\n")
+        index = 0
+        while index < len(lines):
+            stripped = lines[index].strip()
+            if not stripped or stripped in setup_lines:
+                index += 1
+                continue
+            break
+        return "\n".join(lines[index:])
+
     def _start_program_process(self, filepath: str):
         """Start a canvas program with unbuffered output."""
         return subprocess.Popen(
@@ -489,7 +503,7 @@ class Brain:
         # Start with the header
         header = self.llm.get_header(self.current_program.program_type if self.current_program else "")
         self.terminal.type_string(header)
-        raw_code = header
+        raw_body = ""
         code_typing = CodeTypingRenderer(
             self.terminal,
             skip_indent=getattr(config, "TYPING_SKIP_INDENT", False),
@@ -517,7 +531,7 @@ class Brain:
                 if self._restart_requested or self._force_screensaver:
                     break
 
-                raw_code += token
+                raw_body += token
                 display_token = token.replace("<|im_end|>", "")
                 if not display_token:
                     continue
@@ -559,7 +573,9 @@ class Brain:
 
         code_typing.finish()
 
-        self.current_program.code, _ = sanitize_generated_code(raw_code)
+        body, _ = sanitize_generated_code(raw_body)
+        body = self._strip_generated_setup_prefix(body, skip_patterns)
+        self.current_program.code = header + body if body.strip() else ""
         self.terminal.type_string("\n\n// finished.\n")
         time.sleep(0.5)
         self._transition(State.REVIEW)

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import ast
 import re
-from dataclasses import dataclass
-from types import CodeType
 
 
 _FENCED_BLOCK_RE = re.compile(
@@ -17,30 +14,38 @@ _FENCED_BLOCK_RE = re.compile(
 _FENCE_LINE_RE = re.compile(r"^\s*(?:`{3,}|~{3,})(?:[^\n]*)?$", re.IGNORECASE)
 _LANG_TAG_LINE_RE = re.compile(r"^\s*(?:python|py|python3)\s*$", re.IGNORECASE)
 _MODEL_END_LINE_RE = re.compile(r"^\s*<\|im_end\|>\s*$")
-
-
-@dataclass(frozen=True)
-class ProgramSource:
-    """Raw and executable forms of one generated Python program."""
-
-    raw: str
-    code: str
-    diagnostics: tuple[str, ...] = ()
-
-    @classmethod
-    def empty(cls) -> "ProgramSource":
-        """Build an empty source object before generation starts."""
-        return cls(raw="", code="", diagnostics=())
-
-    @classmethod
-    def from_generated(cls, raw: str) -> "ProgramSource":
-        """Keep the original response beside the sanitized program text."""
-        code, diagnostics = sanitize_generated_code(raw)
-        return cls(raw=raw, code=code, diagnostics=tuple(diagnostics))
-
-    def compile(self, filename: str = "<generated>") -> CodeType:
-        """Compile the executable source."""
-        return compile(self.code, filename, "exec")
+_GENERATED_SETUP_LINES = {
+    "import time",
+    "import random",
+    "import math",
+    "from tiny_canvas import Canvas",
+    "c = Canvas()",
+    "from tiny_plot3d import Plot3D",
+    "p = Plot3D(c)",
+}
+_PROSE_STARTS = (
+    "here is the code",
+    "here's the code",
+    "here is a",
+    "here's a",
+    "sure, here",
+    "sure, below",
+    "below is",
+    "the following",
+    "this script",
+    "this code",
+    "this program",
+)
+_PROSE_LINES = {
+    "thanks",
+    "thanks!",
+    "done",
+    "done.",
+    "explanation",
+    "explanation:",
+    "that is all",
+    "that is all.",
+}
 
 
 def sanitize_generated_code(raw: str) -> tuple[str, list[str]]:
@@ -51,27 +56,15 @@ def sanitize_generated_code(raw: str) -> tuple[str, list[str]]:
         text = text.replace("<|im_end|>", "")
         diagnostics.append("removed model end marker")
 
-    cleaned, clean_diags = _drop_wrapper_lines(text)
     candidates = _fenced_candidates(text)
-    candidates.append((cleaned, clean_diags))
+    if candidates:
+        candidate, candidate_diags = candidates[0]
+        code, edge_diags = _trim_obvious_edge_prose(candidate)
+        return _finish(code), diagnostics + candidate_diags + edge_diags
 
-    for candidate, diags in candidates:
-        code = _finish(candidate)
-        if code and _compiles_as_program(code):
-            return code, diagnostics + diags
-
-    trimmed = _trim_to_compiling(cleaned)
-    if trimmed and _finish(trimmed[0]) != _finish(cleaned):
-        code = _finish(trimmed[0])
-        if code and _compiles_as_program(code):
-            return code, diagnostics + clean_diags + trimmed[1]
-
-    fallback = _finish(cleaned)
-    if fallback:
-        return fallback, diagnostics + clean_diags + ["no compilable candidate"]
-    if text.strip():
-        return "", diagnostics + clean_diags + ["no compilable candidate"]
-    return "", diagnostics + clean_diags
+    cleaned, clean_diags = _drop_wrapper_lines(text)
+    code, edge_diags = _trim_obvious_edge_prose(cleaned)
+    return _finish(code), diagnostics + clean_diags + edge_diags
 
 
 def is_generated_wrapper_line(line: str) -> bool:
@@ -93,9 +86,9 @@ def _fenced_candidates(text: str) -> list[tuple[str, list[str]]]:
     for match in matches:
         label = "selected python fenced code block" if _is_python_fence(match.group("info")) else "selected fenced code block"
         body, body_diags = _drop_wrapper_lines(match.group("body"))
-        prefix, prefix_diags = _drop_wrapper_lines(text[:match.start()])
-        if _looks_like_setup(prefix):
-            candidates.append((_join(prefix, body), prefix_diags + body_diags + [f"{label} with prefix"]))
+        prefix = _generated_setup_prefix(text[:match.start()])
+        if prefix:
+            candidates.append((_join(prefix[0], body), prefix[1] + body_diags + [f"{label} with prefix"]))
         candidates.append((body, body_diags + [label]))
     return candidates
 
@@ -117,53 +110,56 @@ def _drop_wrapper_lines(text: str) -> tuple[str, list[str]]:
     return "\n".join(lines), diagnostics
 
 
-def _trim_to_compiling(text: str) -> tuple[str, list[str]] | None:
-    """Find the smallest leading/trailing trim that leaves a program."""
-    lines = text.split("\n")
-    best = None
-    for start in range(len(lines)):
-        for end in range(start + 1, len(lines) + 1):
-            candidate = "\n".join(lines[start:end])
-            if _finish(candidate) == _finish(text):
-                continue
-            if _compiles_as_program(_finish(candidate)):
-                score = (start + len(lines) - end, start, start - end)
-                if best is None or score < best[0]:
-                    best = (score, start, end, candidate)
-    if best is None:
-        return None
+def _trim_obvious_edge_prose(text: str) -> tuple[str, list[str]]:
+    """Trim only plain prose at the outer edges of a response."""
+    text = _trim_blank(text)
+    if not text:
+        return "", []
 
-    _, start, end, candidate = best
-    diagnostics = ["selected compilable line slice"]
+    lines = text.split("\n")
+    start = 0
+    end = len(lines)
+    diagnostics: list[str] = []
+
+    while start < end and _is_obvious_prose(lines[start]):
+        start += 1
+    while end > start and _is_obvious_prose(lines[end - 1]):
+        end -= 1
+
     if start:
         diagnostics.append("removed leading prose")
     if end < len(lines):
         diagnostics.append("removed trailing prose")
-    return candidate, diagnostics
+    return "\n".join(lines[start:end]), diagnostics
 
 
-def _compiles_as_program(text: str) -> bool:
-    """Return whether text parses as a non-empty Python program."""
-    if not text:
-        return False
-    try:
-        tree = ast.parse(text)
-    except (SyntaxError, ValueError, TypeError):
-        return False
-    if not tree.body:
-        return False
-    return True
+def _generated_setup_prefix(text: str) -> tuple[str, list[str]] | None:
+    """Return known generated setup code if a fence prefix contains only that."""
+    prefix, diagnostics = _drop_wrapper_lines(text)
+    lines = prefix.split("\n")
+    kept = [line for line in lines if line.strip()]
+    if not kept:
+        return None
+    if all(line.strip() in _GENERATED_SETUP_LINES for line in kept):
+        return prefix, diagnostics
+    return None
 
 
-def _looks_like_setup(text: str) -> bool:
-    """Return whether a prefix looks like reusable setup code."""
-    if not _compiles_as_program(_finish(text)):
+def _is_obvious_prose(line: str) -> bool:
+    """Return whether a single edge line is clearly response prose."""
+    stripped = line.strip()
+    if not stripped:
         return False
-    return any(
-        line.strip().startswith(("import ", "from ", "def ", "class "))
-        or ("=" in line and not line.strip().startswith("#"))
-        for line in text.splitlines()
-    )
+    lowered = stripped.lower()
+    if stripped.startswith(("#", "import ", "from ", "def ", "class ", "@")):
+        return False
+    if re.match(r"^(if|elif|else|for|while|try|except|finally|with|match|case)\b", stripped):
+        return False
+    if re.match(r"^(return|break|continue|pass|raise|yield|assert|print)\b", stripped):
+        return False
+    if re.match(r"^[A-Za-z_][A-Za-z0-9_]*(?:\(|\[|\.|\s*=)", stripped):
+        return False
+    return lowered in _PROSE_LINES or lowered.startswith(_PROSE_STARTS)
 
 
 def _is_python_fence(info: str) -> bool:
