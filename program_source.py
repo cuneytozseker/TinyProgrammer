@@ -29,10 +29,12 @@ class ProgramSource:
 
     @classmethod
     def empty(cls) -> "ProgramSource":
+        """Build an empty source object before generation starts."""
         return cls(raw="", code="", diagnostics=())
 
     @classmethod
     def from_generated(cls, raw: str) -> "ProgramSource":
+        """Keep the original response beside the sanitized program text."""
         code, diagnostics = sanitize_generated_code(raw)
         return cls(raw=raw, code=code, diagnostics=tuple(diagnostics))
 
@@ -81,6 +83,7 @@ def is_generated_wrapper_line(line: str) -> bool:
 
 
 def _fenced_candidates(text: str) -> list[tuple[str, list[str]]]:
+    """Return complete markdown fence bodies, with Python fences first."""
     matches = list(_FENCED_BLOCK_RE.finditer(text))
     matches.sort(key=lambda m: 0 if _is_python_fence(m.group("info")) else 1)
 
@@ -96,6 +99,7 @@ def _fenced_candidates(text: str) -> list[tuple[str, list[str]]]:
 
 
 def _drop_wrapper_lines(text: str) -> tuple[str, list[str]]:
+    """Remove wrapper-only lines while preserving the remaining source text."""
     diagnostics: list[str] = []
     lines: list[str] = []
     for line in text.split("\n"):
@@ -112,6 +116,7 @@ def _drop_wrapper_lines(text: str) -> tuple[str, list[str]]:
 
 
 def _trim_to_compiling(text: str) -> tuple[str, list[str]] | None:
+    """Find the smallest leading/trailing trim that leaves a program."""
     lines = text.split("\n")
     best = None
     for start in range(len(lines)):
@@ -136,6 +141,7 @@ def _trim_to_compiling(text: str) -> tuple[str, list[str]] | None:
 
 
 def _compiles_as_program(text: str) -> bool:
+    """Return whether text parses as a non-empty Python program."""
     if not text:
         return False
     try:
@@ -152,6 +158,7 @@ def _compiles_as_program(text: str) -> bool:
 
 
 def _looks_like_setup(text: str) -> bool:
+    """Return whether a prefix looks like reusable setup code."""
     if not _compiles_as_program(_finish(text)):
         return False
     return any(
@@ -162,11 +169,13 @@ def _looks_like_setup(text: str) -> bool:
 
 
 def _is_python_fence(info: str) -> bool:
+    """Return whether a markdown fence info string names Python."""
     tokens = {token.lstrip(".") for token in re.split(r"[\s{}]+", info.lower().strip()) if token}
     return bool(tokens & {"python", "py", "python3"})
 
 
 def _join(prefix: str, body: str) -> str:
+    """Join two source fragments without introducing extra blank edges."""
     prefix = _trim_blank(prefix)
     body = _trim_blank(body)
     if prefix and body:
@@ -175,11 +184,13 @@ def _join(prefix: str, body: str) -> str:
 
 
 def _finish(text: str) -> str:
+    """Normalize source edges and keep a final newline for file output."""
     text = _trim_blank(text)
     return text + "\n" if text else ""
 
 
 def _trim_blank(text: str) -> str:
+    """Trim blank lines without changing indentation inside the source."""
     lines = text.split("\n")
     while lines and not lines[0].strip():
         lines.pop(0)
