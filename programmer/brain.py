@@ -510,7 +510,7 @@ class Brain:
             delay_range=(0.02, 0.08),
         )
 
-        # Track lines to filter duplicates from LLM output
+        # Track lines to filter duplicate app-provided header lines from LLM output
         current_line = ""
         skip_patterns = [
             "import time",
@@ -520,11 +520,10 @@ class Brain:
             "c = Canvas()",
             "from tiny_plot3d import Plot3D",
             "p = Plot3D(c)",
-            "python",  # From ```python markdown
-            "",  # Empty lines at start
+            "",  # Blank streamed lines
         ]
 
-        # Stream from LLM - filter duplicate header lines
+        # Stream from LLM - filter duplicate header and wrapper lines
         try:
             for token in self.llm.stream(self._current_prompt, max_tokens=config.LLM_MAX_TOKENS,
                                             temperature=config.LLM_TEMPERATURE,
@@ -549,7 +548,7 @@ class Brain:
                             # Output the line
                             code_typing.type_text(current_line)
                         else:
-                            print(f"[Brain] Skipping duplicate: {current_line.strip()}")
+                            print(f"[Brain] Skipping generated display line: {current_line.strip()}")
 
                         current_line = ""
                     else:
@@ -570,7 +569,7 @@ class Brain:
             if not self._should_skip_generated_display_line(current_line, skip_patterns):
                 code_typing.type_text(current_line)
             else:
-                print(f"[Brain] Skipping duplicate: {current_line.strip()}")
+                print(f"[Brain] Skipping generated display line: {current_line.strip()}")
 
         code_typing.finish()
 
@@ -730,7 +729,7 @@ class Brain:
                     current_line += char
                     if char == '\n':
                         should_skip = self._should_skip_generated_display_line(
-                            current_line, ("python", "py", "python3"))
+                            current_line)
                         if not should_skip:
                             code_typing.type_text(current_line)
                         current_line = ""
@@ -743,7 +742,7 @@ class Brain:
 
         if current_line:
             if not self._should_skip_generated_display_line(
-                    current_line, ("python", "py", "python3")):
+                    current_line):
                 code_typing.type_text(current_line)
         code_typing.finish()
         self.current_program.code = raw_code
