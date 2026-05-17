@@ -55,14 +55,16 @@ def sanitize_generated_code(raw: str) -> tuple[str, list[str]]:
     candidates = _fenced_candidates(text)
     candidates.append((cleaned, clean_diags))
 
-    trimmed = _trim_to_compiling(cleaned)
-    if trimmed and _finish(trimmed[0]) != _finish(cleaned):
-        candidates.append((trimmed[0], clean_diags + trimmed[1]))
-
     for candidate, diags in candidates:
         code = _finish(candidate)
         if code and _compiles_as_program(code):
             return code, diagnostics + diags
+
+    trimmed = _trim_to_compiling(cleaned)
+    if trimmed and _finish(trimmed[0]) != _finish(cleaned):
+        code = _finish(trimmed[0])
+        if code and _compiles_as_program(code):
+            return code, diagnostics + clean_diags + trimmed[1]
 
     fallback = _finish(cleaned)
     if fallback:
@@ -150,11 +152,7 @@ def _compiles_as_program(text: str) -> bool:
         return False
     if not tree.body:
         return False
-    edge_nodes = [tree.body[0], tree.body[-1]]
-    return not any(
-        isinstance(node, ast.Expr) and isinstance(node.value, ast.Name)
-        for node in edge_nodes
-    )
+    return True
 
 
 def _looks_like_setup(text: str) -> bool:
