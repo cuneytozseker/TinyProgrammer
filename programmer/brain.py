@@ -27,7 +27,7 @@ from programmer.code_typing import CodeTypingRenderer
 from programmer.error_log import log_error
 from programmer.liked_store import LikedStore
 from programmer.reminiscence import Reminiscence
-from program_source import ProgramSource, is_generated_wrapper_line
+from program_source import sanitize_generated_code, is_generated_wrapper_line
 from archive.repository import Repository
 from archive.learning import LearningSystem
 import config
@@ -52,26 +52,12 @@ class State(Enum):
 @dataclass
 class Program:
     """Represents a generated program."""
-    source: ProgramSource
+    code: str
     program_type: str
     thought_process: str  # The "thinking" comments
     timestamp: float
     success: bool = False
     error_message: Optional[str] = None
-
-    @property
-    def code(self) -> str:
-        """Executable source after removing model wrapper artifacts."""
-        return self.source.code
-
-    @code.setter
-    def code(self, raw_code: str):
-        self.source = ProgramSource.from_generated(raw_code)
-
-    @property
-    def raw_code(self) -> str:
-        """Original generated source before sanitization."""
-        return self.source.raw
 
 
 class Brain:
@@ -472,7 +458,7 @@ class Brain:
         
         # Initialize current program container
         self.current_program = Program(
-            source=ProgramSource.empty(),
+            code="",
             program_type=program_type,
             thought_process=comment,
             timestamp=time.time()
@@ -573,7 +559,7 @@ class Brain:
 
         code_typing.finish()
 
-        self.current_program.code = raw_code
+        self.current_program.code, _ = sanitize_generated_code(raw_code)
         self.terminal.type_string("\n\n// finished.\n")
         time.sleep(0.5)
         self._transition(State.REVIEW)
@@ -586,8 +572,7 @@ class Brain:
         self.terminal.type_string("\n// checking my work...\n")
         time.sleep(1)
         
-        source = self.current_program.source
-        code = source.code
+        code = self.current_program.code
 
         if not code.strip():
             msg = "No executable Python code after sanitization"
@@ -617,7 +602,7 @@ class Brain:
 
         # 2. Check syntax
         try:
-            source.compile("<generated>")
+            compile(code, "<generated>", "exec")
         except SyntaxError as e:
             msg = f"SyntaxError: {e.msg} at line {e.lineno}"
             log_error(self.current_program.program_type, "review", msg)
@@ -745,7 +730,7 @@ class Brain:
                     current_line):
                 code_typing.type_text(current_line)
         code_typing.finish()
-        self.current_program.code = raw_code
+        self.current_program.code, _ = sanitize_generated_code(raw_code)
         self.terminal.type_string("\n\n// fixed?\n")
         time.sleep(1)
         self._transition(State.REVIEW)
@@ -906,20 +891,25 @@ class Brain:
 
     def _do_reminisce(self):
         """Replay one archived creation as a memory after a BBS session."""
-        candidate = self.reminiscence.choose(self.archive.get_replay_candidates())
-        if not candidate:
+        metadata = self.reminiscence.choose(self.archive.get_replay_candidates())
+        if not metadata:
             print("[Brain] Reminisce complete: no unseen replay candidates")
             self.reminiscence.clear()
             self._transition(State.THINK)
             return
 
-        metadata = candidate.metadata
         self._type_reminisce_intro(metadata)
         self._pause_after_reminisce_intro()
 
         self.terminal.show_canvas()
         try:
-            filepath = self._write_program_execution_file("temp_replay.py", candidate.source.code)
+            source_path = self.archive.get_program_path(metadata)
+            with open(source_path, 'r', encoding='utf-8') as f:
+                replay_code, _ = sanitize_generated_code(f.read())
+            if not replay_code.strip():
+                raise ValueError("No executable Python code after sanitization")
+            compile(replay_code, source_path, "exec")
+            filepath = self._write_program_execution_file("temp_replay.py", replay_code)
             self.current_process = self._start_program_process(filepath)
         except Exception as e:
             self.terminal.hide_canvas()
