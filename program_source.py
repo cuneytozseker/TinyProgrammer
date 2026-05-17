@@ -17,26 +17,6 @@ _FENCED_BLOCK_RE = re.compile(
 _FENCE_LINE_RE = re.compile(r"^\s*(?:`{3,}|~{3,})(?:[^\n]*)?$", re.IGNORECASE)
 _LANG_TAG_LINE_RE = re.compile(r"^\s*(?:python|py|python3)\s*$", re.IGNORECASE)
 _MODEL_END_LINE_RE = re.compile(r"^\s*<\|im_end\|>\s*$")
-_CODE_START_RE = re.compile(
-    r"^\s*(?:"
-    r"#|"
-    r"@[A-Za-z_][A-Za-z0-9_]*(?:\.|\(|\s|$)|"
-    r"import\s+|"
-    r"from\s+|"
-    r"class\s+|"
-    r"def\s+|"
-    r"async\s+def\s+|"
-    r"for\s+|"
-    r"while\s+|"
-    r"if\s+|"
-    r"try\s*:|"
-    r"with\s+|"
-    r"(?:[A-Za-z_][A-Za-z0-9_]*\s*,\s*)+[A-Za-z_][A-Za-z0-9_]*\s*=|"
-    r"[A-Za-z_][A-Za-z0-9_]*\s*=|"
-    r"[A-Za-z_][A-Za-z0-9_]*\s*\(|"
-    r"[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_]"
-    r")"
-)
 
 
 @dataclass(frozen=True)
@@ -56,206 +36,153 @@ class ProgramSource:
         code, diagnostics = sanitize_generated_code(raw)
         return cls(raw=raw, code=code, diagnostics=tuple(diagnostics))
 
-    def ast_tree(self) -> ast.Module:
-        """Parse the executable source for future structural review work."""
-        return ast.parse(self.code)
-
     def compile(self, filename: str = "<generated>") -> CodeType:
         """Compile the executable source."""
         return compile(self.code, filename, "exec")
 
 
 def sanitize_generated_code(raw: str) -> tuple[str, list[str]]:
-    """Return executable Python from an LLM response or archived source.
-
-    The sanitizer intentionally handles only wrapper artifacts around code:
-    markdown fences, bare language tags, model end markers, and leading prose.
-    It avoids rewriting Python syntax so future AST validation sees the
-    generated program itself.
-    """
+    """Return executable Python from an LLM response or archived source."""
+    text = (raw or "").replace("\r\n", "\n").replace("\r", "\n")
     diagnostics: list[str] = []
-    code = (raw or "").replace("\r\n", "\n").replace("\r", "\n")
-    if "<|im_end|>" in code:
-        code = code.replace("<|im_end|>", "")
+    if "<|im_end|>" in text:
+        text = text.replace("<|im_end|>", "")
         diagnostics.append("removed model end marker")
 
-    code = _select_fenced_region(code, diagnostics)
+    cleaned, clean_diags = _drop_wrapper_lines(text)
+    candidates = _fenced_candidates(text)
+    candidates.append((cleaned, clean_diags))
 
-    clean_lines: list[str] = []
-    for line in code.split("\n"):
-        stripped = line.strip()
-        if _FENCE_LINE_RE.match(stripped):
-            diagnostics.append("removed markdown fence")
-            continue
-        if _LANG_TAG_LINE_RE.match(stripped):
-            diagnostics.append(f"removed language tag: {stripped}")
-            continue
-        if _MODEL_END_LINE_RE.match(stripped):
-            diagnostics.append("removed model end marker")
-            continue
-        clean_lines.append(line)
+    trimmed = _trim_to_compiling(cleaned)
+    if trimmed and _finish(trimmed[0]) != _finish(cleaned):
+        candidates.append((trimmed[0], clean_diags + trimmed[1]))
 
-    clean_lines = _drop_leading_prose(clean_lines, diagnostics)
+    for candidate, diags in candidates:
+        code = _finish(candidate)
+        if code and _compiles_as_program(code):
+            return code, diagnostics + diags
 
-    sanitized = "\n".join(clean_lines).strip()
-    if sanitized:
-        sanitized += "\n"
-    return sanitized, diagnostics
+    fallback = _finish(cleaned)
+    if fallback:
+        return fallback, diagnostics + clean_diags + ["no compilable candidate"]
+    if text.strip():
+        return "", diagnostics + clean_diags + ["no compilable candidate"]
+    return "", diagnostics + clean_diags
 
 
-def _select_fenced_region(code: str, diagnostics: list[str]) -> str:
-    matches = list(_FENCED_BLOCK_RE.finditer(code))
-    if not matches:
-        return code
-
-    first = matches[0]
-    before = code[:first.start()]
-    has_prefix_code = _contains_python_code(before)
-
-    python_matches = [
-        match for match in matches
-        if _is_python_fence_info(match.group("info"))
-    ]
-    for match in python_matches:
-        if _is_compilable_code_candidate(match.group("body")):
-            diagnostics.append("selected python fenced code block")
-            return _with_code_prefix(before, match.group("body"), has_prefix_code, diagnostics)
-
-    for match in matches:
-        if _is_compilable_code_candidate(match.group("body")):
-            diagnostics.append("selected fenced code block")
-            return _with_code_prefix(before, match.group("body"), has_prefix_code, diagnostics)
-
-    if python_matches:
-        diagnostics.append("selected python fenced code block")
-        return _with_code_prefix(before, python_matches[0].group("body"), has_prefix_code, diagnostics)
-
-    diagnostics.append("selected fenced code block")
-    return _with_code_prefix(before, first.group("body"), has_prefix_code, diagnostics)
-
-
-def _with_code_prefix(prefix: str, body: str, include_prefix: bool,
-                      diagnostics: list[str]) -> str:
-    if not include_prefix:
-        return body
-
-    clean_prefix = _clean_code_prefix(prefix)
-    if clean_prefix != prefix:
-        diagnostics.append("removed prose before fenced code block")
-    if not clean_prefix:
-        return body
-
-    separator = "" if clean_prefix.endswith("\n") or not body else "\n"
-    return clean_prefix + separator + body
-
-
-def _clean_code_prefix(prefix: str) -> str:
-    lines = _drop_leading_prose(prefix.split("\n"), [])
-    lines = _drop_trailing_prose(lines)
-
-    for end in range(len(lines), 0, -1):
-        candidate = "\n".join(lines[:end]).strip()
-        if not candidate:
-            continue
-        try:
-            compile(candidate, "<prefix-candidate>", "exec")
-        except (SyntaxError, ValueError):
-            continue
-        return candidate + "\n"
-
-    candidate = "\n".join(lines).strip()
-    if candidate:
-        return candidate + "\n"
-    return ""
-
-
-def _drop_trailing_prose(lines: list[str]) -> list[str]:
-    trimmed = list(lines)
-    while trimmed:
-        if _looks_like_python_line(trimmed[-1]):
-            break
-        trimmed.pop()
-    return trimmed
-
-
-def _looks_like_python_line(line: str) -> bool:
+def is_generated_wrapper_line(line: str) -> bool:
+    """Return whether a line is generated response wrapper text."""
     stripped = line.strip()
-    if not stripped:
-        return True
-    if line[:1].isspace():
-        return True
-    if _CODE_START_RE.match(stripped):
-        return True
-    if stripped in {"else:", "except:", "finally:", "pass", "break", "continue"}:
-        return True
-    return stripped.startswith((
-        "elif ",
-        "else:",
-        "except ",
-        "except:",
-        "finally:",
-        "return ",
-        "raise ",
-        "yield ",
-        "assert ",
-        "del ",
-        "global ",
-        "nonlocal ",
-    ))
+    return bool(
+        _FENCE_LINE_RE.match(stripped)
+        or _LANG_TAG_LINE_RE.match(stripped)
+        or _MODEL_END_LINE_RE.match(stripped)
+    )
 
 
-def _is_python_fence_info(info: str) -> bool:
-    tokens = re.split(r"[\s{}]+", info.lower().strip())
-    languages = {token.lstrip(".") for token in tokens if token}
-    return bool(languages & {"python", "py", "python3"})
+def _fenced_candidates(text: str) -> list[tuple[str, list[str]]]:
+    matches = list(_FENCED_BLOCK_RE.finditer(text))
+    matches.sort(key=lambda m: 0 if _is_python_fence(m.group("info")) else 1)
+
+    candidates = []
+    for match in matches:
+        label = "selected python fenced code block" if _is_python_fence(match.group("info")) else "selected fenced code block"
+        body, body_diags = _drop_wrapper_lines(match.group("body"))
+        prefix, prefix_diags = _drop_wrapper_lines(text[:match.start()])
+        if _looks_like_setup(prefix):
+            candidates.append((_join(prefix, body), prefix_diags + body_diags + [f"{label} with prefix"]))
+        candidates.append((body, body_diags + [label]))
+    return candidates
 
 
-def _is_compilable_code_candidate(text: str) -> bool:
-    clean_lines: list[str] = []
+def _drop_wrapper_lines(text: str) -> tuple[str, list[str]]:
+    diagnostics: list[str] = []
+    lines: list[str] = []
     for line in text.split("\n"):
         stripped = line.strip()
         if _FENCE_LINE_RE.match(stripped):
-            continue
-        if _LANG_TAG_LINE_RE.match(stripped):
-            continue
-        if _MODEL_END_LINE_RE.match(stripped):
-            continue
-        clean_lines.append(line)
+            diagnostics.append("removed markdown fence")
+        elif _LANG_TAG_LINE_RE.match(stripped):
+            diagnostics.append(f"removed language tag: {stripped}")
+        elif _MODEL_END_LINE_RE.match(stripped):
+            diagnostics.append("removed model end marker")
+        else:
+            lines.append(line)
+    return "\n".join(lines), diagnostics
 
-    clean_lines = _drop_leading_prose(clean_lines, [])
-    candidate = "\n".join(clean_lines).strip()
-    if not candidate:
+
+def _trim_to_compiling(text: str) -> tuple[str, list[str]] | None:
+    lines = text.split("\n")
+    best = None
+    for start in range(len(lines)):
+        for end in range(start + 1, len(lines) + 1):
+            candidate = "\n".join(lines[start:end])
+            if _finish(candidate) == _finish(text):
+                continue
+            if _compiles_as_program(_finish(candidate)):
+                score = (start + len(lines) - end, start, start - end)
+                if best is None or score < best[0]:
+                    best = (score, start, end, candidate)
+    if best is None:
+        return None
+
+    _, start, end, candidate = best
+    diagnostics = ["selected compilable line slice"]
+    if start:
+        diagnostics.append("removed leading prose")
+    if end < len(lines):
+        diagnostics.append("removed trailing prose")
+    return candidate, diagnostics
+
+
+def _compiles_as_program(text: str) -> bool:
+    if not text:
         return False
-
     try:
-        compile(candidate, "<fenced-candidate>", "exec")
-    except (SyntaxError, ValueError):
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError, TypeError):
         return False
-    return True
+    if not tree.body:
+        return False
+    edge_nodes = [tree.body[0], tree.body[-1]]
+    return not any(
+        isinstance(node, ast.Expr) and isinstance(node.value, ast.Name)
+        for node in edge_nodes
+    )
 
 
-def _contains_python_code(text: str) -> bool:
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if _FENCE_LINE_RE.match(stripped) or _LANG_TAG_LINE_RE.match(stripped):
-            continue
-        if _CODE_START_RE.match(stripped):
-            return True
-    return False
+def _looks_like_setup(text: str) -> bool:
+    if not _compiles_as_program(_finish(text)):
+        return False
+    return any(
+        line.strip().startswith(("import ", "from ", "def ", "class "))
+        or ("=" in line and not line.strip().startswith("#"))
+        for line in text.splitlines()
+    )
 
 
-def _drop_leading_prose(lines: list[str], diagnostics: list[str]) -> list[str]:
-    for index, line in enumerate(lines):
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if _CODE_START_RE.match(stripped):
-            if index:
-                diagnostics.append("removed leading prose")
-            return lines[index:]
+def _is_python_fence(info: str) -> bool:
+    tokens = {token.lstrip(".") for token in re.split(r"[\s{}]+", info.lower().strip()) if token}
+    return bool(tokens & {"python", "py", "python3"})
 
-    if any(line.strip() for line in lines):
-        diagnostics.append("removed non-code response")
-    return []
+
+def _join(prefix: str, body: str) -> str:
+    prefix = _trim_blank(prefix)
+    body = _trim_blank(body)
+    if prefix and body:
+        return prefix + "\n" + body
+    return prefix or body
+
+
+def _finish(text: str) -> str:
+    text = _trim_blank(text)
+    return text + "\n" if text else ""
+
+
+def _trim_blank(text: str) -> str:
+    lines = text.split("\n")
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return "\n".join(lines)

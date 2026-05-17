@@ -27,7 +27,7 @@ from programmer.code_typing import CodeTypingRenderer
 from programmer.error_log import log_error
 from programmer.liked_store import LikedStore
 from programmer.reminiscence import Reminiscence
-from program_source import ProgramSource
+from program_source import ProgramSource, is_generated_wrapper_line
 from archive.repository import Repository
 from archive.learning import LearningSystem
 import config
@@ -258,6 +258,15 @@ class Brain:
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(code)
         return filepath
+
+    def _should_skip_generated_display_line(self, line: str,
+                                            skip_patterns=()) -> bool:
+        """Return whether streamed wrapper/header text should stay off-screen."""
+        line_stripped = line.strip()
+        return (
+            is_generated_wrapper_line(line)
+            or any(line_stripped == pat for pat in skip_patterns)
+        )
 
     def _start_program_process(self, filepath: str):
         """Start a canvas program with unbuffered output."""
@@ -533,15 +542,14 @@ class Brain:
 
                     # When we hit a newline, check if line should be skipped
                     if char == '\n':
-                        line_stripped = current_line.strip()
-                        is_fence = line_stripped.startswith("```") or line_stripped.startswith("~~~")
-                        should_skip = is_fence or any(line_stripped == pat for pat in skip_patterns)
+                        should_skip = self._should_skip_generated_display_line(
+                            current_line, skip_patterns)
 
                         if not should_skip:
                             # Output the line
                             code_typing.type_text(current_line)
                         else:
-                            print(f"[Brain] Skipping duplicate: {line_stripped}")
+                            print(f"[Brain] Skipping duplicate: {current_line.strip()}")
 
                         current_line = ""
                     else:
@@ -559,7 +567,10 @@ class Brain:
 
         # Output any remaining buffered content
         if current_line:
-            code_typing.type_text(current_line)
+            if not self._should_skip_generated_display_line(current_line, skip_patterns):
+                code_typing.type_text(current_line)
+            else:
+                print(f"[Brain] Skipping duplicate: {current_line.strip()}")
 
         code_typing.finish()
 
@@ -718,9 +729,8 @@ class Brain:
                 for char in display_token:
                     current_line += char
                     if char == '\n':
-                        line_stripped = current_line.strip()
-                        is_fence = line_stripped.startswith("```") or line_stripped.startswith("~~~")
-                        should_skip = is_fence or line_stripped == "python"
+                        should_skip = self._should_skip_generated_display_line(
+                            current_line, ("python", "py", "python3"))
                         if not should_skip:
                             code_typing.type_text(current_line)
                         current_line = ""
@@ -732,7 +742,9 @@ class Brain:
             return
 
         if current_line:
-            code_typing.type_text(current_line)
+            if not self._should_skip_generated_display_line(
+                    current_line, ("python", "py", "python3")):
+                code_typing.type_text(current_line)
         code_typing.finish()
         self.current_program.code = raw_code
         self.terminal.type_string("\n\n// fixed?\n")
