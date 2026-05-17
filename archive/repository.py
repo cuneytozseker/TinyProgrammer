@@ -14,8 +14,6 @@ from datetime import datetime
 from typing import Optional, Dict, List, Tuple
 from dataclasses import dataclass, asdict
 
-from program_source import sanitize_generated_code
-
 
 @dataclass
 class ProgramMetadata:
@@ -190,7 +188,7 @@ class Repository:
         ]
 
     def _is_replayable(self, metadata: ProgramMetadata) -> bool:
-        """Return whether an archived program can be sanitized and compiled."""
+        """Return whether an archived program can be parsed for replay."""
         if not metadata.success:
             return False
 
@@ -206,14 +204,12 @@ class Repository:
         if cached and cached[0] == stamp:
             return cached[1]
 
-        replayable = False
         try:
             with open(path, 'r', encoding='utf-8') as f:
-                code, _ = sanitize_generated_code(f.read())
-            if code.strip():
-                compile(code, path, 'exec')
-                replayable = True
-        except (OSError, SyntaxError, UnicodeDecodeError, ValueError, TypeError):
+                source = f.read()
+            compile(source, path, 'exec')
+            replayable = True
+        except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
             replayable = False
 
         self._replayable_cache[cache_key] = (stamp, replayable)
