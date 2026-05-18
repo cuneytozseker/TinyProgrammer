@@ -58,6 +58,14 @@ SDL2 libraries are also needed for pygame:
 sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
 ```
 
+For opt-in native SDL/KMS output (`DISPLAY_OUTPUT_BACKEND=sdl` with
+`DISPLAY_SDL_DRIVER=kmsdrm`), KMS-backed displays also need the Mesa EGL/GBM
+runtime:
+
+```bash
+sudo apt install libegl1 libegl-mesa0 libgles2 libgl1-mesa-dri
+```
+
 ## Hardware
 
 TinyProgrammer should run on any Raspberry Pi with a display. Tested or targeted configurations:
@@ -111,7 +119,8 @@ If you prefer to install step-by-step:
 ```bash
 sudo apt update && sudo apt install -y \
     python3-pip python3-pygame python3-pil \
-    git libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
+    git libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
+    libegl1 libegl-mesa0 libgles2 libgl1-mesa-dri
 
 pip3 install requests flask python-dotenv --break-system-packages
 ```
@@ -312,6 +321,8 @@ All settings are in `config.py` and can be overridden via the web dashboard (sav
 | -------------------------------- | ---------- | ------------------------------------------------------------------ |
 | `DISPLAY_PROFILE`                | `pi4-hdmi` | Display target (`pi4-hdmi`, `pizero-spi`, or `waveshare-4dpi-720`) |
 | `DISPLAY_CHROME_BACKEND`         | `asset`    | Chrome renderer (`asset` PNGs or opt-in `system6` procedural)      |
+| `DISPLAY_OUTPUT_BACKEND`         | `framebuffer` | Physical output backend (`framebuffer`, opt-in `sdl`, or opt-in `auto`) |
+| `DISPLAY_SDL_DRIVER`             | empty      | Optional SDL driver override, e.g. `kmsdrm` for KMS/DRM displays    |
 | `BBS_ENABLED`                    | `True`     | Enable BBS social breaks                                           |
 | `BBS_BREAK_CHANCE`               | `0.3`      | Probability of BBS break after each coding cycle                   |
 | `BBS_DISPLAY_COLOR`              | `green`    | BBS terminal color (`green`, `amber`, `white`)                     |

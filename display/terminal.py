@@ -17,6 +17,7 @@ import os
 import threading
 import time
 import random
+from ctypes.util import find_library
 from typing import Tuple, Optional, Callable, List
 
 import config
@@ -53,6 +54,37 @@ def _configure_sdl_video_driver() -> str:
 
 
 REQUESTED_OUTPUT_BACKEND = _configure_sdl_video_driver()
+
+
+def _missing_kms_runtime_libraries() -> list[str]:
+    required = {
+        "EGL": "EGL",
+        "GLESv2": "GLESv2",
+        "gbm": "gbm",
+        "drm": "drm",
+    }
+    return [name for name, library in required.items() if not find_library(library)]
+
+
+def _sdl_backend_failure_hint(error: Exception) -> str:
+    driver = os.environ.get("SDL_VIDEODRIVER", "")
+    if driver.lower() != "kmsdrm":
+        return ""
+
+    missing = _missing_kms_runtime_libraries()
+    if missing:
+        return (
+            f" Missing KMS runtime libraries: {', '.join(missing)}."
+            " Install libegl1 libegl-mesa0 libgles2 libgl1-mesa-dri."
+        )
+
+    if "egl" in str(error).lower():
+        return (
+            " KMSDRM needs a working Mesa EGL/GBM stack."
+            " Verify libegl1 libegl-mesa0 libgles2 libgl1-mesa-dri are installed."
+        )
+
+    return ""
 
 import pygame
 
@@ -233,7 +265,8 @@ class Terminal:
             print(f"[Terminal] Using SDL display driver: {pygame.display.get_driver()}")
             return True
         except Exception as e:
-            print(f"[Terminal] SDL display backend unavailable, falling back to framebuffer: {e}")
+            hint = _sdl_backend_failure_hint(e)
+            print(f"[Terminal] SDL display backend unavailable, falling back to framebuffer: {e}.{hint}")
             try:
                 pygame.display.quit()
                 os.environ["SDL_VIDEODRIVER"] = "dummy"
