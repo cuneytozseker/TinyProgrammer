@@ -19,12 +19,43 @@ import time
 import random
 from typing import Tuple, Optional, Callable, List
 
-# Force pygame to use dummy driver (we handle display ourselves)
-os.environ["SDL_VIDEODRIVER"] = "dummy"
+import config
+
+
+def _normalize_output_backend(value: str) -> str:
+    backend = str(value or "framebuffer").strip().lower()
+    if backend not in ("framebuffer", "sdl", "auto"):
+        return "framebuffer"
+    return backend
+
+
+def _configure_sdl_video_driver() -> str:
+    """Choose the SDL driver before pygame initializes."""
+    backend = _normalize_output_backend(
+        getattr(config, "DISPLAY_OUTPUT_BACKEND", "framebuffer")
+    )
+    requested_driver = str(getattr(config, "DISPLAY_SDL_DRIVER", "") or "").strip().lower()
+
+    if backend == "framebuffer":
+        os.environ["SDL_VIDEODRIVER"] = "dummy"
+        return backend
+
+    if requested_driver:
+        os.environ["SDL_VIDEODRIVER"] = requested_driver
+    elif backend == "auto" and os.path.exists("/dev/dri/card0") and not (
+        os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
+    ):
+        os.environ["SDL_VIDEODRIVER"] = "kmsdrm"
+    else:
+        os.environ.pop("SDL_VIDEODRIVER", None)
+
+    return backend
+
+
+REQUESTED_OUTPUT_BACKEND = _configure_sdl_video_driver()
 
 import pygame
 
-import config
 from .framebuffer import get_writer, IS_FRAMEBUFFER_AVAILABLE
 from .chrome import default_chrome_regions
 
@@ -60,6 +91,7 @@ class Terminal:
         self.font = None
         self.mock_mode = False
         self.fb_writer = None
+        self._output_backend = REQUESTED_OUTPUT_BACKEND
         self._chrome_backend = "asset"
         self._chrome = None
         self._render_lock = threading.Lock()
@@ -125,8 +157,13 @@ class Terminal:
         # Hide system mouse cursor
         pygame.mouse.set_visible(False)
 
-        # Create in-memory surface for rendering
-        self.screen = pygame.Surface((self.width, self.height))
+        if self._output_backend in ("sdl", "auto"):
+            if not self._init_sdl_display():
+                self._output_backend = "framebuffer"
+
+        # Create in-memory surface for direct framebuffer rendering.
+        if self.screen is None:
+            self.screen = pygame.Surface((self.width, self.height))
 
         # Load background image (use resolution-specific if available)
         bg_path = os.path.join(ASSETS_DIR, f"bg-{self.width}-{self.height}.png")
@@ -145,7 +182,9 @@ class Terminal:
             print(f"[Terminal] No bg.png found, using white background")
 
         # Initialize framebuffer writer
-        if IS_FRAMEBUFFER_AVAILABLE:
+        if self._output_backend == "sdl":
+            self.fb_writer = None
+        elif IS_FRAMEBUFFER_AVAILABLE:
             self.fb_writer = get_writer(self.width, self.height)
             print(f"[Terminal] Using direct framebuffer: {self.fb_writer.device}")
         else:
@@ -184,6 +223,26 @@ class Terminal:
             self.font_bold = pygame.font.Font(bold_path, font_size)
         else:
             self.font_bold = self.font
+
+    def _init_sdl_display(self) -> bool:
+        try:
+            self._window = pygame.display.set_mode((self.width, self.height))
+            self.screen = self._window
+            self._output_backend = "sdl"
+            pygame.display.set_caption("Tiny Programmer")
+            print(f"[Terminal] Using SDL display driver: {pygame.display.get_driver()}")
+            return True
+        except Exception as e:
+            print(f"[Terminal] SDL display backend unavailable, falling back to framebuffer: {e}")
+            try:
+                pygame.display.quit()
+                os.environ["SDL_VIDEODRIVER"] = "dummy"
+                pygame.display.init()
+            except Exception:
+                pass
+            self._window = None
+            self.screen = None
+            return False
 
     def _init_chrome_backend(self):
         normalize_backend = getattr(config, "normalize_display_chrome_backend", None)
@@ -580,7 +639,8 @@ class Terminal:
         if self.fb_writer:
             self.fb_writer.write(self.screen)
         elif hasattr(self, '_window'):
-            self._window.blit(self.screen, (0, 0))
+            if self.screen is not self._window:
+                self._window.blit(self.screen, (0, 0))
             pygame.display.flip()
 
         # Push frame to web stream (only when streaming is enabled)
