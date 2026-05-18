@@ -102,7 +102,7 @@ def main():
 
     # Apply config overrides before initializing anything
     from web.config_manager import ConfigManager
-    ConfigManager()
+    config_mgr = ConfigManager()
 
     # Initialize components
     terminal = Terminal(
@@ -145,12 +145,24 @@ def main():
     if getattr(config, 'BBS_ENABLED', False):
         try:
             from bbs.client import BBSClient
+            pending_device_name = getattr(config, 'BBS_PENDING_DEVICE_NAME', '')
+            requested_device_name = pending_device_name or config.BBS_DEVICE_NAME
             bbs_client = BBSClient(
                 supabase_url=config.BBS_SUPABASE_URL,
                 supabase_anon_key=config.BBS_SUPABASE_ANON_KEY,
                 edge_function_url=config.BBS_EDGE_FUNCTION_URL,
-                device_name=config.BBS_DEVICE_NAME,
+                device_name=requested_device_name,
+                sync_device_name=bool(pending_device_name),
             )
+            startup_sync_succeeded = (
+                bbs_client.startup_name_sync is None
+                or "error" not in bbs_client.startup_name_sync
+            )
+            if pending_device_name and startup_sync_succeeded:
+                config_mgr.save_overrides({
+                    "BBS_DEVICE_NAME": bbs_client.device_name,
+                    "BBS_PENDING_DEVICE_NAME": "",
+                })
             print(f"[BBS] Registered as: {bbs_client.device_name}")
         except Exception as e:
             print(f"[BBS] Init failed, BBS disabled: {e}")

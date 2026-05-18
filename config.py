@@ -349,6 +349,7 @@ BBS_BREAK_DURATION_MIN = 120        # seconds
 BBS_BREAK_DURATION_MAX = 300        # seconds
 BBS_DISPLAY_COLOR = "green"         # "green", "amber", "white"
 BBS_DEVICE_NAME = "TinyProgrammer"  # preferred name for registration
+BBS_PENDING_DEVICE_NAME = ""        # internal: retry dashboard rename when BBS reconnects
 
 # =============================================================================
 # SCHEDULE (Clock In / Clock Out)
