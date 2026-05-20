@@ -99,6 +99,8 @@ class Terminal:
         self.canvas_surface = None
         self.canvas_visible = False
         self.canvas_image = None
+        self.canvas_title = "Canvas"
+        self.canvas_title_font = self._load_canvas_title_font()
         self._load_canvas_assets()
 
         # BBS mode state
@@ -262,12 +264,37 @@ class Terminal:
         surface = self.font.render("M", True, self.color_fg)
         return surface.get_width(), surface.get_height()
 
+    def _load_canvas_title_font(self):
+        """Load a titlebar font for the PNG canvas chrome."""
+        if self.mock_mode:
+            return None
+
+        font_path = os.path.join(ASSETS_DIR, "ChicagoFLF.ttf")
+        titlebar_h = max(1, self.canvas_draw_rect.y - self.canvas_window_rect.y)
+        font_size = max(8, int(titlebar_h * 0.6))
+        try:
+            if os.path.exists(font_path):
+                return pygame.font.Font(font_path, font_size)
+        except Exception:
+            pass
+        return self.font_bold
+
+    @staticmethod
+    def _canvas_window_title(source_path: Optional[str] = None) -> str:
+        """Return the canvas popup title for an optional source path."""
+        if not source_path:
+            return "Canvas"
+
+        filename = os.path.basename(os.fspath(source_path)).strip()
+        return f"Canvas | {filename}" if filename else "Canvas"
+
     # =========================================================================
     # Canvas popup methods
     # =========================================================================
 
-    def show_canvas(self):
+    def show_canvas(self, source_path: Optional[str] = None):
         """Show the canvas popup window and create the drawing surface."""
+        self.canvas_title = self._canvas_window_title(source_path)
         self.canvas_surface = pygame.Surface(self.canvas_draw_rect.size)
         self.canvas_surface.fill((0, 0, 0))
         self.canvas_visible = True
@@ -278,6 +305,7 @@ class Terminal:
         """Hide the canvas popup window."""
         self.canvas_visible = False
         self.canvas_surface = None
+        self.canvas_title = "Canvas"
         self._dirty = True
         print("[Terminal] Canvas popup hidden")
 
@@ -417,10 +445,11 @@ class Terminal:
             # 6. Composite canvas popup on top (if visible)
             if self.canvas_visible and self.canvas_surface:
                 if self._use_chrome_backend():
-                    self._chrome.draw_canvas_window()
+                    self._chrome.draw_canvas_window(self.canvas_title)
                     self.screen.blit(self.canvas_surface, self.canvas_draw_rect.topleft)
                 elif self.canvas_image:
                     self.screen.blit(self.canvas_image, self.canvas_window_rect.topleft)
+                    self._render_canvas_title()
                     self.screen.blit(self.canvas_surface, self.canvas_draw_rect.topleft)
 
             # 7. Single flip to framebuffer
@@ -436,6 +465,31 @@ class Terminal:
             return None
         with self._render_lock:
             return self.screen.copy()
+
+    def _render_canvas_title(self):
+        """Overlay the dynamic title on the PNG canvas chrome."""
+        if self.canvas_title == "Canvas" or not self.canvas_title_font:
+            return
+
+        titlebar_h = max(1, self.canvas_draw_rect.y - self.canvas_window_rect.y)
+        title_rect = pygame.Rect(
+            self.canvas_window_rect.x,
+            self.canvas_window_rect.y,
+            self.canvas_window_rect.w,
+            titlebar_h,
+        )
+        text = self.canvas_title_font.render(self.canvas_title, True, (0, 0, 0))
+        text_rect = text.get_rect(center=title_rect.center)
+        pad_x = max(2, int(5 * config._SX))
+        erase = pygame.Rect(
+            text_rect.x - pad_x,
+            title_rect.y + 1,
+            text_rect.w + pad_x * 2,
+            max(1, title_rect.h - 2),
+        ).clip(title_rect)
+
+        pygame.draw.rect(self.screen, (255, 255, 255), erase)
+        self.screen.blit(text, text_rect)
 
     def _render_sidebar(self):
         """Render the file list in the sidebar."""

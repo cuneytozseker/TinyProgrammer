@@ -310,8 +310,8 @@ class System6Chrome:
         self._draw_content_wells()
         self._draw_desktop_corners()
 
-    def draw_canvas_window(self) -> None:
-        self._draw_system6_window(self.regions.canvas_window, "Canvas")
+    def draw_canvas_window(self, title: str = "Canvas") -> None:
+        self._draw_system6_window(self.regions.canvas_window, title)
 
     def draw_bbs_window(self) -> None:
         """Draw the BBS terminal frame."""
