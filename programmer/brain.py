@@ -24,8 +24,15 @@ from llm.generator import LLMGenerator
 from programmer.personality import Personality
 from programmer import creativity
 from programmer.code_typing import CodeTypingRenderer
+from programmer.canvas_protocol import FramePacketParser
 from programmer.error_log import log_error
 from programmer.liked_store import LikedStore
+from programmer.program_source import (
+    CANVAS_FUNCTION_PROTOCOL,
+    ProgramSourceError,
+    clean_generated_source,
+    validate_canvas_function_source,
+)
 from programmer.reminiscence import Reminiscence
 from archive.repository import (
     CANVAS_PROTOCOL_BATCHED,
@@ -62,6 +69,7 @@ class Program:
     success: bool = False
     error_message: Optional[str] = None
     canvas_protocol: str = CANVAS_PROTOCOL_LEGACY
+    runtime_protocol: str = CANVAS_FUNCTION_PROTOCOL
 
 
 def _typing_delay_range() -> tuple[float, float]:
@@ -236,13 +244,20 @@ class Brain:
         time.sleep(config.STATE_TRANSITION_DELAY)
         self.state = new_state
 
-    def _program_environment(self, canvas_batch: bool = True) -> dict:
+    def _program_environment(
+        self,
+        protocol: str = "legacy",
+        canvas_batch: bool = True,
+    ) -> dict:
         """Build the restricted subprocess environment for canvas programs."""
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         python_paths = [self.archive.local_path]
+        if protocol == CANVAS_FUNCTION_PROTOCOL:
+            python_paths.insert(0, repo_root)
         existing_pythonpath = os.environ.get("PYTHONPATH", "")
-        if existing_pythonpath:
+        if existing_pythonpath and protocol != CANVAS_FUNCTION_PROTOCOL:
             python_paths.append(existing_pythonpath)
-        return {
+        env = {
             "PATH": os.environ.get("PATH", ""),
             "HOME": os.environ.get("HOME", ""),
             "PYTHONPATH": os.pathsep.join(python_paths),
@@ -250,19 +265,39 @@ class Brain:
             "TINY_CANVAS_H": str(self.terminal.canvas_size[1]),
             "TINY_CANVAS_BATCH": "1" if canvas_batch else "0",
         }
+        if protocol == CANVAS_FUNCTION_PROTOCOL:
+            env["TINY_CANVAS_PROTOCOL"] = CANVAS_FUNCTION_PROTOCOL
+            env["TINY_TARGET_FPS"] = str(getattr(config, "CANVAS_TARGET_FPS", 30))
+            env["TINY_DT_MAX"] = str(getattr(config, "CANVAS_DT_MAX", 0.1))
+        return env
 
-    def _start_program_process(self, filepath: str, canvas_batch: bool = True):
+    def _start_program_process(
+        self,
+        filepath: str,
+        protocol: str = "legacy",
+        canvas_batch: bool = True,
+    ):
         """Start a canvas program with unbuffered output."""
+        if protocol == CANVAS_FUNCTION_PROTOCOL:
+            runner = os.path.join(self.archive.local_path, "tiny_runner.py")
+            return subprocess.Popen(
+                [sys.executable, "-u", runner, filepath],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                bufsize=0,
+                env=self._program_environment(protocol, canvas_batch=canvas_batch),
+            )
+
         return subprocess.Popen(
             [sys.executable, "-u", filepath],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
             bufsize=1,
-            env=self._program_environment(canvas_batch=canvas_batch),
+            env=self._program_environment(protocol, canvas_batch=canvas_batch),
         )
 
-    def _watch_running_process(self, status: str, mood: str,
+    def _watch_canvas_command_stream_process(self, status: str, mood: str,
                                early_finish_message: str):
         """Display output from the current process for the WATCH duration.
 
@@ -371,6 +406,102 @@ class Brain:
             except Exception:
                 self.current_process.kill()
         return exit_code, last_output, stop_reason, saw_flip
+
+    def _watch_canvas_frame_packet_process(self, status: str, mood: str,
+                                early_finish_message: str):
+        """Watch a canvas_function_v1 process and render complete frames only."""
+        self.terminal.set_status(status, mood)
+
+        start_time = time.time()
+        duration = random.randint(config.WATCH_DURATION_MIN, config.WATCH_DURATION_MAX)
+        print(f"[Brain] Watch duration: {duration}s (range: {config.WATCH_DURATION_MIN}-{config.WATCH_DURATION_MAX})")
+
+        parser = FramePacketParser()
+        last_output = ""
+        stderr_buffer = ""
+        stop_reason = "timeout"
+
+        def handle_stdout(data: bytes) -> None:
+            frames = parser.feed(data)
+            for frame in frames:
+                commands = frame.get("commands") or []
+                self.terminal.apply_canvas_frame(commands)
+
+        def handle_stderr(data: bytes) -> None:
+            nonlocal stderr_buffer, last_output
+            text = data.decode(errors="replace")
+            stderr_buffer += text
+            last_output += text
+            while "\n" in stderr_buffer:
+                line, stderr_buffer = stderr_buffer.split("\n", 1)
+                if line.strip():
+                    print(f"[Sketch] {line}")
+
+        while time.time() - start_time < duration:
+            if self._restart_requested or self._force_screensaver:
+                if self._restart_requested:
+                    self._restart_requested = False
+                    stop_reason = "restart"
+                    self.terminal.type_string("\n# Restart requested!\n")
+                else:
+                    stop_reason = "screensaver"
+                if self.current_process.poll() is None:
+                    self.current_process.terminate()
+                break
+
+            if self.current_process.poll() is not None:
+                stop_reason = "exited"
+                stdout_remaining = self.current_process.stdout.read() or b""
+                stderr_remaining = self.current_process.stderr.read() or b""
+                if stdout_remaining:
+                    handle_stdout(stdout_remaining)
+                if stderr_remaining:
+                    handle_stderr(stderr_remaining)
+                self.terminal.type_string(early_finish_message)
+                break
+
+            streams = [self.current_process.stdout, self.current_process.stderr]
+            try:
+                ready, _, _ = select.select(streams, [], [], 0.05)
+            except Exception:
+                ready = []
+
+            for stream in ready:
+                try:
+                    data = os.read(stream.fileno(), 65536)
+                except Exception:
+                    data = b""
+                if not data:
+                    continue
+                if stream is self.current_process.stdout:
+                    handle_stdout(data)
+                else:
+                    handle_stderr(data)
+
+            self.terminal.process_events()
+
+        if stderr_buffer.strip():
+            print(f"[Sketch] {stderr_buffer.strip()}")
+
+        self.terminal.hide_canvas()
+        exit_code = self.current_process.poll()
+        if exit_code is None:
+            self.current_process.terminate()
+            try:
+                self.current_process.wait(timeout=1.0)
+            except Exception:
+                self.current_process.kill()
+        return exit_code, last_output, stop_reason, False
+
+    def _watch_canvas_process_by_protocol(self, protocol: str, status: str, mood: str,
+                                    early_finish_message: str):
+        """Watch the current child process using its runtime protocol."""
+        watcher = (
+            self._watch_canvas_frame_packet_process
+            if protocol == CANVAS_FUNCTION_PROTOCOL
+            else self._watch_canvas_command_stream_process
+        )
+        return watcher(status, mood, early_finish_message)
     
     def _do_boot(self):
         """
@@ -506,21 +637,10 @@ class Brain:
 
         in_code_block = False
 
-        # Track lines to filter duplicates from LLM output
+        # Track lines so markdown fences can be removed without showing them.
         current_line = ""
-        skip_patterns = [
-            "import time",
-            "import random",
-            "import math",
-            "from tiny_canvas import Canvas",
-            "c = Canvas()",
-            "from tiny_plot3d import Plot3D",
-            "p = Plot3D(c)",
-            "python",  # From ```python markdown
-            "",  # Empty lines at start
-        ]
 
-        # Stream from LLM - filter duplicate header lines
+        # Stream from LLM.
         try:
             for token in self.llm.stream(self._current_prompt, max_tokens=config.LLM_MAX_TOKENS,
                                             temperature=config.LLM_TEMPERATURE,
@@ -545,17 +665,12 @@ class Brain:
                 for char in token:
                     current_line += char
 
-                    # When we hit a newline, check if line should be skipped
+                    # When we hit a newline, write the cleaned line.
                     if char == '\n':
                         line_stripped = current_line.strip()
-                        should_skip = any(line_stripped == pat for pat in skip_patterns)
-
-                        if not should_skip:
-                            # Output the line
+                        if line_stripped != "python":
                             code_typing.type_text(current_line)
                             full_code += current_line
-                        else:
-                            print(f"[Brain] Skipping duplicate: {line_stripped}")
 
                         current_line = ""
                     else:
@@ -591,38 +706,16 @@ class Brain:
         self.terminal.type_string("\n# checking my work...\n")
         time.sleep(1)
         
-        # Clean the code (same as in _do_run)
-        raw_code = self.current_program.code
-        lines = raw_code.split('\n')
-        clean_lines = []
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith('```') or stripped == 'python':
-                continue
-            clean_lines.append(line)
-        code = '\n'.join(clean_lines).strip()
-        
-        # 1. Check for banned imports
-        banned = ["pygame", "turtle", "tkinter", "matplotlib"]
-        for lib in banned:
-            if f"import {lib}" in code or f"from {lib}" in code:
-                msg = f"Forbidden library usage: {lib}"
-                log_error(self.current_program.program_type, "review", msg)
-                self.terminal.type_string(f"# oops, I used {lib}!\n")
-                if self.fix_attempts < 2:
-                    self.current_program.error_message = msg
-                    self._transition(State.FIX)
-                    return
-                else:
-                    self.terminal.type_string("# ignoring it...\n")
-
-        # 2. Check syntax
         try:
+            code = clean_generated_source(self.current_program.code)
+            validate_canvas_function_source(code)
             compile(code, "<string>", "exec")
-        except SyntaxError as e:
-            msg = f"SyntaxError: {e.msg} at line {e.lineno}"
+            self.current_program.code = code
+            self.current_program.runtime_protocol = CANVAS_FUNCTION_PROTOCOL
+        except (ProgramSourceError, SyntaxError) as e:
+            msg = str(e)
             log_error(self.current_program.program_type, "review", msg)
-            self.terminal.type_string(f"# syntax error found!\n")
+            self.terminal.type_string(f"# contract issue found!\n")
             if self.fix_attempts < 2:
                 self.current_program.error_message = msg
                 self._transition(State.FIX)
@@ -646,17 +739,17 @@ class Brain:
         self.terminal.set_status("RUNNING")
         self.terminal.show_canvas()
 
-        # Clean the code
-        code = self.current_program.code
-        # Strip markdown and language identifiers
-        lines = code.split('\n')
-        clean_lines = []
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith('```') or stripped == 'python':
-                continue
-            clean_lines.append(line)
-        code = '\n'.join(clean_lines).strip()
+        code = clean_generated_source(self.current_program.code)
+        try:
+            validate_canvas_function_source(code)
+        except ProgramSourceError as e:
+            self.terminal.type_string(f"Error validating program: {e}\n")
+            self.current_program.success = False
+            self.current_program.error_message = str(e)
+            self._transition(State.ERROR)
+            return
+        self.current_program.code = code
+        self.current_program.runtime_protocol = CANVAS_FUNCTION_PROTOCOL
         
         # Save cleaned code to temp file for execution
         filename = "temp_execution.py"
@@ -669,7 +762,10 @@ class Brain:
             f.write(code)
             
         try:
-            self.current_process = self._start_program_process(filepath)
+            self.current_process = self._start_program_process(
+                filepath,
+                self.current_program.runtime_protocol,
+            )
             
             self.current_program.success = True
             self._transition(State.WATCH)
@@ -686,12 +782,16 @@ class Brain:
         
         Let the program run for a while, display its output.
         """
-        exit_code, last_output, _, saw_flip = self._watch_running_process(
+        exit_code, last_output, _, saw_flip = self._watch_canvas_process_by_protocol(
+            self.current_program.runtime_protocol,
             "WATCHING",
             self.personality.get_mood_status(),
             "\n# Program finished early.\n",
         )
-        if self.current_program:
+        if (
+            self.current_program
+            and self.current_program.runtime_protocol != CANVAS_FUNCTION_PROTOCOL
+        ):
             self.current_program.canvas_protocol = (
                 CANVAS_PROTOCOL_BATCHED if saw_flip else CANVAS_PROTOCOL_LEGACY
             )
@@ -702,7 +802,9 @@ class Brain:
             # Process exited early, check if error
             if exit_code != 0:
                 # Try to read remaining stderr/stdout
-                remaining = self.current_process.stdout.read()
+                remaining = ""
+                if self.current_program.runtime_protocol != CANVAS_FUNCTION_PROTOCOL:
+                    remaining = self.current_process.stdout.read()
                 error_msg = (last_output + "\n" + remaining).strip()
                 if not error_msg:
                     error_msg = f"Process exited with code {exit_code}"
@@ -840,6 +942,7 @@ class Brain:
                 thought_process=self.current_program.thought_process,
                 error_message=self.current_program.error_message,
                 canvas_protocol=self.current_program.canvas_protocol,
+                runtime_protocol=self.current_program.runtime_protocol,
             )
             self.terminal.type_string(f"\n# Saved to archive.\n")
         except Exception as e:
@@ -941,6 +1044,7 @@ class Brain:
         self._pause_after_reminisce_intro()
 
         filepath = self.archive.get_program_path(metadata)
+        protocol = getattr(metadata, "runtime_protocol", None) or "legacy"
         self.terminal.show_canvas()
         try:
             canvas_batch = (
@@ -949,6 +1053,7 @@ class Brain:
             )
             self.current_process = self._start_program_process(
                 filepath,
+                protocol,
                 canvas_batch=canvas_batch,
             )
         except Exception as e:
@@ -958,7 +1063,8 @@ class Brain:
             self._after_reminisce()
             return
 
-        exit_code, last_output, stop_reason, _ = self._watch_running_process(
+        exit_code, last_output, stop_reason, _ = self._watch_canvas_process_by_protocol(
+            protocol,
             "REMINISCING",
             metadata.mood or self.personality.get_mood_status(),
             "\n# Reminisce replay finished early.\n",
@@ -969,7 +1075,9 @@ class Brain:
             return
 
         if exit_code not in (None, 0):
-            remaining = self.current_process.stdout.read()
+            remaining = ""
+            if protocol != CANVAS_FUNCTION_PROTOCOL:
+                remaining = self.current_process.stdout.read()
             error_msg = (last_output + "\n" + remaining).strip()
             if not error_msg:
                 error_msg = f"Process exited with code {exit_code}"

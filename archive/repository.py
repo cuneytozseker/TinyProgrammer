@@ -43,6 +43,7 @@ class ProgramMetadata:
     screenshot_path: Optional[str] = None
     synced_to_github: bool = False
     canvas_protocol: str = CANVAS_PROTOCOL_LEGACY
+    runtime_protocol: Optional[str] = None
 
     def __post_init__(self):
         self.canvas_protocol = normalize_canvas_protocol(self.canvas_protocol)
@@ -110,7 +111,8 @@ class Repository:
     def save(self, code: str, program_type: str, mood: str,
              success: bool, thought_process: str = "",
              error_message: Optional[str] = None,
-             canvas_protocol: str = CANVAS_PROTOCOL_LEGACY) -> Optional[ProgramMetadata]:
+             canvas_protocol: str = CANVAS_PROTOCOL_LEGACY,
+             runtime_protocol: Optional[str] = None) -> Optional[ProgramMetadata]:
         """
         Save a program to the archive.
         
@@ -122,6 +124,7 @@ class Repository:
             thought_process: Thinking comments
             error_message: Error if failed
             canvas_protocol: Canvas output protocol validated during the run
+            runtime_protocol: Runtime used to execute/replay the source
             
         Returns:
             Created metadata or None if not saved
@@ -152,6 +155,7 @@ class Repository:
             error_message=error_message,
             synced_to_github=False,
             canvas_protocol=normalize_canvas_protocol(canvas_protocol),
+            runtime_protocol=runtime_protocol,
         )
         
         # Update index
@@ -227,7 +231,11 @@ class Repository:
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 source = f.read()
-            compile(source, path, 'exec')
+            if metadata.runtime_protocol == "canvas_function_v1":
+                from programmer.program_source import validate_canvas_function_source
+                validate_canvas_function_source(source)
+            else:
+                compile(source, path, 'exec')
             replayable = True
         except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
             replayable = False

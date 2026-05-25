@@ -39,6 +39,16 @@ except Exception as e:
 # Path to assets relative to this file
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
+CANVAS_COMMAND_ARG_COUNTS = {
+    "CLEAR": 3,
+    "PIXEL": 5,
+    "LINE": 7,
+    "RECT": 7,
+    "FILLRECT": 7,
+    "CIRCLE": 6,
+    "FILLCIRCLE": 6,
+}
+
 
 class Terminal:
     """
@@ -62,7 +72,7 @@ class Terminal:
         self.fb_writer = None
         self._chrome_backend = "asset"
         self._chrome = None
-        self._render_lock = threading.Lock()
+        self._render_lock = threading.RLock()
         self._apply_chrome_regions(default_chrome_regions(config))
 
         self._init_display(font_name, font_size)
@@ -97,6 +107,7 @@ class Terminal:
 
         # Canvas popup state
         self.canvas_surface = None
+        self._canvas_staging_surface = None
         self.canvas_visible = False
         self.canvas_image = None
         self._load_canvas_assets()
@@ -270,6 +281,8 @@ class Terminal:
         """Show the canvas popup window and create the drawing surface."""
         self.canvas_surface = pygame.Surface(self.canvas_draw_rect.size)
         self.canvas_surface.fill((0, 0, 0))
+        self._canvas_staging_surface = pygame.Surface(self.canvas_draw_rect.size)
+        self._canvas_staging_surface.fill((0, 0, 0))
         self.canvas_visible = True
         self._dirty = True
         print("[Terminal] Canvas popup shown")
@@ -278,6 +291,7 @@ class Terminal:
         """Hide the canvas popup window."""
         self.canvas_visible = False
         self.canvas_surface = None
+        self._canvas_staging_surface = None
         self._dirty = True
         print("[Terminal] Canvas popup hidden")
 
@@ -385,7 +399,7 @@ class Terminal:
     # Rendering pipeline (single composited frame)
     # =========================================================================
 
-    def _render(self):
+    def _render(self, force_flip: bool = False):
         """Render the full IDE display with optional canvas popup."""
         if self.mock_mode:
             return
@@ -393,7 +407,7 @@ class Terminal:
         with self._render_lock:
             # In BBS or screensaver mode, skip the IDE render
             if self._bbs_mode or self._screensaver_mode:
-                self._flip()
+                self._flip(force=force_flip)
                 return
 
             # 1. Draw background chrome
@@ -424,7 +438,7 @@ class Terminal:
                     self.screen.blit(self.canvas_surface, self.canvas_draw_rect.topleft)
 
             # 7. Single flip to framebuffer
-            self._flip()
+            self._flip(force=force_flip)
 
     def get_screen_snapshot(self):
         """Return a thread-safe copy of the latest fully-rendered screen.
@@ -607,10 +621,12 @@ class Terminal:
             return
 
         try:
-            parts = cmd_str.strip().split(':')[1].split(',')
-            c = parts[0]
+            parts = cmd_str.strip().split(':', 1)[1].split(',')
+            command = parts[0]
             args = [int(x) for x in parts[1:]]
-            self._process_canvas_command(c, args)
+            with self._render_lock:
+                self._draw_canvas_command(self.canvas_surface, command, args)
+                self._dirty = True  # Will be composited on next _render()
         except Exception:
             pass  # Silently ignore malformed commands
 
@@ -619,41 +635,94 @@ class Terminal:
         if self.mock_mode or self.canvas_surface is None:
             return
 
-        for command in commands:
-            try:
-                c = command[0]
-                args = [int(x) for x in command[1:]]
-                self._process_canvas_command(c, args)
-            except Exception:
-                pass
+        with self._render_lock:
+            for command in commands:
+                try:
+                    name = str(command[0])
+                    args = [int(x) for x in command[1:]]
+                    self._draw_canvas_command(self.canvas_surface, name, args)
+                except Exception:
+                    pass
+            self._dirty = True
 
-    def _process_canvas_command(self, c: str, args: list[int]):
-        target = self.canvas_surface
-        if c == "CLEAR":
+    def apply_canvas_frame(self, commands, force: bool = False) -> None:
+        """Apply a complete buffered frame and render it atomically."""
+        if self.mock_mode or self.canvas_surface is None:
+            return
+
+        normalized = self._normalize_canvas_frame(commands)
+        if normalized is None:
+            return
+
+        with self._render_lock:
+            if self._canvas_staging_surface is None:
+                self._canvas_staging_surface = pygame.Surface(self.canvas_draw_rect.size)
+
+            self._canvas_staging_surface.blit(self.canvas_surface, (0, 0))
+            try:
+                for name, args in normalized:
+                    self._draw_canvas_command(self._canvas_staging_surface, name, args)
+            except Exception:
+                return
+
+            self.canvas_surface, self._canvas_staging_surface = (
+                self._canvas_staging_surface,
+                self.canvas_surface,
+            )
+            self._dirty = True
+            self._render(force_flip=force)
+
+    def _normalize_canvas_frame(self, commands):
+        """Return validated canvas commands, or None to drop the whole frame."""
+        if commands is None:
+            return []
+        if not isinstance(commands, (list, tuple)):
+            return None
+
+        normalized = []
+        for command in commands:
+            if not isinstance(command, (list, tuple)) or not command:
+                return None
+
+            name = str(command[0])
+            expected_count = CANVAS_COMMAND_ARG_COUNTS.get(name)
+            if expected_count is None or len(command) - 1 != expected_count:
+                return None
+
+            try:
+                args = [int(x) for x in command[1:]]
+            except (TypeError, ValueError):
+                return None
+            normalized.append((name, args))
+
+        return normalized
+
+    def _draw_canvas_command(self, target, command: str, args: list[int]) -> None:
+        """Draw one parsed canvas command onto a pygame surface."""
+        if command == "CLEAR":
             target.fill(tuple(args[:3]))
-        elif c == "PIXEL":
+        elif command == "PIXEL":
             target.set_at((args[0], args[1]), tuple(args[2:]))
-        elif c == "LINE":
+        elif command == "LINE":
             pygame.draw.line(
                 target, tuple(args[4:]),
                 (args[0], args[1]), (args[2], args[3]))
-        elif c == "RECT":
+        elif command == "RECT":
             pygame.draw.rect(
                 target, tuple(args[4:]),
                 (args[0], args[1], args[2], args[3]), 1)
-        elif c == "FILLRECT":
+        elif command == "FILLRECT":
             pygame.draw.rect(
                 target, tuple(args[4:]),
                 (args[0], args[1], args[2], args[3]))
-        elif c == "CIRCLE":
+        elif command == "CIRCLE":
             pygame.draw.circle(
                 target, tuple(args[3:]),
                 (args[0], args[1]), args[2], 1)
-        elif c == "FILLCIRCLE":
+        elif command == "FILLCIRCLE":
             pygame.draw.circle(
                 target, tuple(args[3:]),
                 (args[0], args[1]), args[2])
-        self._dirty = True  # Will be composited on next _render()
 
     # =========================================================================
     # Event handling and tick
@@ -682,6 +751,10 @@ class Terminal:
             self._render()
         if self.clock:
             self.clock.tick(fps)
+
+    def process_events(self):
+        """Pump display events without rendering dirty canvas state."""
+        self._handle_events()
 
     def shutdown(self):
         if PYGAME_AVAILABLE and not self.mock_mode:

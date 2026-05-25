@@ -64,30 +64,6 @@ def detect_ollama_models(endpoint=None):
     return (False, [])
 
 
-def _ensure_show_calls(code: str) -> str:
-    """Inject c.show() before each c.sleep(...) that doesn't already have it.
-
-    Liked programs archived before the CMD:FLIP convention don't call
-    c.show(). Passed verbatim into a variation prompt, the LLM tends to
-    mimic the missing call. Normalize the example so it follows the
-    current API.
-    """
-    lines = code.split("\n")
-    result = []
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped.startswith("c.sleep("):
-            prev_idx = i - 1
-            while prev_idx >= 0 and not lines[prev_idx].strip():
-                prev_idx -= 1
-            prev_stripped = lines[prev_idx].strip() if prev_idx >= 0 else ""
-            if prev_stripped != "c.show()":
-                indent = line[:len(line) - len(line.lstrip())]
-                result.append(f"{indent}c.show()")
-        result.append(line)
-    return "\n".join(result)
-
-
 def _canvas_frame_budget() -> tuple[float, str, int]:
     target_fps = float(getattr(config, "CANVAS_TARGET_FPS", 15) or 15)
     target_fps = max(1.0, min(60.0, target_fps))
@@ -98,10 +74,10 @@ def _canvas_frame_budget() -> tuple[float, str, int]:
 
 
 def _canvas_budget_rules() -> str:
-    target_fps, sleep_seconds, max_draw_calls = _canvas_frame_budget()
+    target_fps, _sleep_seconds, max_draw_calls = _canvas_frame_budget()
     return (
-        f"- Aim for about {target_fps:g} FPS: call c.show() then c.sleep({sleep_seconds}) at end of each frame\n"
-        f"- Keep each frame under about {max_draw_calls} draw calls; prefer moving fewer simple shapes over redrawing huge grids\n"
+        f"- TinyProgrammer targets about {target_fps:g} FPS; use dt so motion stays stable if frames run late\n"
+        f"- Keep each draw() under about {max_draw_calls} draw calls; prefer moving fewer simple shapes over redrawing huge grids\n"
     )
 
 
@@ -339,11 +315,8 @@ class LLMGenerator:
             raise
 
     def get_header(self, program_type: str = "") -> str:
-        """Get the standard imports header. Extended for wireframe_plot."""
-        base = "import time\nimport random\nimport math\nfrom tiny_canvas import Canvas\n\nc = Canvas()\n"
-        if program_type == "wireframe_plot":
-            base += "from tiny_plot3d import Plot3D\n\np = Plot3D(c)\n"
-        return base
+        """Return any code prelude shown before streamed LLM output."""
+        return ""
 
     def build_prompt(self, program_type: str, mood: str, lessons: str = "", creative: dict = None) -> str:
         """
@@ -385,38 +358,46 @@ class LLMGenerator:
             seed = creative.get("inspiration_seed")
             directive = creative.get("directive", "")
 
-            creative_block = f"You're writing a short Python program in the style of {style}"
+            creative_block = f"You're writing a TinyProgrammer sketch module in the style of {style}"
             if seed:
                 creative_block += f", inspired by {seed}"
             creative_block += f".\nYour mood right now is {mood} — {directive}.\n\n"
             creative_block += f"Focus on: {description}\n"
             creative_block += f"Use a {palette} color palette.\n\n"
         else:
-            creative_block = f"Write a short Python program that {description}.\n\n"
+            creative_block = f"Write a TinyProgrammer sketch module that {description}.\n\n"
 
         prompt = (
             f"{lessons_text}"
             f"{creative_block}"
-            "RULES:\n"
-            "- 20-50 lines of code\n"
-            "- NO imports (already done)\n"
-            "- Start with variables, then while True loop\n"
-            f"- Canvas: {canvas_w}x{canvas_h} pixels\n"
-            "- RGB values are integers 0-255 (NOT floats 0.0-1.0)\n"
-            f"{budget_rules}"
-            "- Add short casual comments like a human thinking out loud\n"
-            "  e.g. '# hmm let's try a spiral', '# this should bounce nicely'\n\n"
-            "ONLY these methods exist on 'c':\n"
+            "Write a TinyProgrammer sketch module.\n\n"
+            "CONTRACT:\n"
+            "- You may import useful modules at the top.\n"
+            "- Optional: def setup(c): return a dict/list/object for persistent state.\n"
+            "- Required: def draw(c, state, t, dt): draw exactly one complete frame.\n"
+            "- TinyProgrammer calls draw repeatedly; use dt for motion.\n"
+            "- t is elapsed seconds.\n"
+            "- Do not create Canvas, do not use while True, do not sleep, do not call c.show().\n"
+            "- Keep sketches self-contained: do not write files, spawn processes, use network APIs,\n"
+            "  or import UI/rendering frameworks like pygame, turtle, tkinter, or matplotlib.\n\n"
+            "CANVAS API:\n"
+            "  c.width, c.height\n"
             "  c.clear(r,g,b)\n"
             "  c.pixel(x,y,r,g,b)\n"
             "  c.line(x1,y1,x2,y2,r,g,b)\n"
             "  c.rect(x,y,w,h,r,g,b)\n"
             "  c.fill_rect(x,y,w,h,r,g,b)\n"
             "  c.circle(x,y,radius,r,g,b)\n"
-            "  c.fill_circle(x,y,radius,r,g,b)\n"
-            "  c.show()\n"
-            "  c.sleep(seconds)\n"
-            "Do NOT use any other methods.\n\n"
+            "  c.fill_circle(x,y,radius,r,g,b)\n\n"
+            "HELPERS:\n"
+            "  from tiny_plot3d import Plot3D  # for wireframe surface sketches\n\n"
+            "RULES:\n"
+            "- 20-50 lines of code\n"
+            f"- Canvas: {canvas_w}x{canvas_h} pixels\n"
+            "- RGB values are integers 0-255 (NOT floats 0.0-1.0)\n"
+            f"{budget_rules}"
+            "- Add short casual comments like a human thinking out loud\n"
+            "  e.g. '# hmm let's try a spiral', '# this should bounce nicely'\n\n"
             "Output ONLY Python code. No markdown, no explanation.\n"
         )
 
@@ -438,15 +419,19 @@ class LLMGenerator:
             palette = f"Use a {creative['palette']} color palette.\n"
 
         prompt = (
-            f"Write a short Python program that {description}.\n"
+            f"Write a TinyProgrammer sketch module that {description}.\n"
             f"{palette}\n"
             "RULES:\n"
-            "- 20-50 lines of code, no imports\n"
-            "- Start with variables, then while True loop\n"
-            f"- Canvas: {canvas_w}x{canvas_h} pixels\n\n"
+            "- You may import useful modules like math, random, or tiny_plot3d.\n"
+            "- Do not write files, spawn processes, use network APIs, or import UI/rendering frameworks.\n"
+            "- Optional def setup(c): returns state.\n"
+            "- Required def draw(c, state, t, dt): draws one complete frame.\n"
+            "- TinyProgrammer calls draw repeatedly; use dt for motion.\n"
+            "- Do not create Canvas, loop forever, sleep, or call show.\n"
+            f"- Canvas: {canvas_w}x{canvas_h} pixels\n"
             f"{budget_rules}\n"
-            "Methods on 'c': clear, pixel, line, rect, fill_rect, circle, fill_circle, show, sleep\n"
-            "All draw methods take r,g,b after coordinates. c.show() takes no args.\n\n"
+            "Methods on c: clear, pixel, line, rect, fill_rect, circle, fill_circle.\n"
+            "All draw methods take r,g,b after coordinates.\n\n"
             "Output ONLY Python code.\n"
         )
         return prompt
@@ -459,28 +444,35 @@ class LLMGenerator:
 
         prompt = (
             f"{lessons_text}"
-            "Write a short Python program that plots an animated 3D wireframe surface.\n\n"
-            "The canvas 'c' and Plot3D instance 'p' are ALREADY created. Just configure\n"
-            "p and call p.run(func) at the end.\n\n"
+            "Write a TinyProgrammer sketch module that plots an animated 3D wireframe surface.\n\n"
+            "Use this helper import:\n"
+            "  from tiny_plot3d import Plot3D\n\n"
             "Plot3D API (the only methods you need):\n"
             "  p.set_range(x=(min,max), y=(min,max))    # default (-5, 5)\n"
             f"  p.set_grid(steps={grid_max})                       # 10-{grid_max} recommended on small displays\n"
             "  p.set_rotation_speed(1.5)                  # degrees per frame\n"
-            "  p.run(func)                                # func(x, y) -> z, starts loop\n\n"
+            "  p.draw(func, t, dt)                         # draw one frame\n\n"
             "Write a surface function that's visually interesting. Not just sin(x+y).\n"
             "Think: peaks, saddles, ripples, Gaussian bumps, spirals, interference patterns,\n"
             "concentric waves, tilted planes with noise. Use math.sin, cos, exp, sqrt, etc.\n\n"
             "RULES:\n"
-            "- NO imports (already done — math, Plot3D, Canvas are ready)\n"
-            "- Keep it under 15 lines\n"
-            "- End with p.run(func) — do NOT add a while loop\n"
+            "- You may import math and tiny_plot3d.\n"
+            "- Implement optional setup(c) and required draw(c, state, t, dt).\n"
+            "- Do NOT add a while loop, sleep, show, or Canvas().\n"
+            "- Keep it under 25 lines\n"
             "- Add a short comment above the function describing the shape\n\n"
             "Example structure:\n"
-            "  # ripples from the origin\n"
-            "  p.set_range(x=(-4, 4), y=(-4, 4))\n"
-            "  def surface(x, y):\n"
-            "      return math.sin(math.sqrt(x*x + y*y))\n"
-            "  p.run(surface)\n\n"
+            "  import math\n"
+            "  from tiny_plot3d import Plot3D\n"
+            "  def setup(c):\n"
+            "      p = Plot3D(c)\n"
+            "      p.set_range(x=(-4, 4), y=(-4, 4))\n"
+            "      p.set_grid(steps=16)\n"
+            "      return {'p': p}\n"
+            "  def draw(c, state, t, dt):\n"
+            "      def surface(x, y):\n"
+            "          return math.sin(math.sqrt(x*x + y*y) - t)\n"
+            "      state['p'].draw(surface, t, dt)\n\n"
             "Output ONLY Python code. No markdown, no explanation.\n"
         )
         return prompt
@@ -489,36 +481,38 @@ class LLMGenerator:
         """Build a prompt asking the LLM to create a small variation of a liked program."""
         canvas_w = config.CANVAS_DRAW_W
         canvas_h = config.CANVAS_DRAW_H
-        code = _ensure_show_calls(code)
         budget_rules = _canvas_budget_rules()
 
         prompt = (
-            "Here's a Python program the user enjoyed:\n\n"
+            "Here's an older TinyProgrammer sketch the user enjoyed. Use it as visual inspiration,\n"
+            "but write a fresh sketch module with optional setup(c) and required draw(c, state, t, dt).\n\n"
+            "The old sketch below may use legacy structure. Do not copy its imports, Canvas(),\n"
+            "while True loop, show/sleep calls, or script shape. Translate only the visual idea.\n\n"
             f"{code}\n\n"
             "Write a variation of this program with minor changes. Try one or two of:\n"
             "- Different color palette\n"
             "- Different sizes or proportions\n"
             "- Different speed or direction\n"
             "- Slightly different shapes or patterns\n\n"
-            "Keep the core behavior and structure the same.\n\n"
+            "Keep the core visual idea, not the old script structure.\n\n"
             "RULES:\n"
             "- 20-50 lines of code\n"
-            "- NO imports (already done)\n"
-            "- Start with variables, then while True loop\n"
+            "- You may import useful modules.\n"
+            "- Optional def setup(c): returns state.\n"
+            "- Required def draw(c, state, t, dt): draws one complete frame.\n"
+            "- Use dt for motion. Do not create Canvas, loop forever, sleep, or call show.\n"
             f"- Canvas: {canvas_w}x{canvas_h} pixels\n"
             "- RGB values are integers 0-255 (NOT floats 0.0-1.0)\n"
             f"{budget_rules}\n"
-            "ONLY these methods exist on 'c':\n"
+            "CANVAS API:\n"
+            "  c.width, c.height\n"
             "  c.clear(r,g,b)\n"
             "  c.pixel(x,y,r,g,b)\n"
             "  c.line(x1,y1,x2,y2,r,g,b)\n"
             "  c.rect(x,y,w,h,r,g,b)\n"
             "  c.fill_rect(x,y,w,h,r,g,b)\n"
             "  c.circle(x,y,radius,r,g,b)\n"
-            "  c.fill_circle(x,y,radius,r,g,b)\n"
-            "  c.show()\n"
-            "  c.sleep(seconds)\n"
-            "Do NOT use any other methods.\n\n"
+            "  c.fill_circle(x,y,radius,r,g,b)\n\n"
             "Output ONLY Python code. No markdown, no explanation.\n"
         )
         return prompt
@@ -536,7 +530,7 @@ class LLMGenerator:
             "Focus on syntax, libraries, or logic errors.\n"
             "Examples:\n"
             "- 'Do not use c.move() because it does not exist.'\n"
-            "- 'Always initialize variables before the loop.'\n"
+            "- 'Use dt for motion inside draw(c, state, t, dt).'\n"
             f"- 'The canvas size is {canvas_w}x{canvas_h}.'\n"
             "\n"
             "Write ONLY the lesson (1 sentence).\n"
@@ -546,14 +540,16 @@ class LLMGenerator:
     def build_fix_prompt(self, code: str, error: str) -> str:
         """Build a prompt to fix broken code."""
         prompt = (
-            "The following Python script failed:\n\n"
+            "The following TinyProgrammer sketch module failed:\n\n"
             f"{code}\n\n"
             f"Error: {error}\n\n"
             "FIX IT. Write ONLY the fixed code.\n"
             "NO explanations. NO markdown.\n"
             "Constraints:\n"
-            "- Keep it simple.\n"
-            "- Use 'c' for drawing.\n"
+            "- Keep optional setup(c) and required draw(c, state, t, dt).\n"
+            "- You may import useful modules.\n"
+            "- Do not create Canvas, loop forever, sleep, call show, write files, spawn processes, or use network/UI frameworks.\n"
+            "- Use 'c' for drawing and dt for motion.\n"
         )
         return prompt
 

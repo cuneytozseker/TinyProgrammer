@@ -331,24 +331,31 @@ class Plot3D:
     # Main loop
     # =========================================================================
 
+    def draw(self, func, t=0.0, dt=1 / 30):
+        """Draw one Plot3D frame for wrapper-owned animation loops."""
+        self._draw_frame(func, max(0.0, float(dt)) * 30.0)
+
     def run(self, func):
-        """Animation loop — clears, computes, draws, rotates, sleeps."""
-        colors = self.STYLES[self.style]
+        """Legacy animation loop — clears, computes, draws, rotates, sleeps."""
         while True:
-            self.c.clear(*colors["bg"])
-            z_values, z_min, z_max = self._compute_surface(func)
-            # Pad z range slightly so the surface doesn't touch the bbox
-            z_pad = max(abs(z_min), abs(z_max), 0.5) * 0.1
-            z_min_p = z_min - z_pad
-            z_max_p = z_max + z_pad
-            self._auto_scale(z_min_p, z_max_p)
-
-            self._draw_bbox(z_min_p, z_max_p)
-            self._draw_axes(z_min_p, z_max_p)
-            self._draw_surface(z_values, z_min, z_max)
-
-            self.angle += self.rotation_speed
-            if self.angle >= 360:
-                self.angle -= 360
-
+            self._draw_frame(func, 1.0)
+            self.c.show()
             self.c.sleep(0.033)
+
+    def _draw_frame(self, func, frame_scale=1.0):
+        """Draw a single wireframe frame."""
+        colors = self.STYLES[self.style]
+        self.c.clear(*colors["bg"])
+        z_values, z_min, z_max = self._compute_surface(func)
+        # Pad z range slightly so the surface doesn't touch the bbox
+        z_pad = max(abs(z_min), abs(z_max), 0.5) * 0.1
+        z_min_p = z_min - z_pad
+        z_max_p = z_max + z_pad
+        self._auto_scale(z_min_p, z_max_p)
+
+        self._draw_bbox(z_min_p, z_max_p)
+        self._draw_axes(z_min_p, z_max_p)
+        self._draw_surface(z_values, z_min, z_max)
+
+        self.angle += self.rotation_speed * frame_scale
+        self.angle %= 360
