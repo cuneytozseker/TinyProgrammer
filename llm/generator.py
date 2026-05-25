@@ -523,17 +523,29 @@ class LLMGenerator:
         )
         return prompt
 
-    def build_reflection_prompt(self, result: str) -> str:
+    def build_reflection_prompt(self, result: str, code: str = "",
+                                program_type: str = "") -> str:
         """Build a prompt to learn from code execution."""
         # Get canvas dimensions from config
         canvas_w = config.CANVAS_DRAW_W
         canvas_h = config.CANVAS_DRAW_H
+        source_excerpt = self._reflection_source_excerpt(code)
+        program_label = program_type or "unknown"
 
         prompt = (
-            "Review this Python code execution:\n"
+            "Learn from this TinyCanvas program run:\n"
+            f"Program type: {program_label}\n"
             f"Result: {result}\n\n"
+            f"Canvas size: {canvas_w}x{canvas_h}\n\n"
+            "Source excerpt (cleaned, may be partial):\n"
+            "```python\n"
+            f"{source_excerpt}\n"
+            "```\n\n"
             "What is ONE technical lesson to remember for next time?\n"
             "Focus on syntax, libraries, or logic errors.\n"
+            "Use the code and result above when possible.\n"
+            "Do not ask for more code or say code/context is missing.\n"
+            "If no specific lesson is clear, return a generic TinyCanvas lesson.\n"
             "Examples:\n"
             "- 'Do not use c.move() because it does not exist.'\n"
             "- 'Always initialize variables before the loop.'\n"
@@ -542,6 +554,25 @@ class LLMGenerator:
             "Write ONLY the lesson (1 sentence).\n"
         )
         return prompt
+
+    def _reflection_source_excerpt(self, code: str, limit: int = 2000) -> str:
+        """Return cleaned source context for the reflection prompt."""
+        clean_lines = []
+        for line in (code or "").split("\n"):
+            stripped = line.strip()
+            if stripped.startswith("```") or stripped == "python":
+                continue
+            clean_lines.append(line)
+
+        excerpt = "\n".join(clean_lines).strip()
+        if not excerpt:
+            return "(no source captured)"
+
+        if len(excerpt) > limit:
+            excerpt = excerpt[:limit].rstrip()
+            return f"{excerpt}\n... [source truncated]"
+
+        return excerpt
 
     def build_fix_prompt(self, code: str, error: str) -> str:
         """Build a prompt to fix broken code."""
