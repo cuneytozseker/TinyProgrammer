@@ -282,6 +282,7 @@ CORE_PROGRAMS = [
 # Raspberry Pi displays. Users with faster hardware can raise these.
 CANVAS_TARGET_FPS = float(os.environ.get("CANVAS_TARGET_FPS", "15"))
 CANVAS_MAX_DRAW_CALLS = int(os.environ.get("CANVAS_MAX_DRAW_CALLS", "150"))
+CANVAS_DT_MAX = 0.1
 
 # Types of programs to generate (weighted)
 PROGRAM_TYPES = [
