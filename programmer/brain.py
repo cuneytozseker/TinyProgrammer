@@ -65,19 +65,35 @@ class Program:
 
 
 REFLECTION_SUCCESS_FALLBACK = (
-    "Keep programs within the TinyCanvas API and the configured canvas bounds."
+    "Use only the provided c drawing methods and keep coordinates within the "
+    "configured canvas bounds."
 )
 REFLECTION_FAILURE_FALLBACK = (
-    "When a program fails, simplify the TinyCanvas code and verify every "
+    "When a program fails, simplify the drawing code and verify every "
     "variable and method call before running it."
 )
 REFLECTION_NON_LESSON_PHRASES = (
     "no code",
+    "no source",
+    "no source code",
+    "don't have any code",
+    "do not have any code",
+    "any code to review",
     "code provided",
+    "source provided",
     "provide the code",
+    "provide more details",
     "can't review",
     "cannot review",
     "unable to review",
+    "without seeing the code",
+    "without source",
+    "without the source",
+    "missing code",
+    "missing source",
+    "source is missing",
+    "source code is missing",
+    "code/context is missing",
     "not enough context",
     "insufficient context",
 )

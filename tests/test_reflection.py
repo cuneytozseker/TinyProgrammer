@@ -34,9 +34,13 @@ class ReflectionPromptTests(unittest.TestCase):
         self.assertIn("Program type: starfield", prompt)
         self.assertIn("Result: Success.", prompt)
         self.assertIn("Canvas size:", prompt)
+        self.assertIn("drawing object named c is already created", prompt)
+        self.assertIn("clear, pixel, line, rect", prompt)
+        self.assertIn("integer RGB values from 0 to 255", prompt)
         self.assertIn("```python\nfrom tiny_canvas import TinyCanvas", prompt)
         self.assertIn("c.circle(10, 20, 5)", prompt)
         self.assertIn("Do not ask for more code", prompt)
+        self.assertIn("using the provided c drawing object correctly", prompt)
         self.assertNotIn("```python\n```python", prompt)
 
     def test_prompt_truncates_long_source_with_marker(self):
@@ -53,15 +57,25 @@ class ReflectionPromptTests(unittest.TestCase):
 
 class ReflectionValidationTests(unittest.TestCase):
     def test_rejects_missing_context_non_lessons(self):
-        self.assertTrue(
-            _is_reflection_non_lesson(
-                "I do not have enough context and no code provided to review."
-            )
+        non_lessons = (
+            "I do not have enough context and no code provided to review.",
+            "I don't have any code to review and pull lessons from.",
+            "Without seeing the code, I can only give generic advice.",
+            "The source is missing, so no specific lesson can be drawn.",
+            "Please provide more details about the code.",
         )
-        self.assertEqual(
-            _final_reflection_lesson("I have no code to review.", success=True),
-            REFLECTION_SUCCESS_FALLBACK,
-        )
+
+        for lesson in non_lessons:
+            with self.subTest(lesson=lesson):
+                self.assertTrue(
+                    _is_reflection_non_lesson(lesson),
+                    msg=f"Expected missing-context non-lesson: {lesson}",
+                )
+                self.assertEqual(
+                    _final_reflection_lesson(lesson, success=True),
+                    REFLECTION_SUCCESS_FALLBACK,
+                )
+
         self.assertEqual(
             _final_reflection_lesson("Cannot review without more details.", success=False),
             REFLECTION_FAILURE_FALLBACK,
