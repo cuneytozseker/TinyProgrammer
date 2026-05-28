@@ -644,8 +644,6 @@ class Brain:
         Try to execute the generated program.
         """
         self.terminal.set_status("RUNNING")
-        self.terminal.show_canvas()
-
         # Clean the code
         code = self.current_program.code
         # Strip markdown and language identifiers
@@ -667,6 +665,8 @@ class Brain:
         filepath = os.path.join(programs_dir, filename)
         with open(filepath, 'w') as f:
             f.write(code)
+
+        self.terminal.show_canvas(filepath)
             
         try:
             self.current_process = self._start_program_process(filepath)
@@ -942,7 +942,7 @@ class Brain:
         self._pause_after_reminisce_intro()
 
         filepath = self.archive.get_program_path(metadata)
-        self.terminal.show_canvas()
+        self.terminal.show_canvas(filepath)
         try:
             canvas_batch = (
                 getattr(metadata, "canvas_protocol", CANVAS_PROTOCOL_LEGACY)
