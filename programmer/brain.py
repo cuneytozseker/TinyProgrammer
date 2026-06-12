@@ -64,6 +64,85 @@ class Program:
     canvas_protocol: str = CANVAS_PROTOCOL_LEGACY
 
 
+REFLECTION_SUCCESS_FALLBACK = (
+    "Use only the provided drawing methods and keep coordinates within the "
+    "configured canvas bounds."
+)
+REFLECTION_FAILURE_FALLBACK = (
+    "When a program fails, simplify the drawing code and verify every "
+    "variable and method call before running it."
+)
+REFLECTION_NON_LESSON_PHRASES = (
+    "no code",
+    "no source",
+    "no source code",
+    "don't have any code",
+    "do not have any code",
+    "any code to review",
+    "no code provided",
+    "no source provided",
+    "provide the code",
+    "provide more code",
+    "provide more details",
+    "can't review",
+    "cannot review",
+    "unable to review",
+    "without seeing the code",
+    "without code",
+    "without source",
+    "without the source",
+    "missing code",
+    "missing source",
+    "source is missing",
+    "source code is missing",
+    "code/context is missing",
+    "code or context is missing",
+    "not enough context",
+    "insufficient context",
+    "no specific lesson",
+    "no clear lesson",
+    "no actionable lesson",
+    "nothing specific to learn",
+    "nothing to learn",
+)
+
+
+def _normalize_reflection_lesson(lesson: str) -> str:
+    """Collapse model reflection output into one line for the journal."""
+    normalized = " ".join((lesson or "").split()).strip()
+    if normalized.startswith("- "):
+        normalized = normalized[2:].strip()
+    return normalized
+
+
+def _is_reflection_non_lesson(lesson: str) -> bool:
+    """Return whether reflection output is a missing-context non-lesson."""
+    normalized = (
+        _normalize_reflection_lesson(lesson)
+        .lower()
+        .replace("\u2018", "'")
+        .replace("\u2019", "'")
+    )
+    if not normalized:
+        return True
+    return any(phrase in normalized for phrase in REFLECTION_NON_LESSON_PHRASES)
+
+
+def _reflection_fallback(success: bool) -> str:
+    """Return a deterministic lesson when the model does not produce one."""
+    if success:
+        return REFLECTION_SUCCESS_FALLBACK
+    return REFLECTION_FAILURE_FALLBACK
+
+
+def _final_reflection_lesson(lesson: str, success: bool) -> str:
+    """Normalize and validate a reflection lesson, falling back if needed."""
+    normalized = _normalize_reflection_lesson(lesson)
+    if _is_reflection_non_lesson(normalized):
+        return _reflection_fallback(success)
+    return normalized
+
+
 def _typing_delay_range() -> tuple[float, float]:
     """Return per-character delay bounds from live chars/sec config."""
     min_cps = float(getattr(config, "TYPING_SPEED_MIN", 2) or 2)
@@ -785,24 +864,31 @@ class Brain:
         else:
             result = f"Failed. Error: {self.current_program.error_message}"
             
-        prompt = self.llm.build_reflection_prompt(result)
+        prompt = self.llm.build_reflection_prompt(
+            result,
+            code=self.current_program.code,
+            program_type=self.current_program.program_type,
+        )
         
-        # Stream reflection
-        lesson = ""
+        # Buffer reflection so only a validated lesson is shown and saved.
+        raw_lesson = ""
         try:
             for token in self.llm.stream(prompt, max_tokens=config.LLM_MAX_TOKENS,
                                             temperature=config.LLM_TEMPERATURE,
                                             stop=["<|im_end|>"]):
-                # Filter newlines to keep it clean
-                token = token.replace("\n", " ")
-                lesson += token
-                for char in token:
-                    self.terminal.type_char(char)
-                    time.sleep(random.uniform(0.01, 0.05))
-                    self.terminal.tick()
+                raw_lesson += token
         except Exception:
             pass
-            
+
+        lesson = _final_reflection_lesson(
+            raw_lesson,
+            success=self.current_program.success,
+        )
+        for char in lesson:
+            self.terminal.type_char(char)
+            time.sleep(random.uniform(0.01, 0.05))
+            self.terminal.tick()
+
         if lesson:
             self.learning.add_lesson(lesson)
             self.terminal.type_string("\n# saved to memory.\n")
