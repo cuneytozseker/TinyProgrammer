@@ -115,6 +115,12 @@ DISPLAY_CHROME_BACKEND = normalize_display_chrome_backend(
     os.environ.get("DISPLAY_CHROME_BACKEND", CHROME_BACKEND_ASSET)
 )
 
+# Physical output backend. Keep framebuffer as the default because it is the
+# broadest-compatible path for HDMI, SPI/fbtft, and KMS framebuffer devices.
+# "sdl" is an opt-in experiment for native SDL/KMS drivers such as kmsdrm.
+DISPLAY_OUTPUT_BACKEND = os.environ.get("DISPLAY_OUTPUT_BACKEND", "framebuffer").strip().lower()
+DISPLAY_SDL_DRIVER = os.environ.get("DISPLAY_SDL_DRIVER", "").strip().lower()
+
 # Global offset to align with background
 LAYOUT_OFFSET_X = _scale_round_half_up(_REFERENCE_LAYOUT_OFFSET_X, _SX)
 LAYOUT_OFFSET_Y = _scale_round_half_up(_REFERENCE_LAYOUT_OFFSET_Y, _SY)

@@ -159,24 +159,28 @@ echo "  boot dir: $BOOT_DIR"
 echo "  profile:  $DISPLAY_PROFILE"
 
 if command -v curl >/dev/null 2>&1 && command -v unzip >/dev/null 2>&1; then
-    echo "[1/4] curl/unzip already available"
+    echo "[1/5] curl/unzip already available"
 else
-    echo "[1/4] Installing curl/unzip..."
+    echo "[1/5] Installing curl/unzip..."
     as_root apt-get update
     as_root apt-get install -y --no-install-recommends curl unzip
 fi
 
-echo "[2/4] Installing Waveshare display overlays..."
+echo "[2/5] Installing KMS/SDL runtime libraries..."
+as_root apt-get install -y --no-install-recommends \
+    libegl1 libegl-mesa0 libgles2 libgl1-mesa-dri
+
+echo "[3/5] Installing Waveshare display overlays..."
 install_waveshare_overlays "$OVERLAY_DIR"
 
-echo "[3/4] Updating boot config..."
+echo "[4/5] Updating boot config..."
 replace_managed_block \
     "$BOOT_CONFIG" \
     "$BOOT_BLOCK_BEGIN" \
     "$BOOT_BLOCK_END" \
     "$(build_display_block "$BOOT_CONFIG")"
 
-echo "[4/4] Updating TinyProgrammer profile..."
+echo "[5/5] Updating TinyProgrammer profile..."
 set_env "DISPLAY_PROFILE" "$DISPLAY_PROFILE"
 
 echo
