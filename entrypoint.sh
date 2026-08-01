@@ -17,4 +17,4 @@ ln -sf /app/runtime/lessons.md /app/lessons.md
 ln -sf /app/runtime/config_overrides.json /app/config_overrides.json
 ln -sf /app/runtime/liked_programs.json /app/liked_programs.json
 
-exec python -u main.py
+exec python3 -u main.py
