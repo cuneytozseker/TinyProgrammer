@@ -2,7 +2,6 @@
 FROM alpine:3.20 AS builder
 
 # Install build dependencies
-# Alpine only ships python3; symlink python for compatibility with packages/scripts that call python
 RUN apk add --no-cache \
     python3-dev \
     py3-pip \
@@ -13,22 +12,20 @@ RUN apk add --no-cache \
     sdl2_mixer-dev \
     freetype-dev \
     libjpeg-turbo-dev \
-    libpng-dev \
-    && ln -sf python3 /usr/local/bin/python
+    libpng-dev
 
 WORKDIR /build
 
-COPY requirements.txt .
-RUN pip install --break-system-packages --no-cache-dir -r requirements.txt
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime
 FROM alpine:3.20
 
 # Install runtime libraries only
-# Alpine only ships python3; symlink python for compatibility with packages/scripts that call python
 RUN apk add --no-cache \
     python3 \
-    py3-pip \
     sdl2 \
     sdl2_image \
     sdl2_ttf \
@@ -36,18 +33,18 @@ RUN apk add --no-cache \
     freetype \
     libjpeg \
     libpng \
-    ttf-dejavu \
-    && ln -sf python3 /usr/local/bin/python
+    ttf-dejavu
 
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /usr/lib/python3.12/site-packages /usr/lib/python3.12/site-packages
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 COPY . .
 
 RUN chmod +x entrypoint.sh
 
+# Generated programs are written and run here
 VOLUME ["/app/programs"]
 EXPOSE 5000
 
