@@ -16,6 +16,7 @@ RUN apk add --no-cache \
 
 WORKDIR /build
 
+COPY requirements.txt .
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir -r requirements.txt
