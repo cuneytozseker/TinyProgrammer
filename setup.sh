@@ -76,17 +76,25 @@ if systemctl is-active --quiet lightdm 2>/dev/null || systemctl is-active --quie
 fi
 
 # 3. Install system deps
+# Everything comes from apt so it lands system-wide. The systemd service runs as
+# root, and a user-level pip install would be invisible to it (see issue #74).
 echo -e "${B}[2/7]${N} Installing system dependencies..."
 sudo apt update -qq
 sudo apt install -y -qq \
-    python3-pip python3-pygame python3-pil \
+    python3-pip python3-pygame python3-pil python3-numpy \
+    python3-flask python3-requests python3-dotenv \
     git libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
     > /dev/null
 
-# 4. Install Python deps
-echo -e "${B}[3/7]${N} Installing Python packages..."
-pip3 install --quiet --break-system-packages requests flask python-dotenv 2>/dev/null || \
-    pip3 install --quiet requests flask python-dotenv
+# 4. Verify the service user can import everything
+echo -e "${B}[3/7]${N} Verifying Python packages..."
+DEP_CHECK='import pygame, PIL, numpy, flask, requests, dotenv'
+if ! sudo python3 -c "$DEP_CHECK" > /dev/null 2>&1; then
+    echo -e "${R}Dependency check failed as root.${N}"
+    echo "The service runs as root and will not start. Details:"
+    sudo python3 -c "$DEP_CHECK" 2>&1 | tail -1
+    exit 1
+fi
 
 # 5. Clone or update repo
 echo -e "${B}[4/7]${N} Fetching TinyProgrammer ${TAG}..."

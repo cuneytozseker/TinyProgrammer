@@ -110,11 +110,14 @@ If you prefer to install step-by-step:
 
 ```bash
 sudo apt update && sudo apt install -y \
-    python3-pip python3-pygame python3-pil \
+    python3-pip python3-pygame python3-pil python3-numpy \
+    python3-flask python3-requests python3-dotenv \
     git libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
-
-pip3 install requests flask python-dotenv --break-system-packages
 ```
+
+Install these with `apt` rather than `pip3 --user`. The systemd service runs as
+root, and packages installed into your own `~/.local` are not on root's import
+path — the service would fail to start with `No module named flask`.
 
 #### 2. Clone the repo
 
